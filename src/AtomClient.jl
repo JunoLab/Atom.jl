@@ -27,4 +27,6 @@ function msg(t, data)
   println(sock, json(c(t, data)))
 end
 
+include("eval.jl")
+
 end # module
