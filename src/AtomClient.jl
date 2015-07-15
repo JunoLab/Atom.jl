@@ -7,11 +7,18 @@ global sock = nothing
 isactive(sock::Nothing) = false
 isactive(sock) = isopen(sock)
 
+const handlers = Dict{UTF8String, Function}()
+
+handle(f, t) = handlers[t] = f
+
 function connect(port)
   global sock = Base.connect(port)
-  @schedule while isopen(sock)
+  @async while isopen(sock)
+    result, id = nothing, nothing
     (t, data) = JSON.parse(sock)
-    @show t data
+    haskey(data, "callback") && (id = data["callback"])
+    haskey(handlers, t) && (@errs result = handlers[t](data))
+    msg(id, result)
   end
 end
 
