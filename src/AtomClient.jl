@@ -18,7 +18,7 @@ function connect(port)
     (t, data) = JSON.parse(sock)
     haskey(data, "callback") && (id = data["callback"])
     haskey(handlers, t) && (@errs result = handlers[t](data))
-    msg(id, result)
+    isa(id, Integer) && msg(id, result)
   end
 end
 
