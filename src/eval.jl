@@ -37,7 +37,7 @@ handle("eval") do data
   block, (start, stop) = isselection(data) ?
                     getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                     getblock(data["code"], data["start"]["row"])
-  display(include_string(mod, block, get(data, "path", "untitled"), start))
+  @errs display(include_string(mod, block, get(data, "path", "untitled"), start))
   start, stop
 end
 
@@ -48,6 +48,11 @@ handle("eval-all") do data
   elseif haskey(data, "path")
     mod = getthing(CodeTools.filemodule(data["path"]), Main)
   end
-  include_string(mod, data["code"], get(data, "path", "untitled"))
+  try
+    include_string(mod, data["code"], get(data, "path", "untitled"))
+  catch e
+    msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
+                    :detail => sprint(showerror, e, catch_backtrace())))
+  end
   return
 end

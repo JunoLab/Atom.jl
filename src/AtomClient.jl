@@ -17,7 +17,13 @@ function connect(port)
     result, id = nothing, nothing
     (t, data) = JSON.parse(sock)
     haskey(data, "callback") && (id = data["callback"])
-    haskey(handlers, t) && (@errs result = handlers[t](data))
+    if haskey(handlers, t)
+      try result = handlers[t](data)
+      catch e
+        msg("error", @d(:msg=>"Julia Client – Internal Error",
+                        :detail=>sprint(showerror, e, catch_backtrace())))
+      end
+    end
     isa(id, Integer) && msg(id, result)
   end
 end
