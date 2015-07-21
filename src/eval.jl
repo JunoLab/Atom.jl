@@ -40,3 +40,14 @@ handle("eval") do data
   display(include_string(mod, block, get(data, "path", "untitled"), start))
   start, stop
 end
+
+handle("eval-all") do data
+  mod = Main
+  if haskey(data, "module")
+    mod = getthing(data["module"], Main)
+  elseif haskey(data, "path")
+    mod = getthing(CodeTools.filemodule(data["path"]), Main)
+  end
+  include_string(mod, data["code"], get(data, "path", "untitled"))
+  return
+end
