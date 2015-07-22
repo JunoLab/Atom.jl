@@ -36,5 +36,6 @@ function msg(t, data)
 end
 
 include("eval.jl")
+include("misc.jl")
 
 end # module
