@@ -1,4 +1,4 @@
-using AtomClient
+using Atom
 using Base.Test
 
 # write your own tests here
