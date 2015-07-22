@@ -2,6 +2,8 @@ module Atom
 
 using Lazy, JSON
 
+include("utils.jl")
+
 global sock = nothing
 
 isactive(sock::Nothing) = false
