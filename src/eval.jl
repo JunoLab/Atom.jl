@@ -37,6 +37,7 @@ handle("eval") do data
   block, (start, stop) = isselection(data) ?
                     getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                     getblock(data["code"], data["start"]["row"])
+  !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
   @errs display(include_string(mod, block, get(data, "path", "untitled"), start))
   start, stop
 end
