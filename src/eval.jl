@@ -27,7 +27,7 @@ handle("module") do data
 end
 
 handle("all-modules") do _
-  [string(m) for m in CodeTools.allchildren(Main)]
+  sort!([string(m) for m in CodeTools.allchildren(Main)])
 end
 
 isselection(data) = data["start"] ≠ data["end"]
