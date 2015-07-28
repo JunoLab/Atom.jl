@@ -32,6 +32,12 @@ end
 
 isselection(data) = data["start"] ≠ data["end"]
 
+function splitresult(r)
+  ls = split(r, "\n")
+  @d(:header=>ls[1]*(length(ls)>1?" ...":""),
+     :body=>join(ls[2:end], "\n"))
+end
+
 handle("eval") do data
   mod = getmodule(data, cursor(data["start"]))
   block, (start, stop) = isselection(data) ?
@@ -41,7 +47,7 @@ handle("eval") do data
   result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
   @d(:start => start,
      :end => stop,
-     :result => sprint(show, result))
+     splitresult(sprint(show, result))...)
 end
 
 handle("eval-all") do data
