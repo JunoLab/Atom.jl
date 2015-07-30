@@ -65,3 +65,11 @@ handle("eval-all") do data
   end
   return
 end
+
+handle("eval-repl") do data
+  try
+    show(include_string(data["code"]))
+  catch e
+    showerror(STDERR, e, catch_backtrace())
+  end
+end
