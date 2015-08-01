@@ -9,4 +9,8 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
+function __init__()
+  eval(Base, :(include("patch.jl")))
+end
+
 end # module

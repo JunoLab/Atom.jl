@@ -48,3 +48,5 @@ function rpc(t, data)
   msg(t, data)
   return wait(c)
 end
+
+isconnected() = isopen(sock)
