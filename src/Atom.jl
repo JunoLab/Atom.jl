@@ -10,7 +10,7 @@ include("frontend.jl")
 include("utils.jl")
 
 function __init__()
-  eval(Base, :(include("patch.jl")))
+  include("patch.jl")
 end
 
 end # module

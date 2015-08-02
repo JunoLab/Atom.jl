@@ -1,4 +1,9 @@
-import Atom, MacroTools
+eval(Base, quote
+import Atom
+import MacroTools
+end)
+
+eval(Base, quote
 
 MacroTools.@hook function info(msg...)
   if Atom.isconnected()
@@ -7,3 +12,5 @@ MacroTools.@hook function info(msg...)
     super(msg...)
   end
 end
+
+end)
