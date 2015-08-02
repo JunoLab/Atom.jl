@@ -67,6 +67,12 @@ handle("eval-all") do data
 end
 
 handle("eval-repl") do data
+  mode = get(data, "mode", nothing)
+  if mode == "shell"
+    data["code"] = "run(`$(data["code"])`)"
+  elseif mode == "help"
+    data["code"] = "@doc $(data["code"])"
+  end
   try
     println(stringmime(MIME"text/plain"(), include_string(data["code"])))
   catch e
