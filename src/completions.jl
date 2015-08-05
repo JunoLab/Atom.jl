@@ -1,3 +1,6 @@
+# TODO: some caching, since this works poorly when there
+# are lots of files around
+
 import CodeTools: allcompletions, text
 
 handle("completions") do data
