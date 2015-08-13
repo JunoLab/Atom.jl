@@ -1,4 +1,4 @@
-using CodeTools, LNR
+using CodeTools, LNR, Media
 
 import CodeTools: getblock, getthing
 
@@ -32,50 +32,50 @@ end
 
 isselection(data) = data["start"] ≠ data["end"]
 
-function splitresult(r)
-  ls = split(r, "\n")
-  @d(:header=>ls[1]*(length(ls)>1?" ...":""),
-     :body=>join(ls[2:end], "\n"))
-end
-
 handle("eval") do data
-  mod = getmodule(data, cursor(data["start"]))
-  block, (start, stop) = isselection(data) ?
-                    getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
-                    getblock(data["code"], data["start"]["row"])
-  !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
-  result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
-  @d(:start => start,
-     :end => stop,
-     splitresult(sprint(show, result))...)
+  @dynamic let Media.input = Editor()
+    mod = getmodule(data, cursor(data["start"]))
+    block, (start, stop) = isselection(data) ?
+                             getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
+                             getblock(data["code"], data["start"]["row"])
+    !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
+    result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
+    @d(:start => start,
+       :end => stop,
+       :result => render(result))
+   end
 end
 
 handle("eval-all") do data
-  mod = Main
-  if haskey(data, "module")
-    mod = getthing(data["module"], Main)
-  elseif haskey(data, "path")
-    mod = getthing(CodeTools.filemodule(data["path"]), Main)
-  end
-  try
-    include_string(mod, data["code"], get(data, "path", "untitled"))
-  catch e
-    msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
-                    :detail => sprint(showerror, e, catch_backtrace())))
+  @dynamic let Media.input = Editor()
+    mod = Main
+    if haskey(data, "module")
+      mod = getthing(data["module"], Main)
+    elseif haskey(data, "path")
+      mod = getthing(CodeTools.filemodule(data["path"]), Main)
+    end
+    try
+      include_string(mod, data["code"], get(data, "path", "untitled"))
+    catch e
+      msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
+                      :detail => sprint(showerror, e, catch_backtrace())))
+    end
   end
   return
 end
 
 handle("eval-repl") do data
-  mode = get(data, "mode", nothing)
-  if mode == "shell"
-    data["code"] = "run(`$(data["code"])`)"
-  elseif mode == "help"
-    data["code"] = "@doc $(data["code"])"
-  end
-  try
-    println(stringmime(MIME"text/plain"(), include_string(data["code"])))
-  catch e
-    showerror(STDERR, e, catch_backtrace())
+  @dynamic let Media.input = Console()
+    mode = get(data, "mode", nothing)
+    if mode == "shell"
+      data["code"] = "run(`$(data["code"])`)"
+    elseif mode == "help"
+      data["code"] = "@doc $(data["code"])"
+    end
+    try
+      render(include_string(data["code"]))
+    catch e
+      showerror(STDERR, e, catch_backtrace())
+    end
   end
 end

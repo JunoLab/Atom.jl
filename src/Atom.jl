@@ -3,6 +3,7 @@ module Atom
 using Lazy, JSON
 
 include("comm.jl")
+include("display.jl")
 include("eval.jl")
 include("completions.jl")
 include("misc.jl")
