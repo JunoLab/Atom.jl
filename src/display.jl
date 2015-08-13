@@ -4,14 +4,37 @@ import Media: render
 
 type Inline end
 
-for D in :[Editor, Workspace, Console].args
+for D in :[Editor, Console].args
   @eval type $D end
   @eval let pool = @d()
     Media.pool(::$D) = merge(Media.pool(), pool)
     Media.setdisplay(::$D, T, input) = pool[T] = input
   end
-  @eval setdisplay($D(), Any, $D())
 end
+
+setdisplay(Editor(), Any, Console())
+setdisplay(Console(), Any, Console())
+
+# Inline display
+
+type Tree
+  head
+  children::Vector{Any}
+end
+
+tojson(t::Tree) = Any[t.head, map(tojson, t.children)]
+
+function splitstring(r)
+  ls = split(r, "\n")
+  @d(:header=>ls[1]*(length(ls)>1?" ...":""),
+     :body=>join(ls[2:end], "\n"))
+end
+
+render(::Inline, x::Text; options = @d()) =
+  splitstring(string(x))
+
+render(d::Inline, x; options = @d()) =
+  render(d, Text(stringmime(MIME"text/plain"(), x)), options = options)
 
 # Console
 
@@ -22,17 +45,8 @@ render(::Console, ::Nothing; options = @d()) = nothing
 
 # Editor
 
-function splitresult(r)
-  ls = split(r, "\n")
-  @d(:header=>ls[1]*(length(ls)>1?" ...":""),
-     :body=>join(ls[2:end], "\n"))
-end
-
-render(::Editor, x::Text; options = @d()) =
-  splitresult(string(x))
-
-render(e::Editor, x; options = @d()) =
-  render(e, Text(stringmime(MIME"text/plain"(), x)), options = options)
-
 render(e::Editor, ::Nothing; options = @d()) =
   render(e, Text("✓"), options = options)
+
+render(::Editor, x; options = @d()) =
+  render(Inline(), x, options = options)
