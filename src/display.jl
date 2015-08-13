@@ -22,12 +22,12 @@ type Tree
   children::Vector{Any}
 end
 
+tojson(x) = x
 tojson(t::Tree) = Any[t.head, map(tojson, t.children)]
 
 function splitstring(r)
   ls = split(r, "\n")
-  @d(:header=>ls[1]*(length(ls)>1?" ...":""),
-     :body=>join(ls[2:end], "\n"))
+  Tree(ls[1]*(length(ls)>1?" ...":""), [join(ls[2:end], "\n")])
 end
 
 render(::Inline, x::Text; options = @d()) =

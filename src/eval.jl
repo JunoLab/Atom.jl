@@ -42,7 +42,7 @@ handle("eval") do data
     result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
     @d(:start => start,
        :end => stop,
-       :result => render(Editor(), result))
+       :result => tojson(render(Editor(), result)))
    end
 end
 
