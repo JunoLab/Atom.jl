@@ -2,41 +2,36 @@ using Hiccup
 
 fade(x) = span(".fade", x)
 
-function render(d::Inline, x; options = @d())
+@render Inline x begin
   if isbits(x)
-    render(d, Text("$(typeof(x)): $x"), options = options)
+    span(c(fade(string(typeof(x))), " ", string(x)))
   else
-    render(d, Text(stringmime("text/plain", x)), options = options)
+    Text(stringmime("text/plain", x))
   end
 end
 
-render(i::Inline, x::String; options = options) =
-  render(i, Text(sprint(show, x)), options = options)
+@render Inline x::String Text(sprint(show, x))
 
-function render(i::Inline, x::Text; options = @d())
+@render Inline x::Text begin
   ls = split(string(x), "\n")
-  render(i, length(ls)>1 ?
-              Tree(ls[1], [join(ls[2:end], "\n")]) :
-              HTML(ls[1]), options = options)
+  length(ls)>1 ?
+    Tree(ls[1], [join(ls[2:end], "\n")]) :
+    HTML(ls[1])
 end
 
-render(i::Inline, x::Type; options = @d()) =
-  render(i, strong(string(x)), options = options)
+@render Inline x::Type strong(string(x))
 
-render(i::Inline, x::Module; options = @d()) =
-  render(i, strong(string(x)), options = options)
+@render Inline x::Module strong(string(x))
 
 name(f::Function) =
   isgeneric(f) ? string(f.env.name) :
   isdefined(f, :env) && isa(f.env,Symbol) ? string(f.env) :
   "λ"
 
-render(i::Inline, f::Function; options = @d()) =
-  render(i, Text(name(f)), options = options)
+@render Inline f::Function Text(name(f))
 
-function render(i::Inline, xs::Vector; options = @d())
-  render(i, Tree(span(strong("Vector"),
-                      fade(" $(eltype(xs)), $(length(xs))")),
-                 [render(i, x, options = options) for x in xs]),
-            options = options)
+@render i::Inline xs::Vector begin
+  Tree(span(strong("Vector"),
+            fade(" $(eltype(xs)), $(length(xs))")),
+       [render(i, x, options = options) for x in xs])
 end
