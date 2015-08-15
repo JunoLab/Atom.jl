@@ -1,4 +1,4 @@
-using Media, Lazy
+using Media, Lazy, Hiccup
 
 import Media: render
 
@@ -22,19 +22,14 @@ type Tree
   children::Vector{Any}
 end
 
-tojson(x) = x
-tojson(t::Tree) = Any[t.head, map(tojson, t.children)]
+tojson(x) = stringmime(MIME"text/html"(), x)
+tojson(t::Tree) = Any[tojson(t.head), map(tojson, t.children)]
 
-function splitstring(r)
-  ls = split(r, "\n")
-  length(ls)>1 ? Tree(ls[1], [join(ls[2:end], "\n")]) : ls[1]
-end
+render(i::Inline, t::Tree; options = @d()) = t
 
-render(::Inline, x::Text; options = @d()) =
-  splitstring(string(x))
+render(::Inline, x::HTML; options = @d()) = x
 
-render(d::Inline, x; options = @d()) =
-  render(d, Text(stringmime(MIME"text/plain"(), x)), options = options)
+render(::Inline, x::Node; options = @d()) = x
 
 # Console
 
@@ -50,3 +45,5 @@ render(e::Editor, ::Nothing; options = @d()) =
 
 render(::Editor, x; options = @d()) =
   render(Inline(), x, options = options)
+
+include("objects.jl")
