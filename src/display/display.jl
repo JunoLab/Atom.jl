@@ -27,7 +27,7 @@ tojson(t::Tree) = Any[t.head, map(tojson, t.children)]
 
 function splitstring(r)
   ls = split(r, "\n")
-  Tree(ls[1]*(length(ls)>1?" ...":""), [join(ls[2:end], "\n")])
+  length(ls)>1 ? Tree(ls[1], [join(ls[2:end], "\n")]) : ls[1]
 end
 
 render(::Inline, x::Text; options = @d()) =
