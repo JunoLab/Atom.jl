@@ -35,3 +35,20 @@ name(f::Function) =
             fade(" $(eltype(xs)), $(length(xs))")),
        [render(i, x, options = options) for x in xs])
 end
+
+@render i::Inline d::Dict begin
+  head = span(c(strong("Dict"),
+              fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2])")))
+  children = c()
+  for (k, v) in d
+    key = render(i, k, options = options)
+    child = render(i, v, options = options)
+    if isa(child, Tree)
+      push!(children, Tree(span(c(key, " → ", child.head)),
+                           child.children))
+    else
+      push!(children, span(".gutted", c(key, " → ", child)))
+    end
+  end
+  Tree(head, children)
+end
