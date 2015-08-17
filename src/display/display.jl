@@ -47,3 +47,4 @@ render(::Editor, x; options = @d()) =
   render(Inline(), x, options = options)
 
 include("objects.jl")
+include("errors.jl")

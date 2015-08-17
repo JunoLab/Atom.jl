@@ -32,6 +32,14 @@ end
 
 isselection(data) = data["start"] ≠ data["end"]
 
+macro errs(ex)
+  :(try
+      $(esc(ex))
+    catch e
+      EvalError(e.error, catch_backtrace())
+    end)
+end
+
 handle("eval") do data
   @dynamic let Media.input = Editor()
     mod = getmodule(data, cursor(data["start"]))
@@ -42,7 +50,8 @@ handle("eval") do data
     result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
     @d(:start => start,
        :end => stop,
-       :result => tojson(render(Editor(), result)))
+       :result => tojson(render(Editor(), result)),
+       :error => isa(result, EvalError))
    end
 end
 
