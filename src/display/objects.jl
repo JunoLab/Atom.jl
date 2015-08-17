@@ -52,3 +52,5 @@ end
   end
   Tree(head, children)
 end
+
+@render i::Inline x::Number Text(sprint(show, x))
