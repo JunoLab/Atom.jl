@@ -28,7 +28,13 @@ name(f::Function) =
   isdefined(f, :env) && isa(f.env,Symbol) ? string(f.env) :
   "λ"
 
-@render Inline f::Function Text(name(f))
+@render i::Inline f::Function begin
+  if isgeneric(f)
+    Tree(name(f), [render(i, methods(f), options = options)])
+  else
+    Text(name(f))
+  end
+end
 
 @render i::Inline xs::Vector begin
   Tree(span(strong("Vector"),
