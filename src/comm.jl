@@ -30,7 +30,8 @@ function connect(port)
         isa(id, Integer) && msg(id, result)
       catch e
         msg("error", @d(:msg=>"Julia Client – Internal Error",
-                        :detail=>sprint(showerror, e, catch_backtrace())))
+                        :detail=>sprint(showerror, e, catch_backtrace()),
+                        :dismissable=>true))
       end
     end
   end
