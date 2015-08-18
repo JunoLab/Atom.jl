@@ -34,7 +34,8 @@ render(::Inline, x::Node; options = @d()) = x
 # Console
 
 render(::Console, x; options = @d()) =
-  println(stringmime(MIME"text/plain"(), x))
+  msg("result", @d(:result=>tojson(render(Inline(), x, options = options)),
+                   :error=>isa(x, EvalError)))
 
 render(::Console, ::Nothing; options = @d()) = nothing
 
