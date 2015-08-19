@@ -1,3 +1,5 @@
+__precompile__()
+
 module Atom
 
 using Lazy, JSON
@@ -11,7 +13,7 @@ include("frontend.jl")
 include("utils.jl")
 
 function __init__()
-  include("patch.jl")
+  include(joinpath(dirname(@__FILE__), "patch.jl"))
 end
 
 end # module
