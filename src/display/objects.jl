@@ -28,9 +28,12 @@ name(f::Function) =
   isdefined(f, :env) && isa(f.env,Symbol) ? string(f.env) :
   "λ"
 
+import Base.Docs: doc
+
 @render i::Inline f::Function begin
   if isgeneric(f)
-    Tree(name(f), [render(i, methods(f), options = options)])
+    Tree(name(f), [(doc(f) != nothing ? [render(i, doc(f), options = options)] : [])...
+                   render(i, methods(f), options = options)])
   else
     Text(name(f))
   end
