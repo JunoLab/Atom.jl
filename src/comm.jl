@@ -50,4 +50,4 @@ function rpc(t, data)
   return wait(c)
 end
 
-isconnected() = isopen(sock)
+isconnected() = sock ≠ nothing && isopen(sock)
