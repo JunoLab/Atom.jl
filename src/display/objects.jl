@@ -40,9 +40,12 @@ import Base.Docs: doc
 end
 
 @render i::Inline xs::Vector begin
-  Tree(span(strong("Vector"),
-            fade(" $(eltype(xs)), $(length(xs))")),
-       [render(i, x, options = options) for x in xs])
+  length(xs) <= 25 ? rendobj = [render(i, x, options = options) for x in xs] :
+                     rendobj = [[render(i, x, options = options) for x in xs[1:10]];
+                                 "...";
+                                [render(i, x, options = options) for x in xs[end-9:end]]]
+    Tree(span(strong("Vector"),
+            fade(" $(eltype(xs)), $(length(xs))")), rendobj)
 end
 
 @render i::Inline d::Dict begin
