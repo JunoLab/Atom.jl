@@ -17,6 +17,12 @@ setdisplay(Console(), Any, Console())
 
 # Inline display
 
+link(x, file) = a(@d("data-file"=>file), x == nothing ? basename(file) : x)
+
+link(x, file, line::Integer) = link(x, "$file:$line")
+
+link(file, line::Integer...) = link(nothing, file, line...)
+
 type Tree
   head
   children::Vector{Any}
@@ -49,3 +55,4 @@ render(::Editor, x; options = @d()) =
 
 include("objects.jl")
 include("errors.jl")
+include("methods.jl")
