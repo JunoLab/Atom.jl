@@ -3,16 +3,12 @@ using Hiccup, Lazy
 const abspathpattern =
   @windows? r"([a-zA-Z]+:[\\/][a-zA-Z_\./\\ 0-9]+\.jl)(?::([0-9]*))?" : r"(/[a-zA-Z_\./ 0-9]+\.jl)(?::([0-9]*))?"
 
-# Make the prefix optional, but disallow spaces
-const relpathpattern =
-  @windows? r"([a-zA-Z_\./\\0-9]+\.jl)(?::([0-9]*))?$" : r"([a-zA-Z_\./0-9]+\.jl)(?::([0-9]*))?$"
-
 basepath(file) = joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
 
 baselink(path) =
-  ismatch(relpathpattern, path) ?
-    link(path, basepath(path)) :
-    link(path)
+  ismatch(abspathpattern, path) ?
+    link(path) :
+    link("base/$path", basepath(path))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 
