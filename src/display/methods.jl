@@ -5,9 +5,14 @@ const abspathpattern =
 
 basepath(file) = joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
 
+function pkgpath(path)
+  m = match(r"([^/\\]+[/\\]src[/\\].*)$", path)
+  m == nothing ? basename(path) : m.captures[1]
+end
+
 baselink(path) =
   ismatch(abspathpattern, path) ?
-    link(path) :
+    link(pkgpath(path), path) :
     link("base/$path", basepath(path))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
