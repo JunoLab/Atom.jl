@@ -1,6 +1,7 @@
 using Media, Lazy, Hiccup
 
 import Media: render
+import Hiccup: div
 
 type Inline end
 
