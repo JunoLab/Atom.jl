@@ -1,4 +1,5 @@
 global sock = nothing
+global msgMutex = ReentrantLock()
 
 isactive(sock::Nothing) = false
 isactive(sock) = isopen(sock)
@@ -39,7 +40,11 @@ end
 
 function msg(t, data)
   isactive(sock) || return
-  println(sock, json(c(t, data)))
+  # this println is supposed to be atomic, but it doesn't seem to be.
+  lock(msgMutex)
+  res = println(sock, json(c(t, data)))
+  unlock(msgMutex)
+  res
 end
 
 function rpc(t, data)
