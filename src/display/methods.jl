@@ -46,6 +46,6 @@ end
 @render i::Inline m::MethodTable begin
   ms = methodarray(m)
   isempty(m) && return "$(m.name) has no methods."
-  Tree("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):",
+  Tree(Text("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):"),
        [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
 end

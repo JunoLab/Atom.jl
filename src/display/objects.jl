@@ -15,7 +15,7 @@ end
 @render Inline x::Text begin
   ls = split(string(x), "\n")
   length(ls)>1 ?
-    Tree(ls[1], [join(ls[2:end], "\n")]) :
+    Tree(Text(ls[1]), [HTML(join(ls[2:end], "\n"))]) :
     HTML(ls[1])
 end
 
@@ -32,20 +32,17 @@ import Base.Docs: doc
 
 @render i::Inline f::Function begin
   if isgeneric(f)
-    Tree(name(f), [(doc(f) != nothing ? [render(i, doc(f), options = options)] : [])...
-                   render(i, methods(f), options = options)])
+    Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
   else
     Text(name(f))
   end
 end
 
 @render i::Inline xs::Vector begin
-  length(xs) <= 25 ? rendobj = [render(i, x, options = options) for x in xs] :
-                     rendobj = [[render(i, x, options = options) for x in xs[1:10]];
-                                 "...";
-                                [render(i, x, options = options) for x in xs[end-9:end]]]
+  length(xs) <= 25 ? children = xs :
+                     children = [xs[1:10]; "..."; xs[end-9:end]]
     Tree(span(strong("Vector"),
-            fade(" $(eltype(xs)), $(length(xs))")), rendobj)
+         fade(" $(eltype(xs)), $(length(xs))")), children)
 end
 
 @render i::Inline d::Dict begin

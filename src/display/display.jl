@@ -24,24 +24,24 @@ link(x, file, line::Integer) = link(x, "$file:$line")
 
 link(file, line::Integer...) = link(nothing, file, line...)
 
+render(::Inline, x::HTML; options = @d()) = stringmime(MIME"text/html"(), x)
+
+render(::Inline, x::Node; options = @d()) = stringmime(MIME"text/html"(), x)
+
 type Tree
   head
   children::Vector{Any}
 end
 
-tojson(x) = stringmime(MIME"text/html"(), x)
-tojson(t::Tree) = Any[tojson(t.head), map(tojson, t.children)]
-
-render(i::Inline, t::Tree; options = @d()) = t
-
-render(::Inline, x::HTML; options = @d()) = x
-
-render(::Inline, x::Node; options = @d()) = x
+function render(i::Inline, t::Tree; options = @d())
+  r(x) = render(i, x, options = options)
+  c(r(t.head), map(r, t.children))
+end
 
 # Console
 
 render(::Console, x; options = @d()) =
-  msg("result", @d(:result=>tojson(render(Inline(), x, options = options)),
+  msg("result", @d(:result=>render(Inline(), x, options = options),
                    :error=>isa(x, EvalError)))
 
 render(::Console, ::Nothing; options = @d()) = nothing
