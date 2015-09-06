@@ -30,7 +30,7 @@ name(f::Function) =
 
 import Base.Docs: doc
 
-@render i::Inline f::Function begin
+@render Inline f::Function begin
   if isgeneric(f)
     Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
   else
@@ -38,7 +38,7 @@ import Base.Docs: doc
   end
 end
 
-@render i::Inline xs::Vector begin
+@render Inline xs::Vector begin
   length(xs) <= 25 ? children = xs :
                      children = [xs[1:10]; "..."; xs[end-9:end]]
     Tree(span(strong("Vector"),
