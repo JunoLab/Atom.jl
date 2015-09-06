@@ -1,5 +1,14 @@
 global sock = nothing
-global msgMutex = ReentrantLock()
+
+macro mutex(ex)
+  @gensym lock
+  eval(current_module(), :(const $lock = Base.ReentrantLock()))
+  quote
+    lock($(esc(lock)))
+    $(esc(ex))
+    unlock($(esc(lock)))
+  end
+end
 
 isactive(sock::Nothing) = false
 isactive(sock) = isopen(sock)
@@ -41,9 +50,7 @@ end
 function msg(t, data)
   isactive(sock) || return
   # this println is supposed to be atomic, but it doesn't seem to be.
-  lock(msgMutex)
-  res = println(sock, json(c(t, data)))
-  unlock(msgMutex)
+  @mutex res = println(sock, json(c(t, data)))
   res
 end
 
