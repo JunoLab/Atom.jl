@@ -11,8 +11,8 @@ function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(In
     split(_, "\n")
     map(strip, _)
     filter(x->!isempty(x), _)
-    map(l -> match(r"^in (.*) at (.*)$", l), _)
-    map(l -> (l.captures[1], l.captures[2]), _)
+    map(l -> match(r"^(?:in (.*) at|(.*) from) (.*)$", l), _)
+    map(l -> (@or(l.captures[1], l.captures[2]), l.captures[3]), _)
   end
 end
 
