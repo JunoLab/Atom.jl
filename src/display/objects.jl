@@ -42,7 +42,8 @@ end
   length(xs) <= 25 ? children = xs :
                      children = [xs[1:10]; "..."; xs[end-9:end]]
     Tree(span(strong("Vector"),
-         fade(" $(eltype(xs)), $(length(xs))")), children)
+              fade(" $(eltype(xs)), $(length(xs))")),
+         children)
 end
 
 @render i::Inline d::Dict begin
