@@ -20,12 +20,22 @@ handle(f, t) = handlers[t] = f
 id = 0
 const callbacks = Dict{Int,Condition}()
 
+macro ierrs(ex)
+  :(try
+      $(ex)
+    catch e
+      msg("error", @d(:msg=>"Julia Client – Internal Error",
+                      :detail=>sprint(showerror, e, catch_backtrace()),
+                      :dismissable=>true))
+    end)
+end
+
 function connect(port)
   global sock = Base.connect(port)
   @async while isopen(sock)
-    let # Don't let tasks close over the same t, data
+    @ierrs let # Don't let tasks close over the same t, data
       t, data = JSON.parse(sock)
-      @schedule try
+      @schedule @ierrs begin
         result, id = nothing, nothing
         haskey(data, "callback") && (id = data["callback"])
         delete!(data, "callback")
@@ -38,10 +48,6 @@ function connect(port)
           warn("Atom.jl: unrecognised message $t.")
         end
         isa(id, Integer) && msg(id, result)
-      catch e
-        msg("error", @d(:msg=>"Julia Client – Internal Error",
-                        :detail=>sprint(showerror, e, catch_backtrace()),
-                        :dismissable=>true))
       end
     end
   end
