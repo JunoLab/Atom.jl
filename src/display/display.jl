@@ -38,6 +38,19 @@ function render(i::Inline, t::Tree; options = @d())
   c(r(t.head), map(r, t.children))
 end
 
+istree(t) = isa(t, Vector) && length(t) == 2
+
+type SubTree
+  head
+  child
+end
+
+function render(i::Inline, t::SubTree; options = @d())
+  r(x) = render(i, x, options = options)
+  sub = r(t.child)
+  istree(sub) ? c(r(t.head)*sub[1], sub[2]) : r(t.head)*sub
+end
+
 # Console
 
 render(::Console, x; options = @d()) =
