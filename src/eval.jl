@@ -1,6 +1,7 @@
 using CodeTools, LNR, Media
 
 import CodeTools: getblock, getthing
+import Requires: withpath
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
@@ -47,7 +48,9 @@ handle("eval") do data
                              getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                              getblock(data["code"], data["start"]["row"])
     !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
-    result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
+    result = withpath(get(data, "path", "")) do
+      @errs include_string(mod, block, get(data, "path", "untitled"), start)
+    end
     @d(:start => start,
        :end => stop,
        :result => tojson(render(Editor(), result)),
@@ -64,7 +67,9 @@ handle("eval-all") do data
       mod = getthing(CodeTools.filemodule(data["path"]), Main)
     end
     try
-      include_string(mod, data["code"], get(data, "path", "untitled"))
+      withpath(get(data, "path", "")) do
+        include_string(mod, data["code"], get(data, "path", "untitled"))
+      end
     catch e
       msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
                       :detail => sprint(showerror, e, catch_backtrace())))
