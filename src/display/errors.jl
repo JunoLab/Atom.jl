@@ -16,6 +16,17 @@ function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(In
   end
 end
 
+function splitlink(path)
+  m = match(r"([^:]*)(?::(\d*))?", path)
+  (m == nothing || m.captures[2] == nothing) && return
+  m.captures[1], parse(Int, m.captures[2])
+end
+
+highlights(lines) =
+  @>> lines map(l->splitlink(l[2])) filter(x->x≠nothing) map(x->@d(:file=>fullpath(x[1]),:line=>x[2]))
+
+highlights(e::EvalError) = highlights(btlines(e.bt))
+
 function renderbt(ls)
   span(".error-trace",
        [div(".trace-entry", c(fade("in "), f, fade(" at "), baselink(loc))) for (f, loc) in ls])
@@ -24,4 +35,5 @@ end
 render(i::Inline, e::EvalError; options = @d()) =
   @d(:type => :error,
      :view => render(i, Tree(rendererr(e.err),
-                             [renderbt(btlines(e.bt))]), options = options))
+                             [renderbt(btlines(e.bt))]), options = options),
+     :highlights => highlights(e))

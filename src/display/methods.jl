@@ -5,6 +5,8 @@ const abspathpattern =
 
 basepath(file) = joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
 
+fullpath(path) = ismatch(abspathpattern, path) ? path : basepath(path)
+
 function pkgpath(path)
   m = match(r"([^/\\]+[/\\]src[/\\].*)$", path)
   m == nothing ? basename(path) : m.captures[1]
