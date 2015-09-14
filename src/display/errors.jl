@@ -21,7 +21,7 @@ function renderbt(ls)
        [div(".trace-entry", c(fade("in "), f, fade(" at "), baselink(loc))) for (f, loc) in ls])
 end
 
-@render i::Inline e::EvalError begin
-  Tree(rendererr(e.err),
-       [renderbt(btlines(e.bt))])
-end
+render(i::Inline, e::EvalError; options = @d()) =
+  @d(:type => :error,
+     :view => render(i, Tree(rendererr(e.err),
+                             [renderbt(btlines(e.bt))]), options = options))

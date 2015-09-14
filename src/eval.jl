@@ -50,7 +50,6 @@ handle("eval") do data
     result = @errs include_string(mod, block, get(data, "path", "untitled"), start)
     @d(:start => start,
        :end => stop,
-       :error => isa(result, EvalError))
        :result => render(Editor(), result))
    end
 end
