@@ -3,7 +3,10 @@ using Hiccup, Lazy
 const abspathpattern =
   @windows? r"([a-zA-Z]+:[\\/][a-zA-Z_\./\\ 0-9]+\.jl)(?::([0-9]*))?" : r"(/[a-zA-Z_\./ 0-9]+\.jl)(?::([0-9]*))?"
 
-basepath(file) = joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
+function basepath(file)
+  p = joinpath(JULIA_HOME,"..", "..","base",file) |> normpath
+  isfile(p) ? p : joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
+end
 
 fullpath(path) = ismatch(abspathpattern, path) ? path : basepath(path)
 
