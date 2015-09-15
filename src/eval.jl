@@ -41,6 +41,11 @@ macro errs(ex)
     end)
 end
 
+function getpath(data)
+  p = get(data, "path", "")
+  isuntitled(p) || p == "" ? nothing : p
+end
+
 handle("eval") do data
   @dynamic let Media.input = Editor()
     mod = getmodule(data, cursor(data["start"]))
@@ -48,7 +53,7 @@ handle("eval") do data
                              getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                              getblock(data["code"], data["start"]["row"])
     !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
-    result = withpath(get(data, "path", "")) do
+    result = withpath(getpath(data)) do
       @errs include_string(mod, block, get(data, "path", "untitled"), start)
     end
     @d(:start => start,
@@ -66,7 +71,7 @@ handle("eval-all") do data
       mod = getthing(CodeTools.filemodule(data["path"]), Main)
     end
     try
-      withpath(get(data, "path", "")) do
+      withpath(getpath(data)) do
         include_string(mod, data["code"], get(data, "path", "untitled"))
       end
     catch e

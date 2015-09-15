@@ -1,14 +1,13 @@
 using Hiccup, Lazy
 
-const abspathpattern =
-  @windows? r"([a-zA-Z]+:[\\/][a-zA-Z_\./\\ 0-9]+\.jl)(?::([0-9]*))?" : r"(/[a-zA-Z_\./ 0-9]+\.jl)(?::([0-9]*))?"
+isuntitled(p) = ismatch(r"^untitled-\d+(:\d+)?$", p)
 
-function basepath(file)
-  p = joinpath(JULIA_HOME,"..", "..","base",file) |> normpath
-  isfile(p) ? p : joinpath(JULIA_HOME,"..","share","julia","base",file) |> normpath
-end
+realpath′(p) = ispath(p) ? realpath(p) : p
 
-fullpath(path) = ismatch(abspathpattern, path) ? path : basepath(path)
+basepath(file) = joinpath(JULIA_HOME,"..","share","julia","base",file)
+
+fullpath(path) =
+  (isuntitled(path) || isabspath(path) ? path : basepath(path)) |> realpath′
 
 function pkgpath(path)
   m = match(r"([^/\\]+[/\\]src[/\\].*)$", path)
@@ -16,9 +15,9 @@ function pkgpath(path)
 end
 
 baselink(path) =
-  ismatch(abspathpattern, path) ?
+  isabspath(path) || isuntitled(path) ?
     link(pkgpath(path), path) :
-    link("base/$path", basepath(path))
+    link(normpath("base/$path"), basepath(path))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 
