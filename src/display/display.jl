@@ -54,8 +54,7 @@ end
 # Console
 
 render(::Console, x; options = @d()) =
-  msg("result", @d(:result=>render(Inline(), x, options = options),
-                   :error=>isa(x, EvalError)))
+  msg("result", @d(:result=>render(Inline(), x, options = options)))
 
 render(::Console, ::Nothing; options = @d()) = nothing
 
