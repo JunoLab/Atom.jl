@@ -17,7 +17,7 @@ function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(In
 end
 
 function splitlink(path)
-  m = match(r"(.*):(\d*)", path)
+  m = match(r"(.:?[^:]*)(?=:(\d*))?", path)
   (m == nothing || m.captures[2] == nothing) && return
   m.captures[1], parse(Int, m.captures[2])
 end
