@@ -10,7 +10,7 @@ macro mutex(ex)
   end
 end
 
-isactive(sock::Nothing) = false
+isactive(sock::Void) = false
 isactive(sock) = isopen(sock)
 
 macro ierrs(ex)

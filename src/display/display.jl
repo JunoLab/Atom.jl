@@ -56,11 +56,11 @@ end
 render(::Console, x; options = @d()) =
   msg("result", @d(:result=>render(Inline(), x, options = options)))
 
-render(::Console, ::Nothing; options = @d()) = nothing
+render(::Console, ::Void; options = @d()) = nothing
 
 # Editor
 
-render(e::Editor, ::Nothing; options = @d()) =
+render(e::Editor, ::Void; options = @d()) =
   render(e, Text("✓"), options = options)
 
 render(::Editor, x; options = @d()) =
