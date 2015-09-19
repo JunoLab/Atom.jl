@@ -10,7 +10,7 @@ fade(x) = span(".fade", x)
   end
 end
 
-@render Inline x::String Text(sprint(show, x))
+@render Inline x::AbstractString Text(sprint(show, x))
 
 @render Inline x::Text begin
   ls = split(string(x), "\n")
