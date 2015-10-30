@@ -40,7 +40,7 @@ end
 
 @render Inline xs::Vector begin
   length(xs) <= 25 ? children = xs :
-                     children = [xs[1:10]; "..."; xs[end-9:end]]
+                     children = [xs[1:10]; span("..."); xs[end-9:end]]
     Tree(span(strong("Vector"),
               fade(" $(eltype(xs)), $(length(xs))")),
          children)
