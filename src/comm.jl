@@ -23,8 +23,14 @@ macro ierrs(ex)
     end)
 end
 
-function connect(port)
-  global sock = Base.connect(port)
+connect(port) = connect("", port)
+
+function connect(host, port)
+  if isempty(host)
+    global sock = Base.connect(port)
+  else
+    global sock = Base.connect(host, port)
+  end
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
       t, data = JSON.parse(sock)
