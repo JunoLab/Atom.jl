@@ -40,16 +40,22 @@ end
 
 @render Inline xs::Vector begin
   length(xs) <= 25 ? children = xs :
-                     children = [xs[1:10]; "..."; xs[end-9:end]]
+                     children = [xs[1:10]; span("..."); xs[end-9:end]]
     Tree(span(strong("Vector"),
               fade(" $(eltype(xs)), $(length(xs))")),
          children)
 end
 
 @render i::Inline d::Dict begin
+  j = 0
+  st = Array{Atom.SubTree}(0)
+  for (key, val) in d
+    push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
+    j += 1
+    j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
+  end
   Tree(span(c(strong("Dict"),
-            fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2])"))),
-       [SubTree(span(c(render(i, key, options = options), " → ")), val) for (key, val) in d])
+            fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
 end
 
 @render i::Inline x::Number Text(sprint(show, x))
