@@ -76,7 +76,8 @@ handle("eval-all") do data
       end
     catch e
       msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
-                      :detail => sprint(showerror, e, catch_backtrace())))
+                      :detail => sprint(showerror, e, catch_backtrace()),
+                      :dismissable => true))
     end
   end
   return
