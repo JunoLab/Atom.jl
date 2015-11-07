@@ -3,6 +3,8 @@ using CodeTools, LNR, Media
 import CodeTools: getblock, getthing
 import Requires: withpath
 
+const plain_buffer = IOBuffer()
+
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
 function modulenames(data, pos)
@@ -58,7 +60,8 @@ handle("eval") do data
     end
     @d(:start => start,
        :end => stop,
-       :result => render(Editor(), result))
+       :result => render(Editor(), result),
+       :plainresult => write_plain(plain_buffer, result))
    end
 end
 

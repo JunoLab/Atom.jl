@@ -37,3 +37,14 @@ render(i::Inline, e::EvalError; options = @d()) =
      :view => render(i, Tree(rendererr(e.err),
                              [renderbt(btlines(e.bt))]), options = options),
      :highlights => highlights(e))
+
+function write_plain(io::IO, arg)
+  writemime(io, "text/plain", arg)
+  takebuf_string(plain_buffer)
+end
+
+function write_plain(io::IO, arg::EvalError)
+  println(io, sprint(showerror, arg.err))
+  [println(io, "in "*string(f)*" at "*loc) for (f, loc) in btlines(arg.bt)]
+  takebuf_string(io)
+end
