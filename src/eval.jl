@@ -58,7 +58,8 @@ handle("eval") do data
     end
     @d(:start => start,
        :end => stop,
-       :result => render(Editor(), result))
+       :result => render(Editor(), result),
+       :plainresult => render(Plain(), result))
    end
 end
 

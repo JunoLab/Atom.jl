@@ -4,6 +4,7 @@ import Media: render
 import Hiccup: div
 
 type Inline end
+type Plain end
 
 for D in :[Editor, Console].args
   @eval type $D end
@@ -65,6 +66,8 @@ render(e::Editor, ::Void; options = @d()) =
 
 render(::Editor, x; options = @d()) =
   render(Inline(), x, options = options)
+
+render(::Plain, x) = stringmime(MIME"text/plain"(), x)
 
 include("objects.jl")
 include("errors.jl")

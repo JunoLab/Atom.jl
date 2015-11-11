@@ -37,3 +37,11 @@ render(i::Inline, e::EvalError; options = @d()) =
      :view => render(i, Tree(rendererr(e.err),
                              [renderbt(btlines(e.bt))]), options = options),
      :highlights => highlights(e))
+
+function render(::Plain, x::EvalError)
+  str = sprint(showerror, x.err)
+  for (f, loc) in btlines(x.bt)
+    str *= "\nin "*string(f)*" at "*loc
+  end
+  str
+end
