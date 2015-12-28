@@ -37,7 +37,7 @@ function render(i::Inline, e::EvalError; options = @d())
   tmp = split(tmp, '\n')
   @d(:type => :error,
      :view => render(i, Tree(rendererr(tmp[1]),
-                             [rendererr(tmp[2:end]); renderbt(btlines(e.bt))]), options = options),
+                             [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]), options = options),
      :highlights => highlights(e))
 end
 
