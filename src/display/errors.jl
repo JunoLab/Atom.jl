@@ -3,7 +3,7 @@ type EvalError
   bt
 end
 
-rendererr(err) = strong(".error-description", sprint(showerror, err))
+rendererr(err) = strong(".error-description", err)
 
 function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(Int))
   @_ begin
@@ -32,11 +32,14 @@ function renderbt(ls)
        [div(".trace-entry", c(fade("in "), f, fade(" at "), baselink(loc))) for (f, loc) in ls])
 end
 
-render(i::Inline, e::EvalError; options = @d()) =
+function render(i::Inline, e::EvalError; options = @d())
+  tmp = sprint(showerror, e.err)
+  tmp = split(tmp, '\n')
   @d(:type => :error,
-     :view => render(i, Tree(rendererr(e.err),
-                             [renderbt(btlines(e.bt))]), options = options),
+     :view => render(i, Tree(rendererr(tmp[1]),
+                             [rendererr(tmp[2:end]); renderbt(btlines(e.bt))]), options = options),
      :highlights => highlights(e))
+end
 
 function render(::Plain, x::EvalError)
   str = sprint(showerror, x.err)
