@@ -59,3 +59,19 @@ end
 end
 
 @render i::Inline x::Number Text(sprint(show, x))
+
+function handleundefs(X::Array)
+  Xout = Array{Union{ASCIIString, eltype(X)}}(size(X))
+  for i = 1:prod(size(X))
+    Xout[i] = isdefined(X, i) ? X[i] : "#undef"
+  end
+  Xout
+end
+
+function handleundefs(X::Array, inds)
+  Xout = Array{Union{ASCIIString, eltype(X)}}(size(X))
+  for i in lininds
+    Xout[i] = isdefined(X, i) ? X[i] : "#undef"
+  end
+  Xout
+end
