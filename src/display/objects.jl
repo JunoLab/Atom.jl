@@ -39,8 +39,8 @@ import Base.Docs: doc
 end
 
 @render Inline xs::Vector begin
-  length(xs) <= 25 ? children = xs :
-                     children = [xs[1:10]; span("..."); xs[end-9:end]]
+  length(xs) <= 25 ? children = handleundefs(xs) :
+                     children = [handleundefs(xs, 1:10); span("..."); handleundefs(xs, length(xs)-9:length(xs))]
     Tree(span(strong("Vector"),
               fade(" $(eltype(xs)), $(length(xs))")),
          children)
@@ -60,18 +60,14 @@ end
 
 @render i::Inline x::Number Text(sprint(show, x))
 
-function handleundefs(X::Array)
-  Xout = Array{Union{ASCIIString, eltype(X)}}(size(X))
-  for i = 1:prod(size(X))
-    Xout[i] = isdefined(X, i) ? X[i] : "#undef"
-  end
-  Xout
-end
+handleundefs(X::Vector) = handleundefs(X, 1:length(X))
 
-function handleundefs(X::Array, inds)
-  Xout = Array{Union{ASCIIString, eltype(X)}}(size(X))
-  for i in lininds
-    Xout[i] = isdefined(X, i) ? X[i] : "#undef"
+function handleundefs(X::Vector, inds)
+  Xout = Vector{Union{ASCIIString, eltype(X)}}(length(inds))
+  j = 1
+  for i in inds
+    Xout[j] = isdefined(X, i) ? X[i] : "#undef"
+    j += 1
   end
   Xout
 end
