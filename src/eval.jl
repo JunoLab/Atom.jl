@@ -99,3 +99,13 @@ handle("eval-repl") do data
     end
   end
 end
+
+handle("docs") do data
+  result = @errs include_string("@doc $(data["code"])")
+  @d(:result => render(Editor(), result))
+end
+
+handle("methods") do data
+  result = @errs include_string("methods($(data["code"]))")
+  @d(:result => render(Editor(), result))
+end
