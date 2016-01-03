@@ -44,12 +44,18 @@ function view(m::Method)
   params = interpose(params, ", ")
   span(c(string(m.func.code.name),
          "(", params..., ")")),
-  baselink("$file:$line")
+  file == :null ? "not found" :baselink("$file:$line")
 end
 
 @render i::Inline m::MethodTable begin
   ms = methodarray(m)
   isempty(m) && return "$(m.name) has no methods."
   Tree(Text("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):"),
+       [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
+end
+
+@render i::Inline ms::Vector{Method} begin
+  isempty(ms) && return "No methods found."
+  Tree(Text("$(length(ms)) method$(length(ms)==1?"":"s") found:"),
        [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
 end

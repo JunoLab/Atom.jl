@@ -106,6 +106,16 @@ handle("docs") do data
 end
 
 handle("methods") do data
-  result = @errs include_string("methods($(data["code"]))")
+  word = data["code"]
+  wordtype = try
+    include_string("typeof($word)")
+  catch
+    Function
+  end
+  if wordtype == Function
+    result = @errs include_string("methods($word)")
+  elseif wordtype == DataType
+    result = @errs include_string("methodswith($word)")
+  end
   @d(:result => render(Editor(), result))
 end

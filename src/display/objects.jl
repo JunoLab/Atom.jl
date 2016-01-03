@@ -73,5 +73,3 @@ function handleundefs(X::Vector, inds)
 end
 
 @render i::Inline x::Base.Markdown.MD HTML(Base.Markdown.html(x))
-
-@render i::Inline x::MethodTable x
