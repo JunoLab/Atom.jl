@@ -23,8 +23,9 @@ macro ierrs(ex)
     end)
 end
 
-function connect(port)
-  global sock = Base.connect(port)
+function startup(port)
+  server = listen(port)
+  global sock = Base.accept(server)
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
       t, data = JSON.parse(sock)
