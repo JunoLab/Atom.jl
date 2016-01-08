@@ -117,5 +117,5 @@ handle("methods") do data
   elseif wordtype == DataType
     result = @errs include_string("methodswith($word)")
   end
-  @d(:result => render(Editor(), result))
+  @d(:result => method_obj(result))
 end
