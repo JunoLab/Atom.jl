@@ -5,6 +5,8 @@ import Requires: withpath
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
+exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
+
 function modulenames(data, pos)
   main = haskey(data, "module") ? data["module"] :
          haskey(data, "path") ? CodeTools.filemodule(data["path"]) :

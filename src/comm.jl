@@ -24,6 +24,7 @@ macro ierrs(ex)
 end
 
 function connect(port)
+  exit_on_sigint(false)
   global sock = Base.connect(port)
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
