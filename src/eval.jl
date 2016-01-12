@@ -95,7 +95,7 @@ handle("eval-repl") do data
       data["code"] = "@doc $(data["code"])"
     end
     try
-      render(@errs include_string(data["code"]))
+      render(@errs eval(Main, :(include_string($(data["code"])))))
     catch e
       showerror(STDERR, e, catch_backtrace())
     end
