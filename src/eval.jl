@@ -99,6 +99,7 @@ handle("eval-repl") do data
     catch e
       showerror(STDERR, e, catch_backtrace())
     end
+    return
   end
 end
 
