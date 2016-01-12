@@ -36,9 +36,7 @@ end
 
 function msg(t, data)
   isactive(sock) || return
-  # this println is supposed to be atomic, but it doesn't seem to be.
-  @mutex res = println(sock, json(c(t, data)))
-  res
+  println(sock, json(c(t, data)))
 end
 
 const handlers = Dict{UTF8String, Function}()
