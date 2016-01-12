@@ -43,63 +43,77 @@ macro errs(ex)
     end)
 end
 
+const evallock = ReentrantLock()
+
+function Base.lock(f::Function, l::ReentrantLock)
+  lock(l)
+  try return f()
+  finally unlock(l) end
+end
+
 function getpath(data)
   p = get(data, "path", "")
   isuntitled(p) || p == "" ? nothing : p
 end
 
 handle("eval") do data
-  @dynamic let Media.input = Editor()
-    mod = getmodule(data, cursor(data["start"]))
-    block, (start, stop) = isselection(data) ?
-                             getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
-                             getblock(data["code"], data["start"]["row"])
-    !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
-    result = withpath(getpath(data)) do
-      @errs include_string(mod, block, get(data, "path", "untitled"), start)
-    end
-    @d(:start => start,
-       :end => stop,
-       :result => render(Editor(), result),
-       :plainresult => render(Plain(), result))
+  lock(evallock) do
+    @dynamic let Media.input = Editor()
+      mod = getmodule(data, cursor(data["start"]))
+      block, (start, stop) = isselection(data) ?
+                               getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
+                               getblock(data["code"], data["start"]["row"])
+      !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
+      result = withpath(getpath(data)) do
+        @errs include_string(mod, block, get(data, "path", "untitled"), start)
+      end
+      @d(:start => start,
+         :end => stop,
+         :result => render(Editor(), result),
+         :plainresult => render(Plain(), result))
+     end
    end
 end
 
 handle("eval-all") do data
-  @dynamic let Media.input = Editor()
-    mod = Main
-    if haskey(data, "module")
-      mod = getthing(data["module"], Main)
-    elseif haskey(data, "path")
-      mod = getthing(CodeTools.filemodule(data["path"]), Main)
-    end
-    try
-      withpath(getpath(data)) do
-        include_string(mod, data["code"], get(data, "path", "untitled"))
+  lock(evallock) do
+    @dynamic let Media.input = Editor()
+      mod = Main
+      if haskey(data, "module")
+        mod = getthing(data["module"], Main)
+      elseif haskey(data, "path")
+        mod = getthing(CodeTools.filemodule(data["path"]), Main)
       end
-    catch e
-      msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
-                      :detail => sprint(showerror, e, catch_backtrace()),
-                      :dismissable => true))
+      try
+        withpath(getpath(data)) do
+          include_string(mod, data["code"], get(data, "path", "untitled"))
+        end
+      catch e
+        msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
+                        :detail => sprint(showerror, e, catch_backtrace()),
+                        :dismissable => true))
+      end
     end
+    return
   end
-  return
 end
 
 handle("eval-repl") do data
-  @dynamic let Media.input = Console()
-    mode = get(data, "mode", nothing)
-    if mode == "shell"
-      data["code"] = "run(`$(data["code"])`)"
-    elseif mode == "help"
-      data["code"] = "@doc $(data["code"])"
+  lock(evallock) do
+    @dynamic let Media.input = Console()
+      mode = get(data, "mode", nothing)
+      if mode == "shell"
+        data["code"] = "run(`$(data["code"])`)"
+      elseif mode == "help"
+        data["code"] = "@doc $(data["code"])"
+      end
+      try
+        render(@errs eval(Main, :(include_string($(data["code"])))))
+      catch e
+        showerror(STDERR, e, catch_backtrace())
+      end
+      return
     end
-    try
-      render(@errs eval(Main, :(include_string($(data["code"])))))
-    catch e
-      showerror(STDERR, e, catch_backtrace())
-    end
-    return
   end
 end
 
