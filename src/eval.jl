@@ -67,10 +67,12 @@ handle("eval") do data
       result = withpath(getpath(data)) do
         @errs include_string(mod, block, get(data, "path", "untitled"), start)
       end
-      @d(:start => start,
-         :end => stop,
-         :result => render(Editor(), result),
-         :plainresult => render(Plain(), result))
+      display = Media.getdisplay(typeof(result), default = Editor())
+      display ≠ Editor() && render(display, result)
+      d(:start => start,
+        :end => stop,
+        :result => render(Editor(), result),
+        :plainresult => render(Plain(), result))
      end
    end
 end
@@ -89,9 +91,9 @@ handle("eval-all") do data
           include_string(mod, data["code"], get(data, "path", "untitled"))
         end
       catch e
-        msg("error", @d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
-                        :detail => sprint(showerror, e, catch_backtrace()),
-                        :dismissable => true))
+        msg("error", d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
+                       :detail => sprint(showerror, e, catch_backtrace()),
+                       :dismissable => true))
       end
     end
     return
