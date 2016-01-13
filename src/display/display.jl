@@ -6,13 +6,11 @@ import Hiccup: div
 type Inline end
 type Plain end
 
-for D in :[Editor, Console].args
-  @eval type $D end
-  @eval let pool = @d()
-    Media.pool(::$D) = merge(Media.pool(), pool)
-    Media.setdisplay(::$D, T, input) = pool[T] = input
-  end
-end
+type Editor end
+type Console end
+
+Media.@defpool Editor
+Media.@defpool Console
 
 setdisplay(Editor(), Any, Console())
 setdisplay(Console(), Any, Console())
