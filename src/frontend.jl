@@ -1,1 +1,1 @@
-select(items) = get(rpc("select", @d(:items=>items)), "item", nothing)
+select(items) = rpc("select", items)

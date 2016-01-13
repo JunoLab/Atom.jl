@@ -1,15 +1,5 @@
 global sock = nothing
 
-macro mutex(ex)
-  @gensym lock
-  eval(current_module(), :(const $lock = Base.ReentrantLock()))
-  quote
-    lock($(esc(lock)))
-    $(esc(ex))
-    unlock($(esc(lock)))
-  end
-end
-
 isactive(sock::Void) = false
 isactive(sock) = isopen(sock)
 
@@ -46,18 +36,19 @@ handle(f, t) = handlers[t] = f
 id = 0
 const callbacks = Dict{Int,Condition}()
 
-function rpc(t, data)
+function rpc(t, args...)
   i, c = (global id += 1), Condition()
   callbacks[i] = c
-  data["callback"] = i
-  msg(t, data)
+  msg(t, d(:callback => i, :args => args))
   return wait(c)
 end
 
 function handlemsg(t, data)
   result, id = nothing, nothing
-  haskey(data, "callback") && (id = data["callback"])
-  delete!(data, "callback")
+  if isa(data, Associative)
+    haskey(data, "callback") && (id = data["callback"])
+    delete!(data, "callback")
+  end
   if haskey(handlers, t)
     result = handlers[t](data)
   elseif haskey(callbacks, t)
