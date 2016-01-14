@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Lazy, JSON
+using Lazy, JSON, Blink
 
 include("comm.jl")
 include("display/display.jl")

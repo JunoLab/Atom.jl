@@ -15,6 +15,7 @@ end
 
 function initialise()
   exit_on_sigint(false)
+  eval(AtomShell, :(_shell = $(Shell())))
 end
 
 function connect(port)
