@@ -28,9 +28,9 @@ function connect(port)
   initialise()
 end
 
-function msg(t, data)
+function msg(t, args...)
   isactive(sock) || return
-  println(sock, json(c(t, data)))
+  println(sock, json(c(t, args...)))
 end
 
 const handlers = Dict{UTF8String, Function}()
@@ -43,7 +43,7 @@ const callbacks = Dict{Int,Condition}()
 function rpc(t, args...)
   i, c = (global id += 1), Condition()
   callbacks[i] = c
-  msg(t, d(:callback => i, :args => args))
+  msg(d(:type => t, :callback => i), args...)
   return wait(c)
 end
 
