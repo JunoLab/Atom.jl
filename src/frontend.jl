@@ -9,3 +9,5 @@ AtomShell.raw_window(::Shell, opts) =
 
 AtomShell.dot(::Shell, win::Integer, code; callback = true) =
   (callback ? rpc : msg)("withWin", win, Blink.jsstring(code))
+
+AtomShell.active(::Shell, win::Integer) = rpc("winActive", win)
