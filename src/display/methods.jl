@@ -14,10 +14,16 @@ function pkgpath(path)
   m == nothing ? basename(path) : m.captures[1]
 end
 
-baselink(path) =
+"""
+Takes a file and returns a tuple `(short_path, full_path)`.
+`short_path` is the human readable version, pretty much.
+"""
+findpath(path) =
   isabspath(path) || isuntitled(path) ?
-    link(pkgpath(path), path) :
-    link(normpath("base/$path"), basepath(path))
+    (path, path) :
+    (normpath("base/$path"), basepath(path))
+
+baselink(path) = link(findpath(path)...)
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 
@@ -44,7 +50,7 @@ function view(m::Method)
   params = interpose(params, ", ")
   span(c(string(m.func.code.name),
          "(", params..., ")")),
-  file == :null ? "not found" :baselink("$file:$line")
+  file == :null ? "not found" : baselink("$file:$line")
 end
 
 @render i::Inline m::MethodTable begin
@@ -58,4 +64,23 @@ end
   isempty(ms) && return "No methods found."
   Tree(Text("$(length(ms)) method$(length(ms)==1?"":"s") found:"),
        [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
+end
+
+function view_obj(m::Method)
+  tv, decls, file, line = Base.arg_decl_parts(m)
+  signature = [string(x, isempty(T) ? "" : "::", stripparams(T)) for (x, T) in decls]
+  signature = string(m.func.code.name, "(", join(signature, ", "), ")")
+  signature, findpath(string(file))..., line
+end
+
+method_obj(m::MethodTable) = method_obj(methodarray(m))
+
+function method_obj(ms::Vector{Method})
+  isempty(ms) && return @d(:items => [])
+  [@d(
+    :signature => signature,
+    :dispfile => dispfile,
+    :file => file,
+    :line => line - 1 # Atom starts counting at 0, Julia at 1
+  ) for (signature, dispfile, file, line) in map(view_obj, ms)]
 end
