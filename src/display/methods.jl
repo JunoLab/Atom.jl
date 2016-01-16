@@ -85,7 +85,7 @@ end
 
 method_obj(m::MethodTable) = method_obj(methodarray(m))
 
-function method_obj(ms::Vector{Method})
+function method_obj(ms)
   isempty(ms) && return @d(:items => [])
   [@d(
     :signature => signature,
@@ -94,3 +94,5 @@ function method_obj(ms::Vector{Method})
     :line => line - 1 # Atom starts counting at 0, Julia at 1
   ) for (signature, dispfile, file, line) in map(view_obj, ms)]
 end
+
+method_obj(x::EvalError) = sprint(showerror, x.err)
