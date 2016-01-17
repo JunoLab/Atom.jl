@@ -10,13 +10,11 @@ fade(x) = span(".fade", x)
   end
 end
 
-@render Inline x::AbstractString Text(sprint(show, x))
-
 @render Inline x::Text begin
   ls = split(string(x), "\n")
   length(ls)>1 ?
-    Tree(Text(ls[1]), [HTML(join(ls[2:end], "\n"))]) :
-    HTML(ls[1])
+    Tree(span(".text", ls[1]), [span(".text", join(ls[2:end], "\n"))]) :
+    span(".text", ls[1])
 end
 
 @render Inline x::Type strong(string(x))
@@ -46,17 +44,17 @@ end
          children)
 end
 
-@render i::Inline d::Dict begin
-  j = 0
-  st = Array{Atom.SubTree}(0)
-  for (key, val) in d
-    push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
-    j += 1
-    j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
-  end
-  Tree(span(c(strong("Dict"),
-            fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
-end
+# @render i::Inline d::Dict begin
+#   j = 0
+#   st = Array{Atom.SubTree}(0)
+#   for (key, val) in d
+#     push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
+#     j += 1
+#     j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
+#   end
+#   Tree(span(c(strong("Dict"),
+#             fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
+# end
 
 @render i::Inline x::Number Text(sprint(show, x))
 
@@ -71,5 +69,3 @@ function handleundefs(X::Vector, inds)
   end
   Xout
 end
-
-@render i::Inline x::Base.Markdown.MD HTML(Base.Markdown.html(x))
