@@ -18,6 +18,13 @@ render(::Inline, n::Node; options = d()) = view(n)
 
 render(::Inline, x::HTML; options = d()) = view(x)
 
+function render(::Inline, x::Text; options = d())
+  ls = split(string(x), "\n")
+  length(ls) > 1 ?
+    d(:type => :tree, :head => ls[1], :children => c(join(ls[2:end], "\n"))) :
+    ls[1]
+end
+
 type Tree
   head
   children::Vector{Any}

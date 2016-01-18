@@ -10,13 +10,6 @@ fade(x) = span(".fade", x)
   end
 end
 
-@render Inline x::Text begin
-  ls = split(string(x), "\n")
-  length(ls)>1 ?
-    Tree(span(".text", ls[1]), [span(".text", join(ls[2:end], "\n"))]) :
-    span(".text", ls[1])
-end
-
 @render Inline x::Type strong(string(x))
 
 @render Inline x::Module strong(string(x))
