@@ -71,8 +71,7 @@ handle("eval") do data
       display ≠ Editor() && render(display, result)
       d(:start => start,
         :end => stop,
-        :result => render(Editor(), result),
-        :plainresult => render(Plain(), result))
+        :result => render(Editor(), result))
      end
    end
 end

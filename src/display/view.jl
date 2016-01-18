@@ -63,3 +63,13 @@ render(i::Inline, l::Link; options = d()) =
     :contents => map(x->render(i, x, options = options), l.contents))
 
 link(a...) = Link(a...)
+
+type Copyable
+  view
+  text::UTF8String
+end
+
+render(i::Inline, x::Copyable; options = d()) =
+  d(:type => :copy,
+    :view => render(i, x.view, options = options),
+    :text => x.text)

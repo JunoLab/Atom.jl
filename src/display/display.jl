@@ -4,7 +4,7 @@ import Media: render
 import Hiccup: div
 
 type Inline end
-type Plain end
+type Clipboard end
 
 type Editor end
 type Console end
@@ -30,9 +30,7 @@ render(e::Editor, ::Void; options = d()) =
 render(::Editor, x; options = d()) =
   render(Inline(), x, options = options)
 
-render(::Plain, x; options = d()) = stringmime(MIME"text/plain"(), x)
-
-render(::Inline, x; options = d()) = render(Plain(), x, options = options)
+render(::Clipboard, x; options = d()) = stringmime(MIME"text/plain"(), x)
 
 include("view.jl")
 include("objects.jl")
