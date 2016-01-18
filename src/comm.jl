@@ -7,9 +7,9 @@ macro ierrs(ex)
   :(try
       $(ex)
     catch e
-      msg("error", @d(:msg=>"Julia Client – Internal Error",
-                      :detail=>sprint(showerror, e, catch_backtrace()),
-                      :dismissable=>true))
+      msg(:error, d(:msg         => "Julia Client – Internal Error",
+                    :detail      => sprint(showerror, e, catch_backtrace()),
+                    :dismissable => true))
     end)
 end
 
@@ -64,3 +64,13 @@ function handlemsg(t, args...)
 end
 
 isconnected() = sock ≠ nothing && isopen(sock)
+
+macro msg(ex)
+  @capture(ex, f_(args__)) || error("@msg requires function call syntax")
+  :(msg($(string(f)), $(esc(args)...)))
+end
+
+macro rpc(ex)
+  @capture(ex, f_(args__)) || error("@rpc requires function call syntax")
+  :(rpc($(string(f)), $(esc(args)...)))
+end

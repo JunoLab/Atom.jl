@@ -91,9 +91,9 @@ handle("evalall") do data
           include_string(mod, data["code"], get(data, "path", "untitled"))
         end
       catch e
-        msg("error", d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
-                       :detail => sprint(showerror, e, catch_backtrace()),
-                       :dismissable => true))
+        @msg error(d(:msg => "Error evaluating $(basename(get(data, "path", "untitled")))",
+                     :detail => sprint(showerror, e, catch_backtrace()),
+                     :dismissable => true))
       end
     end
     return

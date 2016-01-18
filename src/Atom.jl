@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Lazy, JSON, Blink
+using Lazy, JSON, Blink, MacroTools
 
 include("comm.jl")
 include("display/display.jl")

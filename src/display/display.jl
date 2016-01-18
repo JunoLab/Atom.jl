@@ -18,7 +18,7 @@ setdisplay(Console(), Any, Console())
 # Console
 
 render(::Console, x; options = d()) =
-  msg("result", render(Inline(), x, options = options))
+  @msg result(render(Inline(), x, options = options))
 
 render(::Console, ::Void; options = d()) = nothing
 
