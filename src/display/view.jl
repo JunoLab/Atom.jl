@@ -30,15 +30,14 @@ render(i::Inline, t::Tree; options = d()) =
                      t.children))
 
 type SubTree
-  head
+  label
   child
 end
 
-# function render(i::Inline, t::SubTree; options = @d())
-#   r(x) = render(i, x, options = options)
-#   sub = r(t.child)
-#   istree(sub) ? c(r(t.head)*sub[1], sub[2]) : r(span(".gutted", HTML(r(t.head)*sub)))
-# end
+render(i::Inline, t::SubTree; options = d()) =
+  d(:type  => :subtree,
+    :label => render(i, t.label, options = options),
+    :child => render(i, t.child, options = options))
 
 # link(x, file) = a(@d("data-file"=>file), x == nothing ? basename(file) : x)
 #
