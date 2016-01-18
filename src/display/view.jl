@@ -25,7 +25,7 @@ function render(::Inline, x::Text; options = d())
     ls[1]
 end
 
-type Tree
+immutable Tree
   head
   children::Vector{Any}
 end
@@ -36,7 +36,7 @@ render(i::Inline, t::Tree; options = d()) =
     :children => map(x->render(i, x, options = options),
                      t.children))
 
-type SubTree
+immutable SubTree
   label
   child
 end
@@ -46,8 +46,15 @@ render(i::Inline, t::SubTree; options = d()) =
     :label => render(i, t.label, options = options),
     :child => render(i, t.child, options = options))
 
-# link(x, file) = a(@d("data-file"=>file), x == nothing ? basename(file) : x)
-#
-# link(x, file, line::Integer) = link(x, "$file:$line")
-#
-# link(file, line::Integer...) = link(nothing, file, line...)
+immutable Link
+  file::UTF8String
+  line::Int
+  contents::Vector{Any}
+  Link(file, line, contents...) = new(file, line, c(contents...))
+end
+
+render(i::Inline, l::Link; options = d()) =
+  d(:type => :link,
+    :file => l.file,
+    :line => l.line-1,
+    :contents => map(x->render(i, x, options = options), l.contents))
