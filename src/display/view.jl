@@ -3,6 +3,7 @@ using Hiccup
 typealias AString AbstractString
 
 view(x::AString) = x
+view(x::Associative) = x
 
 view(x) =
   d(:type    => :html,
@@ -50,11 +51,15 @@ immutable Link
   file::UTF8String
   line::Int
   contents::Vector{Any}
-  Link(file, line, contents...) = new(file, line, c(contents...))
+  Link(file::AString, line::Integer, contents...) = new(file, line, c(contents...))
 end
+
+Link(file::AString, contents...) = Link(file, -1, contents...)
 
 render(i::Inline, l::Link; options = d()) =
   d(:type => :link,
     :file => l.file,
     :line => l.line-1,
     :contents => map(x->render(i, x, options = options), l.contents))
+
+link(a...) = Link(a...)

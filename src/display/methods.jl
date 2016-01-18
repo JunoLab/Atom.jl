@@ -14,10 +14,10 @@ function pkgpath(path)
   m == nothing ? basename(path) : m.captures[1]
 end
 
-baselink(path) =
+baselink(path, line) =
   isabspath(path) || isuntitled(path) ?
-    link(pkgpath(path), path) :
-    link(normpath("base/$path"), basepath(path))
+    link(path, line, Text(pkgpath("$path:$line"))) :
+    link(basepath(path), line, Text(normpath("base/$path:$line")))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 
@@ -44,18 +44,20 @@ function view(m::Method)
   params = interpose(params, ", ")
   span(c(string(m.func.code.name),
          "(", params..., ")")),
-  file == :null ? "not found" :baselink("$file:$line")
+  file == :null ? "not found" : baselink(string(file), line)
 end
 
+@render i::Inline m::Method begin
+  sig, link = view(m)
+  r(x) = render(i, x, options = options)
+  span(c(r(sig), " at ", r(link)))
+end
+
+# TODO: factor out table view
 @render i::Inline m::MethodTable begin
   ms = methodarray(m)
   isempty(m) && return "$(m.name) has no methods."
+  r(x) = render(i, x, options = options)
   Tree(Text("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):"),
-       [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
-end
-
-@render i::Inline ms::Vector{Method} begin
-  isempty(ms) && return "No methods found."
-  Tree(Text("$(length(ms)) method$(length(ms)==1?"":"s") found:"),
-       [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
+       [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
 end

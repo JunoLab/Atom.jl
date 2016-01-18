@@ -34,8 +34,7 @@ render(::Plain, x; options = d()) = stringmime(MIME"text/plain"(), x)
 
 render(::Inline, x; options = d()) = render(Plain(), x, options = options)
 
-isuntitled(p) = ismatch(r"^untitled-\d+(:\d+)?$", p)
-
 include("view.jl")
 include("objects.jl")
+include("methods.jl")
 include("errors.jl")
