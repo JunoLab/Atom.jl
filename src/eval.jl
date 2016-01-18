@@ -23,7 +23,7 @@ end
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
-  return @d(:main => main,
+  return d(:main => main,
             :sub  => sub,
             :inactive => (getthing(main) == nothing),
             :subInactive => (getthing("$main.$sub") == nothing))
@@ -63,7 +63,7 @@ handle("eval") do data
       block, (start, stop) = isselection(data) ?
                                getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                                getblock(data["code"], data["start"]["row"])
-      !isselection(data) && msg("show-block", @d(:start=>start, :end=>stop))
+      !isselection(data) && msg("show-block", d(:start=>start, :end=>stop))
       result = withpath(getpath(data)) do
         @errs include_string(mod, block, get(data, "path", "untitled"), start)
       end
@@ -121,7 +121,7 @@ end
 
 handle("docs") do code
   result = @errs include_string("@doc $code")
-  @d(:result => render(Editor(), result))
+  d(:result => render(Editor(), result))
 end
 
 handle("methods") do word
@@ -135,5 +135,5 @@ handle("methods") do word
   elseif wordtype == DataType
     result = @errs include_string("methodswith($word)")
   end
-  @d(:result => render(Editor(), result))
+  d(:result => render(Editor(), result))
 end
