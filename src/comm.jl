@@ -22,8 +22,8 @@ function connect(port)
   global sock = Base.connect(port)
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
-      t, data = JSON.parse(sock)
-      @schedule @ierrs handlemsg(t, data)
+      msg = JSON.parse(sock)
+      @schedule @ierrs handlemsg(msg...)
     end
   end
   initialise()
@@ -48,21 +48,19 @@ function rpc(t, args...)
   return wait(c)
 end
 
-function handlemsg(t, data)
-  result, id = nothing, nothing
-  if isa(data, Associative)
-    haskey(data, "callback") && (id = data["callback"])
-    delete!(data, "callback")
-  end
+function handlemsg(t, args...)
+  callback = nothing
+  isa(t, Associative) && ((t, callback) = (t["type"], t["callback"]))
   if haskey(handlers, t)
-    result = handlers[t](data)
+    result = handlers[t](args...)
+    isa(callback, Integer) && msg(callback, result)
   elseif haskey(callbacks, t)
-    notify(callbacks[t], data)
+    @assert length(args) == 1
+    notify(callbacks[t], args[1])
     delete!(callbacks, t)
   else
     warn("Atom.jl: unrecognised message $t.")
   end
-  isa(id, Integer) && msg(id, result)
 end
 
 isconnected() = sock ≠ nothing && isopen(sock)

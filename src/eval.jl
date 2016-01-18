@@ -29,7 +29,7 @@ handle("module") do data
             :subInactive => (getthing("$main.$sub") == nothing))
 end
 
-handle("all-modules") do _
+handle("all-modules") do
   sort!([string(m) for m in CodeTools.allchildren(Main)])
 end
 
@@ -119,13 +119,12 @@ handle("eval-repl") do data
   end
 end
 
-handle("docs") do data
-  result = @errs include_string("@doc $(data["code"])")
+handle("docs") do code
+  result = @errs include_string("@doc $code")
   @d(:result => render(Editor(), result))
 end
 
-handle("methods") do data
-  word = data["code"]
+handle("methods") do word
   wordtype = try
     include_string("typeof($word)")
   catch
