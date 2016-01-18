@@ -29,7 +29,7 @@ handle("module") do data
             :subInactive => (getthing("$main.$sub") == nothing))
 end
 
-handle("all-modules") do
+handle("allmodules") do
   sort!([string(m) for m in CodeTools.allchildren(Main)])
 end
 
@@ -77,7 +77,7 @@ handle("eval") do data
    end
 end
 
-handle("eval-all") do data
+handle("evalall") do data
   lock(evallock) do
     @dynamic let Media.input = Editor()
       mod = Main
@@ -100,7 +100,7 @@ handle("eval-all") do data
   end
 end
 
-handle("eval-repl") do data
+handle("evalrepl") do data
   lock(evallock) do
     @dynamic let Media.input = Console()
       mode = get(data, "mode", nothing)
