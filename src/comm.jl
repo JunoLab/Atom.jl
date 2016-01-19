@@ -52,15 +52,21 @@ function handlemsg(t, args...)
   callback = nothing
   isa(t, Associative) && ((t, callback) = (t["type"], t["callback"]))
   if haskey(handlers, t)
-    result = handlers[t](args...)
-    isa(callback, Integer) && msg(callback, result)
-  elseif haskey(callbacks, t)
-    @assert length(args) == 1
-    notify(callbacks[t], args[1])
-    delete!(callbacks, t)
+    try
+      result = handlers[t](args...)
+      isa(callback, Integer) && msg("cb", callback, result)
+    catch e
+      msg("cancelCallback", callback)
+      rethrow()
+    end
   else
     warn("Atom.jl: unrecognised message $t.")
   end
+end
+
+handle("cb") do id, result
+  notify(callbacks[id], result)
+  delete!(callbacks, id)
 end
 
 isconnected() = sock ≠ nothing && isopen(sock)
