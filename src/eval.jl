@@ -63,6 +63,7 @@ handle("eval") do data
       block, (start, stop) = isselection(data) ?
                                getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
                                getblock(data["code"], data["start"]["row"])
+      isempty(block) && return d()
       !isselection(data) && msg("show-block", d(:start=>start, :end=>stop))
       result = withpath(getpath(data)) do
         @errs include_string(mod, block, get(data, "path", "untitled"), start)
