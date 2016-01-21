@@ -4,9 +4,9 @@
 import CodeTools: allcompletions, text
 
 handle("completions") do data
-  pos = cursor(data["cursor"])
+  @destruct [pos = cursor(:cursor), code, path || nothing] = data
   mod = getmodule(data, pos)
-  completions = allcompletions(data["code"], pos, mod = mod, file = get(data, "path", nothing))
+  completions = allcompletions(code, pos, mod = mod, file = path)
   completions == nothing && return []
   completions = @>> completions filter(c->ismatch(r"^\w+$", text(c)))
   return completions
