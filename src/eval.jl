@@ -33,7 +33,7 @@ handle("allmodules") do
   sort!([string(m) for m in CodeTools.allchildren(Main)])
 end
 
-isselection(data) = data["start"] ≠ data["end"]
+isselection(data) = data["start"] ≠ data["stop"]
 
 macro errs(ex)
   :(try
@@ -61,7 +61,7 @@ handle("eval") do data
     @dynamic let Media.input = Editor()
       mod = getmodule(data, cursor(data["start"]))
       block, (start, stop) = isselection(data) ?
-                               getblock(data["code"], cursor(data["start"]), cursor(data["end"])) :
+                               getblock(data["code"], cursor(data["start"]), cursor(data["stop"])) :
                                getblock(data["code"], data["start"]["row"])
       isempty(block) && return d()
       !isselection(data) && msg("show-block", d(:start=>start, :end=>stop))
