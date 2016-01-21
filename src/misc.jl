@@ -1,3 +1,3 @@
-handle("cd") do data
-  cd(data["path"])
+handle("cd") do path
+  cd(path)
 end
