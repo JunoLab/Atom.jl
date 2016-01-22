@@ -14,6 +14,7 @@ function splitlink(path)
 end
 
 # TODO: don't work on the text
+# TODO: clip traces so Atom/CodeTools doesn't show up
 
 function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(Int))
   @_ begin
