@@ -34,7 +34,10 @@ highlights(e::EvalError) = highlights(btlines(e.bt))
 
 function renderbt(ls)
   span(".error-trace",
-       [div(".trace-entry", c(fade("in "), f, fade(" at "), render(Inline(), baselink(loc, li)))) for (f, loc, li) in ls])
+       [div(".trace-entry",
+        c(fade("in "), f, fade(" at "),
+          render(Inline(), Copyable(baselink(loc, li)))))
+        for (f, loc, li) in ls])
 end
 
 function render(::Editor, e::EvalError; options = d())
