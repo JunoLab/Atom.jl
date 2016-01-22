@@ -31,10 +31,12 @@ immutable Tree
 end
 
 render(i::Inline, t::Tree; options = d()) =
-  d(:type     => :tree,
-    :head     => render(i, t.head, options = options),
-    :children => map(x->render(i, x, options = options),
-                     t.children))
+  isempty(t.children) ?
+    render(i, t.head, options = options) :
+    d(:type     => :tree,
+      :head     => render(i, t.head, options = options),
+      :children => map(x->render(i, x, options = options),
+                       t.children))
 
 immutable SubTree
   label
