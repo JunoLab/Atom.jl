@@ -2,6 +2,13 @@ using Hiccup
 
 fade(x) = span(".fade", x)
 
+@render Inline x::Text begin
+  ls = split(string(x), "\n")
+  length(ls) > 1 ?
+    Tree(Model(ls[1]), c(Model(join(ls[2:end], "\n")))) :
+    span(ls[1])
+end
+
 @render Inline x begin
   if isbits(x)
     span(c(fade(string(typeof(x))), " ", string(x)))
@@ -22,11 +29,9 @@ name(f::Function) =
 import Base.Docs: doc
 
 @render Inline f::Function begin
-  if isgeneric(f)
-    Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
-  else
+  isgeneric(f) ?
+    Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)]) :
     Text(name(f))
-  end
 end
 
 @render Inline xs::Vector begin

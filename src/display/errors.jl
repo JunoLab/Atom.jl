@@ -36,11 +36,18 @@ function renderbt(ls)
        [div(".trace-entry", c(fade("in "), f, fade(" at "), render(Inline(), baselink(loc, li)))) for (f, loc, li) in ls])
 end
 
-function render(i::Inline, e::EvalError; options = d())
+function render(::Editor, e::EvalError; options = d())
   tmp = sprint(showerror, e.err)
   tmp = split(tmp, '\n')
   d(:type => :error,
-     :view => render(i, Tree(rendererr(tmp[1]),
-                             [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]), options = options),
-     :highlights => highlights(e))
+    :view => render(Inline(),
+                    Copyable(
+                      Tree(rendererr(tmp[1]),
+                           [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]),
+                      sprint(showerror, e.err, e.bt)),
+                    options = options),
+    :highlights => highlights(e))
 end
+
+render(::Console, e::EvalError; options = d()) =
+  @msg result(render(Editor(), e, options = options))

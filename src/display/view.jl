@@ -2,6 +2,12 @@ using Hiccup
 
 typealias AString AbstractString
 
+type Model
+  data
+end
+
+render(::Inline, m::Model; options = d()) = m.data
+
 view(x::AString) = x
 view(x::Associative) = x
 
@@ -18,13 +24,6 @@ view(n::Node) =
 render(::Inline, n::Node; options = d()) = view(n)
 
 render(::Inline, x::HTML; options = d()) = view(x)
-
-function render(::Inline, x::Text; options = d())
-  ls = split(string(x), "\n")
-  length(ls) > 1 ?
-    d(:type => :tree, :head => ls[1], :children => c(join(ls[2:end], "\n"))) :
-    ls[1]
-end
 
 immutable Tree
   head
@@ -47,11 +46,26 @@ render(i::Inline, t::SubTree; options = d()) =
     :label => render(i, t.label, options = options),
     :child => render(i, t.child, options = options))
 
+type Copyable
+  view
+  text::UTF8String
+  Copyable(view, text::AString) = new(view, text)
+end
+
+Copyable(view, text) = Copyable(view, render(Clipboard(), text))
+Copyable(view) = Copyable(view, view)
+
+render(i::Inline, x::Copyable; options = d()) =
+  d(:type => :copy,
+    :view => render(i, x.view, options = options),
+    :text => x.text)
+
 immutable Link
   file::UTF8String
   line::Int
   contents::Vector{Any}
-  Link(file::AString, line::Integer, contents...) = new(file, line, c(contents...))
+  Link(file::AString, line::Integer, contents...) =
+    new(file, line, c(contents...))
 end
 
 Link(file::AString, contents...) = Link(file, -1, contents...)
@@ -62,14 +76,7 @@ render(i::Inline, l::Link; options = d()) =
     :line => l.line-1,
     :contents => map(x->render(i, x, options = options), l.contents))
 
+render(::Clipboard, l::Link; options = d()) =
+  "$(l.file):$(l.line)"
+
 link(a...) = Link(a...)
-
-type Copyable
-  view
-  text::UTF8String
-end
-
-render(i::Inline, x::Copyable; options = d()) =
-  d(:type => :copy,
-    :view => render(i, x.view, options = options),
-    :text => x.text)

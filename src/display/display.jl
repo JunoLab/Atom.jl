@@ -15,20 +15,20 @@ Media.@defpool Console
 setdisplay(Editor(), Any, Console())
 setdisplay(Console(), Any, Console())
 
-# Console
-
-render(::Console, x; options = d()) =
-  @msg result(render(Inline(), x, options = options))
-
-render(::Console, ::Void; options = d()) = nothing
-
 # Editor
 
 render(e::Editor, ::Void; options = d()) =
   render(e, Text("✓"), options = options)
 
 render(::Editor, x; options = d()) =
-  render(Inline(), x, options = options)
+  render(Inline(), Copyable(x), options = options)
+
+# Console
+
+render(::Console, x; options = d()) =
+  @msg result(render(Inline(), Copyable(x), options = options))
+
+render(::Console, ::Void; options = d()) = nothing
 
 render(::Clipboard, x; options = d()) = stringmime(MIME"text/plain"(), x)
 
