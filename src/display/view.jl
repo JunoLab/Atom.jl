@@ -70,7 +70,7 @@ immutable Link
     new(file, line, c(contents...))
 end
 
-Link(file::AString, contents...) = Link(file, -1, contents...)
+Link(file::AString, contents...) = Link(file, 0, contents...)
 
 render(i::Inline, l::Link; options = d()) =
   d(:type => :link,

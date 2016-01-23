@@ -14,10 +14,13 @@ function pkgpath(path)
   m == nothing ? basename(path) : m.captures[1]
 end
 
+appendline(path, line) = line > 0 ? "$path:$line" : path
+
 baselink(path, line) =
+  path == "no file" ? span(".fade", path) :
   isabspath(path) || isuntitled(path) ?
-    link(path, line, Text(pkgpath("$path:$line"))) :
-    link(basepath(path), line, Text(normpath("base/$path:$line")))
+    link(path, line, Text(pkgpath(appendline(path, line)))) :
+    link(basepath(path), line, Text(normpath("base/$(appendline(path, line))")))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 

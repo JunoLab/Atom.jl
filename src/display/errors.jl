@@ -9,7 +9,7 @@ rendererr(err) = strong(".error-description", err)
 
 function splitlink(path)
   m = match(r"^(.?:?[^:]*)(?::(\d+))$", path)
-  m == nothing && return path, -1
+  m == nothing && return path, 0
   m.captures[1], parse(Int, m.captures[2])
 end
 
