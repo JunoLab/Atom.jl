@@ -51,7 +51,7 @@ function Base.lock(f::Function, l::ReentrantLock)
 end
 
 withpath(f, path) =
-  Requires.withpath(f, isuntitled(path) ? nothing : path)
+  Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 handle("eval") do data
   @destruct [code, [row] = start, stop, path || "untitled"] = data
