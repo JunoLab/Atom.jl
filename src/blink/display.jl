@@ -32,7 +32,7 @@ displaytitle(x) = "Julia"
 function Media.render(view::WebView, x; options = @d())
   size = displaysize(x)
   w = @or(pinned(view), Window(@d(:width => size[1], :height => size[2])))
-  w == pinned(view) || wait(w.content.cb, 10)
+  w == pinned(view)
   html = tohtml(x)
   front(w)
   body!(w.content, html)
