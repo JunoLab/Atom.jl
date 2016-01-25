@@ -128,7 +128,7 @@ handle("docs") do data
 end
 
 handle("methods") do data
-  @destruct [mod || "Main", code] = data
+  @destruct [mod || "Main", word] = data
   mod = include_string(mod)
   wordtype = try
     include_string("typeof($word)")
