@@ -120,21 +120,25 @@ handle("evalrepl") do data
   end
 end
 
-handle("docs") do code
-  result = @errs include_string("@doc $code")
+handle("docs") do data
+  @destruct [mod || "Main", word] = data
+  mod = include_string(mod)
+  result = @errs include_string(mod, "@doc $word")
   d(:result => render(Editor(), result))
 end
 
-handle("methods") do word
+handle("methods") do data
+  @destruct [mod || "Main", code] = data
+  mod = include_string(mod)
   wordtype = try
     include_string("typeof($word)")
   catch
     Function
   end
   if wordtype == Function
-    result = @errs include_string("methods($word)")
+    result = @errs include_string(mod, "methods($word)")
   elseif wordtype == DataType
-    result = @errs include_string("methodswith($word)")
+    result = @errs include_string(mod, "methodswith($word)")
   end
   d(:result => render(Editor(), result))
 end
