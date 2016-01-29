@@ -53,12 +53,6 @@ end
 withpath(f, path) =
   Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
-handle("evalsimple") do code
-  lock(evallock) do
-    eval(parse(code))
-  end
-end
-
 handle("eval") do data
   @destruct [code, [row] = start, stop, path || "untitled"] = data
   lock(evallock) do

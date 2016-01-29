@@ -9,3 +9,7 @@ end
 handle("cd") do path
   cd(path)
 end
+
+handle("evalsimple") do code
+  eval(parse(code))
+end
