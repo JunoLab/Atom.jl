@@ -102,7 +102,8 @@ end
 handle("evalrepl") do data
   lock(evallock) do
     @dynamic let Media.input = Console()
-      @destruct [mode || nothing, code] = data
+      @destruct [mode || nothing, code, mod || "Main"] = data
+      mod = getthing(mod)
       if mode == "shell"
         code = "run(`$code`)"
       elseif mode == "help"
@@ -110,7 +111,7 @@ handle("evalrepl") do data
       end
       try
         withpath(nothing) do
-          render(@errs eval(Main, :(include_string($code))))
+          render(@errs eval(mod, :(include_string($code))))
         end
       catch e
         showerror(STDERR, e, catch_backtrace())
