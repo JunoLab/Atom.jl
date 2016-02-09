@@ -8,6 +8,6 @@ handle("completions") do data
   mod = getmodule(data, pos)
   completions = allcompletions(code, pos, mod = mod, file = path)
   completions == nothing && return []
-  completions = @>> completions filter(c->ismatch(r"^\w+$", text(c)))
+  # completions = @>> completions filter(c->ismatch(r"^\w+$", text(c)))
   return completions
 end
