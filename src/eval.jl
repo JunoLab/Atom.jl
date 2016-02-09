@@ -23,9 +23,9 @@ end
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
   return d(:main => main,
-            :sub  => sub,
-            :inactive => (getthing(main) == nothing),
-            :subInactive => (getthing("$main.$sub") == nothing))
+           :sub  => sub,
+           :inactive => (getthing(main) == nothing),
+           :subInactive => (getthing("$main.$sub") == nothing))
 end
 
 handle("allmodules") do
