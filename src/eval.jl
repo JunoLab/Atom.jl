@@ -54,23 +54,17 @@ withpath(f, path) =
   Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 handle("eval") do data
-  @destruct [code, [row] = start, stop, path || "untitled"] = data
+  @destruct [text, line, path, mod] = data
+  mod = getthing(mod)
   lock(evallock) do
     @dynamic let Media.input = Editor()
-      mod = getmodule(data, cursor(start))
-      block, (start, stop) = isselection(data) ?
-                               getblock(code, cursor(start), cursor(stop)) :
-                               getblock(code, row)
-      isempty(block) && return d()
-      !isselection(data) && msg("show-block", d(:start=>start, :end=>stop))
       result = withpath(path) do
-        @errs include_string(mod, block, path, start)
+        @errs include_string(mod, text, path, line)
       end
+
       display = Media.getdisplay(typeof(result), default = Editor())
       display ≠ Editor() && render(display, result)
-      d(:start => start,
-        :end => stop,
-        :result => render(Editor(), result))
+      render(Editor(), result)
      end
    end
 end
