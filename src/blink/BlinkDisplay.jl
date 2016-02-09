@@ -9,10 +9,10 @@ include("mimes.jl")
 export docs
 
 docpane(url = "http://docs.julialang.org/en/latest/") =
-  Window(@d(:url => url,
-            :alwaysOnTop => true,
-            :width => 500,
-            :height => 700))
+  Window(d(:url => url,
+           :alwaysOnTop => true,
+           :width => 500,
+           :height => 700))
 
 docs() = docpane()
 
