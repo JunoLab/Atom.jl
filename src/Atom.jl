@@ -12,10 +12,6 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-function __init__()
-  include(joinpath(dirname(@__FILE__), "patch.jl"))
-end
-
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
 
