@@ -1,6 +1,6 @@
 using CodeTools, LNR, Media, Requires
 
-import CodeTools: getblock, getthing
+import CodeTools: getthing
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
