@@ -7,8 +7,8 @@ handle("completions") do data
   withpath(path) do
     pre = CodeTools.prefix(line[1:column-1])
     pre = isempty(pre) ? nothing : pre[end]
-    cs = (pre == nothing && !force) ? [] :
-      CodeTools.completions(line[1:column-1], getthing(mod), default = false)
+    cs = CodeTools.completions(line[1:column-1], getthing(mod), default = false)
+    cs == nothing && pre == nothing && !force && (cs = [])
     d(:completions => cs,
       :prefix      => pre,
       :mod         => mod)
