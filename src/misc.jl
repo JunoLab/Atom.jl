@@ -13,3 +13,7 @@ end
 handle("evalsimple") do code
   eval(parse(code))
 end
+
+handle("exit") do
+  exit()
+end
