@@ -1,3 +1,10 @@
+"""
+    select([xs...]) -> x
+
+Allow the user to select one of the `xs`.
+
+`xs` should be an iterator of strings.
+"""
 select(items) = @rpc select(items)
 
 type Shell <: AtomShell.Shell end
