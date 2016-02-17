@@ -15,7 +15,6 @@ end
 
 function initialise()
   exit_on_sigint(false)
-  eval(Base, :(is_interactive = true))
   eval(AtomShell, :(_shell = $(Shell())))
 end
 
