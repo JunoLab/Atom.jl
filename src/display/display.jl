@@ -32,8 +32,8 @@ render(::Console, ::Void; options = d()) = nothing
 
 render(::Clipboard, x; options = d()) = stringmime(MIME"text/plain"(), x)
 
+include("plots.jl")
 include("view.jl")
 include("objects.jl")
 include("methods.jl")
 include("errors.jl")
-include("integrations.jl")
