@@ -7,6 +7,8 @@ render(::PlotPane, x; options = d()) =
 
 @require Gadfly begin
   @render PlotPane p::Gadfly.Plot begin
+    x, y = @rpc plotsize()
+    Gadfly.set_default_plot_size(x*Gadfly.px, y*Gadfly.px)
     div(d(:style=>"background: white"),
         HTML(stringmime("text/html", p)))
   end
