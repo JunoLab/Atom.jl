@@ -17,3 +17,8 @@ end
 handle("exit") do
   exit()
 end
+
+handle("clear-workspace") do
+  # has to be run by Main otherwise it throws an error
+  eval(Main, :(workspace()))
+end
