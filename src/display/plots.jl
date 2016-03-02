@@ -23,3 +23,8 @@ end
     end
   end
 end
+
+@require Vega begin
+  @render Inline v::Vega.VegaVisualization Text("Vega Visualisation")
+  @render Clipboard v::Vega.VegaVisualization Text("Vega Visualisation")
+end
