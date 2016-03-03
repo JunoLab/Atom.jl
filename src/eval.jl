@@ -103,6 +103,7 @@ handle("evalrepl") do data
       elseif mode == "help"
         code = "@doc $code"
       end
+      mod = getthing(get(data, "module", "Main"), Main)
       try
         withpath(nothing) do
           render(@errs eval(mod, :(include_string($code))))
