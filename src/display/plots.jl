@@ -28,3 +28,13 @@ end
   @render Inline v::Vega.VegaVisualization Text("Vega Visualisation")
   @render Clipboard v::Vega.VegaVisualization Text("Vega Visualisation")
 end
+
+@require Compose begin
+  @render PlotPane img::Compose.Context begin
+    HTML(stringmime(MIME"image/svg+xml"(), img))
+  end
+
+  @render e::Editor img::Compose.Context begin
+    Text("Compose.Context(...)")
+  end
+end
