@@ -1,6 +1,6 @@
 using Hiccup, Lazy
 
-isuntitled(p) = ismatch(r"^untitled-\d+(:\d+)?$", p)
+isuntitled(p) = ismatch(r"^untitled-[\d\w]+(:\d+)?$", p)
 
 realpath′(p) = ispath(p) ? realpath(p) : p
 
@@ -18,7 +18,8 @@ appendline(path, line) = line > 0 ? "$path:$line" : path
 
 baselink(path, line) =
   path == "no file" ? span(".fade", path) :
-  isabspath(path) || isuntitled(path) ?
+  isuntitled(path) ? link(path, line, Text(appendline("untitled", line))) :
+  isabspath(path)  ?
     link(path, line, Text(pkgpath(appendline(path, line)))) :
     link(basepath(path), line, Text(normpath("base/$(appendline(path, line))")))
 
