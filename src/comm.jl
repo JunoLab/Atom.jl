@@ -19,7 +19,7 @@ function initialise()
 end
 
 function connect(port)
-  global sock = Base.connect(port)
+  global sock = Base.connect("127.0.0.1", port)
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
       msg = JSON.parse(sock)
