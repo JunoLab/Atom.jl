@@ -76,5 +76,3 @@ Atom.handlemsg(Dict("type" => "eval",
                     "callback" => (cb += 1)),
                     eval_obj)
 @test readmsg() == ["cb", cb, symbol_to_string(Atom.render(Atom.Editor(), realpath(joinpath(pwd(), "tests.jl"))))]
-
-# side effects (e.g. plots) are correctly recognized and sent to Atom
