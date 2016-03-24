@@ -1,3 +1,4 @@
+
 using Hiccup, Lazy
 
 isuntitled(p) = ismatch(r"^untitled-[\d\w]+(:\d+)?$", p)
@@ -14,11 +15,6 @@ function pkgpath(path)
   m == nothing ? basename(path) : m.captures[1]
 end
 
-findpath(path) =
-  isabspath(path) || isuntitled(path) ?
-    (pkgpath(path), path) :
-    (normpath("base/$path"), basepath(path))
-
 appendline(path, line) = line > 0 ? "$path:$line" : path
 
 baselink(path, line) =
@@ -30,6 +26,11 @@ baselink(path, line) =
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
 
+findpath(path) =
+  isabspath(path) || isuntitled(path) ?
+    (pkgpath(path), path) :
+    (normpath("base/$path"), basepath(path))
+
 function methodarray(mt::MethodTable)
   defs = Method[]
   d = mt.defs
@@ -40,8 +41,8 @@ function methodarray(mt::MethodTable)
   file(m) = m.func.code.file |> string |> basename
   line(m) = m.func.code.line
   sort!(defs, lt = (a, b) -> file(a) == file(b) ?
-                               line(a) < line(b) :
-                               file(a) < file(b))
+                             line(a) < line(b)  :
+                             file(a) < file(b))
   return defs
 end
 
@@ -73,8 +74,9 @@ end
 
 @render i::Inline ms::Vector{Method} begin
   isempty(ms) && return "No methods found."
+  r(x) = render(i, x, options = options)
   Tree(Text("$(length(ms)) method$(length(ms)==1?"":"s") found:"),
-       [table(".methods", [tr(td(a), td(b)) for (a, b) in map(view, ms)])])
+       [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
 end
 
 function view_obj(m::Method)
