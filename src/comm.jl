@@ -61,6 +61,7 @@ function handlemsg(t, args...)
     end
   else
     warn("Atom.jl: unrecognised message $t.")
+    msg("cancelCallback", callback)
   end
 end
 
