@@ -32,8 +32,8 @@ function methodarray(mt::MethodTable)
     push!(defs, d)
     d = d.next
   end
-  file(m) = m.func.code.file |> string |> basename
-  line(m) = m.func.code.line
+  file(m) = m.func.file |> string |> basename
+  line(m) = m.func.line
   sort!(defs, lt = (a, b) -> file(a) == file(b) ?
                                line(a) < line(b) :
                                file(a) < file(b))
@@ -44,9 +44,9 @@ methodarray(x) = methodarray(methods(x))
 
 function view(m::Method)
   tv, decls, file, line = Base.arg_decl_parts(m)
-  params = [span(c(x, isempty(T) ? "" : "::", strong(stripparams(T)))) for (x, T) in decls]
+  params = [span(c(x, isempty(T) ? "" : "::", strong(stripparams(T)))) for (x, T) in decls[2:end]]
   params = interpose(params, ", ")
-  span(c(string(m.func.code.name),
+  span(c(string(m.func.name),
          "(", params..., ")")),
   file == :null ? "not found" : baselink(string(file), line)
 end

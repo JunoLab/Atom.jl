@@ -21,17 +21,13 @@ end
 
 @render Inline x::Module strong(string(x))
 
-name(f::Function) =
-  isgeneric(f) ? string(f.env.name) :
-  isdefined(f, :env) && isa(f.env,Symbol) ? string(f.env) :
-  "λ"
-
 import Base.Docs: doc
 
+isanon(f) = contains(string(f), "#")
+
 @render Inline f::Function begin
-  isgeneric(f) ?
-    Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)]) :
-    Text(name(f))
+  isanon(f) ? Text("λ") :
+    Tree(Text(string(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
 end
 
 @render Inline xs::Vector begin
