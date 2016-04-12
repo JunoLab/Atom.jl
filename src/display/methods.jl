@@ -60,8 +60,9 @@ end
 # TODO: factor out table view
 @render i::Inline m::MethodTable begin
   ms = methodarray(m)
-  isempty(m) && return "$(m.name) has no methods."
+  isempty(ms) && return "$(m.name) has no methods."
   r(x) = render(i, x, options = options)
-  Tree(Text("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):"),
+  length(ms) == 1 && return r(ms[1])
+  Tree(Text("$(m.name) has $(length(ms)) method:"),
        [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
 end
