@@ -7,6 +7,13 @@ Allow the user to select one of the `xs`.
 """
 select(items) = @rpc select(items)
 
+"""
+    input() -> "..."
+
+Prompt the user to input some text, and return it.
+"""
+input() = @rpc input()
+
 type Shell <: AtomShell.Shell end
 
 AtomShell.active(::Shell) = true
