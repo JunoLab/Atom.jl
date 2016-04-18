@@ -1,11 +1,13 @@
+export selector, input
+
 """
-    select([xs...]) -> x
+    selector([xs...]) -> x
 
 Allow the user to select one of the `xs`.
 
 `xs` should be an iterator of strings.
 """
-select(items) = @rpc select(items)
+selector(items) = @rpc select(items)
 
 """
     input() -> "..."
