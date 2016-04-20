@@ -29,18 +29,17 @@ progress(x = nothing) = @msg progress(x)
 Show a progress metre for the given loop.
 """
 macro progress(ex)
-  @capture(ex, for i_ in range_ body_ end) ||
+  @capture(ex, for x_ in range_ body_ end) ||
     error("@progress requires a for loop")
-    quote
-      range = $(esc(range))
-      i, n = 0, length(range)
-      progress(0)
-      for $(esc(i)) in range
-        $(esc(body))
-        i += 1
-        progress(i/n)
-      end
+  @esc x range body
+  quote
+    range = $range
+    n = length(range)
+    for (i, $x) in enumerate(range)
+      $body
+      progress(i/n)
     end
+  end
 end
 
 # Blink stuff
