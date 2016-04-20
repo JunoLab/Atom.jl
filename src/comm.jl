@@ -1,3 +1,13 @@
+macro msg(ex)
+  @capture(ex, f_(args__)) || error("@msg requires function call syntax")
+  :(msg($(string(f)), $(map(esc, args)...)))
+end
+
+macro rpc(ex)
+  @capture(ex, f_(args__)) || error("@rpc requires function call syntax")
+  :(rpc($(string(f)), $(map(esc, args)...)))
+end
+
 global sock = nothing
 
 isactive(sock::Void) = false
@@ -7,18 +17,19 @@ macro ierrs(ex)
   :(try
       $(ex)
     catch e
-      msg(:error, d(:msg         => "Julia Client – Internal Error",
-                    :detail      => sprint(showerror, e, catch_backtrace()),
-                    :dismissable => true))
+      @msg error(d(:msg         => "Julia Client – Internal Error",
+                   :detail      => sprint(showerror, e, catch_backtrace()),
+                   :dismissable => true))
     end)
 end
 
-function initialise()
+function initialise(; welcome = false)
   exit_on_sigint(false)
   eval(AtomShell, :(_shell = $(Shell())))
+  welcome && @msg welcome()
 end
 
-function connect(port)
+function connect(port; kws...)
   global sock = Base.connect("127.0.0.1", port)
   @async while isopen(sock)
     @ierrs let # Don't let tasks close over the same t, data
@@ -26,7 +37,7 @@ function connect(port)
       @schedule @ierrs handlemsg(msg...)
     end
   end
-  initialise()
+  initialise(; kws...)
 end
 
 function msg(t, args...)
@@ -71,13 +82,3 @@ handle("cb") do id, result
 end
 
 isconnected() = sock ≠ nothing && isopen(sock)
-
-macro msg(ex)
-  @capture(ex, f_(args__)) || error("@msg requires function call syntax")
-  :(msg($(string(f)), $(map(esc, args)...)))
-end
-
-macro rpc(ex)
-  @capture(ex, f_(args__)) || error("@rpc requires function call syntax")
-  :(rpc($(string(f)), $(map(esc, args)...)))
-end
