@@ -90,7 +90,7 @@ method_obj(m::MethodTable) = method_obj(methodarray(m))
 
 function method_obj(ms)
   isempty(ms) && return []
-  [@d(
+  [d(
     :text => signature,
     :dispfile => dispfile,
     :file => file,
