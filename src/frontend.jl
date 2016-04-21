@@ -21,7 +21,12 @@ input() = @rpc input()
 
 Set Atom's progress bar to the given value.
 """
-progress(x = nothing) = @msg progress(x)
+progress(x::Void = nothing) = @msg progress(x)
+
+progress(x::Real) =
+  @msg progress(x < 0.01 ? nothing :
+                x > 1 ? 1 :
+                x)
 
 """
   @progress for i = ...
