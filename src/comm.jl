@@ -67,7 +67,7 @@ function handlemsg(t, args...)
       result = handlers[t](args...)
       isa(callback, Integer) && msg("cb", callback, result)
     catch e
-      msg("cancelCallback", callback)
+      isa(callback, Integer) && msg("cancelCallback", callback)
       rethrow()
     end
   else

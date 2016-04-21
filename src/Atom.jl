@@ -12,6 +12,9 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
+include("debugger.jl")
+@reexport using .Debugger
+
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
 
