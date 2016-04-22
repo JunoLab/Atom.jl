@@ -33,7 +33,10 @@ macro step(ex)
   :(step($(esc(f)), $(map(esc, args)...)))
 end
 
-validcall(x) = @capture(x, f_(args__)) && !isa(f, Core.IntrinsicFunction)
+validcall(x) =
+  @capture(x, f_(args__)) &&
+  !isa(f, Core.IntrinsicFunction) &&
+  f ∉ [tuple, getfield]
 
 function tocall!(interp)
   while !validcall(interp.next_expr[2])
