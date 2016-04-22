@@ -42,76 +42,62 @@ macro errs(ex)
     end)
 end
 
-const evallock = ReentrantLock()
-
-function Base.lock(f::Function, l::ReentrantLock)
-  lock(l)
-  try return f()
-  finally unlock(l) end
-end
-
 withpath(f, path) =
   Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 handle("eval") do data
   @destruct [text, line, path, mod] = data
   mod = getthing(mod)
-  lock(evallock) do
-    @dynamic let Media.input = Editor()
-      result = withpath(path) do
-        @errs include_string(mod, text, path, line)
-      end
-
-      display = Media.getdisplay(typeof(result), default = Editor())
-      display ≠ Editor() && render(display, result)
-      render(Editor(), result)
-     end
-   end
-end
-
-handle("evalall") do data
-  lock(evallock) do
-    @dynamic let Media.input = Editor()
-      @destruct [setmod = :module || nothing, path || "untitled", code] = data
-      mod = Main
-      if setmod ≠ nothing
-        mod = getthing(setmod, Main)
-      elseif isabspath(path)
-        mod = getthing(CodeTools.filemodule(path), Main)
-      end
-      try
-        withpath(path) do
-          include_string(mod, code, path)
-        end
-      catch e
-        @msg error(d(:msg => "Error evaluating $(basename(path))",
-                     :detail => sprint(showerror, e, catch_backtrace()),
-                     :dismissable => true))
-      end
+  @dynamic let Media.input = Editor()
+    result = withpath(path) do
+      @run @errs include_string(mod, text, path, line)
     end
-    return
+
+    display = Media.getdisplay(typeof(result), default = Editor())
+    display ≠ Editor() && render(display, result)
+    render(Editor(), result)
   end
 end
 
-handle("evalrepl") do data
-  lock(evallock) do
-    @dynamic let Media.input = Console()
-      @destruct [mode || nothing, code, mod || "Main"] = data
-      mod = getthing(mod)
-      if mode == "shell"
-        code = "run(`$code`)"
-      elseif mode == "help"
-        code = "@doc $code"
-      end
-      try
-        withpath(nothing) do
-          render(@errs eval(mod, :(include_string($code))))
-        end
-      catch e
-        showerror(STDERR, e, catch_backtrace())
-      end
-      return
+handle("evalall") do data
+  @dynamic let Media.input = Editor()
+    @destruct [setmod = :module || nothing, path || "untitled", code] = data
+    mod = Main
+    if setmod ≠ nothing
+      mod = getthing(setmod, Main)
+    elseif isabspath(path)
+      mod = getthing(CodeTools.filemodule(path), Main)
     end
+    try
+      withpath(path) do
+        @run include_string(mod, code, path)
+      end
+    catch e
+      @msg error(d(:msg => "Error evaluating $(basename(path))",
+                   :detail => sprint(showerror, e, catch_backtrace()),
+                   :dismissable => true))
+    end
+  end
+  return
+end
+
+handle("evalrepl") do data
+  @dynamic let Media.input = Console()
+    @destruct [mode || nothing, code, mod || "Main"] = data
+    mod = getthing(mod)
+    if mode == "shell"
+      code = "run(`$code`)"
+    elseif mode == "help"
+      code = "@doc $code"
+    end
+    try
+      withpath(nothing) do
+        render(@run @errs eval(mod, :(include_string($code))))
+      end
+    catch e
+      showerror(STDERR, e, catch_backtrace())
+    end
+    return
   end
 end
 

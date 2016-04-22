@@ -4,7 +4,7 @@ using MacroTools, ASTInterpreter
 
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line, next_line!,
   evaluated!, finish!, step_expr
-import ..Atom: fullpath, handle, @msg
+import ..Atom: fullpath, handle, @msg, @run
 
 export @step
 
@@ -61,7 +61,7 @@ function done(interp)
 end
 
 handle("nextline") do
-  global interp = next_line!(interp) && tocall!(interp) ? interp : done(interp)
+  global interp = @run next_line!(interp) && tocall!(interp) ? interp : done(interp)
   stepto(interp)
 end
 
@@ -71,20 +71,20 @@ handle("stepin") do
   new = enter_call_expr(interp, interp.next_expr[2])
   if new ≠ nothing
     interp = new
-    tocall!(interp)
+    @run tocall!(interp)
     stepto(interp)
   end
 end
 
 handle("finish") do
   global interp
-  finish!(interp)
+  @run finish!(interp)
   interp = done(interp)
   stepto(interp)
 end
 
 handle("stepexpr") do
-  step_expr(interp)
+  @run step_expr(interp)
   stepto(interp)
 end
 
