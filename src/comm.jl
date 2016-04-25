@@ -40,6 +40,17 @@ function connect(port; kws...)
   initialise(; kws...)
 end
 
+function serve(port)
+  server = listen(port)
+  global sock = accept(server)
+  @async while isopen(sock)
+    @ierrs let
+      msg = JSON.parse(sock)
+      @schedule @ierrs handlemsg(msg...)
+    end
+  end
+end
+
 function msg(t, args...)
   isactive(sock) || return
   println(sock, json(c(t, args...)))
