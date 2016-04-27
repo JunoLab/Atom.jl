@@ -71,11 +71,8 @@ Atom.handlemsg(Dict("type" => "eval",
 @test readmsg()[3]["type"] == "error"
 
 # we execute the command in the correct file
-println(pwd())
-println(joinpath(pwd(), "tests.jl"))
-println(realpath(joinpath(pwd(), "tests.jl")))
-eval_obj = Dict("text" => "@__FILE__", "line" => 1, "path" => realpath(joinpath(pwd(), "tests.jl")), "mod" => "Atom")
+eval_obj = Dict("text" => "@__FILE__", "line" => 1, "path" => normpath(joinpath(pwd(), "tests.jl")), "mod" => "Atom")
 Atom.handlemsg(Dict("type" => "eval",
                     "callback" => (cb += 1)),
                     eval_obj)
-@test readmsg() == ["cb", cb, symbol_to_string(Atom.render(Atom.Editor(), realpath(joinpath(pwd(), "tests.jl"))))]
+@test readmsg() == ["cb", cb, symbol_to_string(Atom.render(Atom.Editor(), normpath(joinpath(pwd(), "tests.jl"))))]
