@@ -45,7 +45,7 @@ function msg(t, args...)
   println(sock, json(c(t, args...)))
 end
 
-const handlers = Dict{UTF8String, Function}()
+const handlers = Dict{String, Function}()
 
 handle(f, t) = handlers[t] = f
 

@@ -55,7 +55,7 @@ end
 handleundefs(X::Vector) = handleundefs(X, 1:length(X))
 
 function handleundefs(X::Vector, inds)
-  Xout = Vector{Union{ASCIIString, eltype(X)}}(length(inds))
+  Xout = Vector{Union{String, eltype(X)}}(length(inds))
   j = 1
   for i in inds
     Xout[j] = isdefined(X, i) ? X[i] : "#undef"

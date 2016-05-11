@@ -50,7 +50,7 @@ render(i::Inline, t::SubTree; options = d()) =
 
 type Copyable
   view
-  text::UTF8String
+  text::String
   Copyable(view, text::AString) = new(view, text)
 end
 
@@ -63,7 +63,7 @@ render(i::Inline, x::Copyable; options = d()) =
     :text => x.text)
 
 immutable Link
-  file::UTF8String
+  file::String
   line::Int
   contents::Vector{Any}
   Link(file::AString, line::Integer, contents...) =
