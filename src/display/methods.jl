@@ -1,3 +1,4 @@
+
 using Hiccup, Lazy
 
 isuntitled(p) = ismatch(r"^untitled-[\d\w]+(:\d+)?$", p)
@@ -21,9 +22,14 @@ baselink(path, line) =
   isuntitled(path) ? link(path, line, Text(appendline("untitled", line))) :
   isabspath(path)  ?
     link(path, line, Text(pkgpath(appendline(path, line)))) :
-    link(basepath(path), line, Text(normpath("base/$(appendline(path, line))")))
+    link(basepath(path), line, Text(normpath(joinpath("base", "$(appendline(path, line))"))))
 
 stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
+
+findpath(path) =
+  isabspath(path) || isuntitled(path) ?
+    (pkgpath(path), path) :
+    (normpath(joinpath("base", "$path")), basepath(path))
 
 function methodarray(mt::MethodTable)
   defs = Method[]
@@ -35,8 +41,8 @@ function methodarray(mt::MethodTable)
   file(m) = m.func.code.file |> string |> basename
   line(m) = m.func.code.line
   sort!(defs, lt = (a, b) -> file(a) == file(b) ?
-                               line(a) < line(b) :
-                               file(a) < file(b))
+                             line(a) < line(b)  :
+                             file(a) < file(b))
   return defs
 end
 
@@ -64,4 +70,30 @@ end
   r(x) = render(i, x, options = options)
   Tree(Text("$(m.name) has $(length(ms)) method$(length(ms)==1?"":"s"):"),
        [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
+end
+
+@render i::Inline ms::Vector{Method} begin
+  isempty(ms) && return "No methods found."
+  r(x) = render(i, x, options = options)
+  Tree(Text("$(length(ms)) method$(length(ms)==1?"":"s") found:"),
+       [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
+end
+
+function view_obj(m::Method)
+  tv, decls, file, line = Base.arg_decl_parts(m)
+  signature = [string(x, isempty(T) ? "" : "::", stripparams(T)) for (x, T) in decls]
+  signature = string(m.func.code.name, "(", join(signature, ", "), ")")
+  signature, findpath(string(file))..., line
+end
+
+method_obj(m::MethodTable) = method_obj(methodarray(m))
+
+function method_obj(ms)
+  isempty(ms) && return []
+  [d(
+    :text => signature,
+    :dispfile => dispfile,
+    :file => file,
+    :line => line - 1 # Atom starts counting at 0, Julia at 1
+  ) for (signature, dispfile, file, line) in map(view_obj, ms)]
 end

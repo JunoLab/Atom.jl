@@ -134,6 +134,9 @@ handle("methods") do data
     result = @errs include_string(mod, "methods($word)")
   elseif wordtype == DataType
     result = @errs include_string(mod, "methodswith($word)")
+  else
+    result = []
   end
-  d(:result => render(Editor(), result))
+  d(:items  => method_obj(result),
+    :error  => isa(result, EvalError))
 end

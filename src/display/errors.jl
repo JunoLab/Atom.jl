@@ -55,3 +55,5 @@ end
 
 render(::Console, e::EvalError; options = d()) =
   @msg result(render(Editor(), e, options = options))
+
+method_obj(x::EvalError) = sprint(showerror, x.err)
