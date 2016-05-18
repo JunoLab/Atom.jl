@@ -49,8 +49,8 @@ handle("eval") do data
   @destruct [text, line, path, mod] = data
   mod = getthing(mod)
   @dynamic let Media.input = Editor()
-    result = withpath(path) do
-      @run @errs include_string(mod, text, path, line)
+    result = @run withpath(path) do
+      @errs include_string(mod, text, path, line)
     end
 
     display = Media.getdisplay(typeof(result), default = Editor())
@@ -68,9 +68,9 @@ handle("evalall") do data
     elseif isabspath(path)
       mod = getthing(CodeTools.filemodule(path), Main)
     end
-    try
+    @run try
       withpath(path) do
-        @run include_string(mod, code, path)
+        include_string(mod, code, path)
       end
     catch e
       @msg error(d(:msg => "Error evaluating $(basename(path))",
