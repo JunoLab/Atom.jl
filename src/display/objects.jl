@@ -43,7 +43,7 @@ end
   j = 0
   st = Array{Atom.SubTree}(0)
   for (key, val) in d
-    push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
+    push!(st, SubTree(span(c(render(i, key), " → ")), val))
     j += 1
     j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
   end
@@ -58,11 +58,11 @@ end
 end
 
 @render i::Inline x::AbstractString begin
-  span(".string", c(render(i, Text(stringmime("text/plain", x)), options = options)))
+  span(".string", c(render(i, Text(stringmime("text/plain", x)))))
 end
 
-render{sym}(i::Inline, x::Irrational{sym}; options = d()) =
-  render(i, span(c(string(sym), " = ", render(i, float(x), options = options), "...")), options = options)
+render{sym}(i::Inline, x::Irrational{sym}) =
+  render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 handleundefs(X::Vector) = handleundefs(X, 1:length(X))
 

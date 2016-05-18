@@ -53,7 +53,7 @@ end
 
 @render i::Inline m::Method begin
   sig, link = view(m)
-  r(x) = render(i, x, options = options)
+  r(x) = render(i, x)
   span(c(r(sig), " at ", r(link)))
 end
 
@@ -61,7 +61,7 @@ end
 @render i::Inline m::MethodTable begin
   ms = methodarray(m)
   isempty(ms) && return "$(m.name) has no methods."
-  r(x) = render(i, x, options = options)
+  r(x) = render(i, x)
   length(ms) == 1 && return r(ms[1])
   Tree(Text("$(m.name) has $(length(ms)) method:"),
        [table(".methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])

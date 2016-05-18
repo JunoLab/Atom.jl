@@ -6,7 +6,7 @@ type Model
   data
 end
 
-render(::Inline, m::Model; options = d()) = m.data
+render(::Inline, m::Model) = m.data
 
 view(x::AString) = x
 view(x::Associative) = x
@@ -21,11 +21,11 @@ view(n::Node) =
     :attrs    => n.attrs,
     :contents => map(view, n.children))
 
-render(::Inline, n::Node; options = d()) = view(n)
+render(::Inline, n::Node) = view(n)
 
-render(::Inline, x::HTML; options = d()) = view(x)
+render(::Inline, x::HTML) = view(x)
 
-render(::Inline, x::AbstractFloat; options = d()) =
+render(::Inline, x::AbstractFloat) =
   d(:type => :number, :value => float64(x), :full => string(x))
 
 immutable Tree
@@ -33,12 +33,12 @@ immutable Tree
   children::Vector{Any}
 end
 
-render(i::Inline, t::Tree; options = d()) =
+render(i::Inline, t::Tree) =
   isempty(t.children) ?
-    render(i, t.head, options = options) :
+    render(i, t.head) :
     d(:type     => :tree,
-      :head     => render(i, t.head, options = options),
-      :children => map(x->render(i, x, options = options),
+      :head     => render(i, t.head),
+      :children => map(x->render(i, x),
                        t.children))
 
 immutable SubTree
@@ -46,10 +46,10 @@ immutable SubTree
   child
 end
 
-render(i::Inline, t::SubTree; options = d()) =
+render(i::Inline, t::SubTree) =
   d(:type  => :subtree,
-    :label => render(i, t.label, options = options),
-    :child => render(i, t.child, options = options))
+    :label => render(i, t.label),
+    :child => render(i, t.child))
 
 type Copyable
   view
@@ -60,9 +60,9 @@ end
 Copyable(view, text) = Copyable(view, render(Clipboard(), text))
 Copyable(view) = Copyable(view, view)
 
-render(i::Inline, x::Copyable; options = d()) =
+render(i::Inline, x::Copyable) =
   d(:type => :copy,
-    :view => render(i, x.view, options = options),
+    :view => render(i, x.view),
     :text => x.text)
 
 immutable Link
@@ -75,13 +75,13 @@ end
 
 Link(file::AString, contents...) = Link(file, 0, contents...)
 
-render(i::Inline, l::Link; options = d()) =
+render(i::Inline, l::Link) =
   d(:type => :link,
     :file => l.file,
     :line => l.line-1,
-    :contents => map(x->render(i, x, options = options), l.contents))
+    :contents => map(x->render(i, x), l.contents))
 
-render(::Clipboard, l::Link; options = d()) =
+render(::Clipboard, l::Link) =
   "$(l.file):$(l.line)"
 
 link(a...) = Link(a...)
