@@ -28,7 +28,7 @@ isanon(f) = contains(string(f), "#")
 @render Inline f::Function begin
   isanon(f) ? span(".support.function", "λ") :
     Tree(span(".support.function", string(typeof(f).name.mt.name)),
-         [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
+         [(CodeTools.hasdoc(f) ? [doc(f)] : [])..., methods(f)])
 end
 
 @render Inline xs::Vector begin
