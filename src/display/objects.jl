@@ -17,17 +17,18 @@ end
   end
 end
 
-@render Inline x::Type strong(string(x))
+@render Inline x::Type span(".support.type", string(x))
 
-@render Inline x::Module strong(string(x))
+@render Inline x::Module span(".keyword.other", string(x))
 
 import Base.Docs: doc
 
 isanon(f) = contains(string(f), "#")
 
 @render Inline f::Function begin
-  isanon(f) ? Text("λ") :
-    Tree(Text(typeof(f).name.mt.name), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
+  isanon(f) ? span(".support.function", "λ") :
+    Tree(span(".support.function", string(typeof(f).name.mt.name)),
+         [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)])
 end
 
 @render Inline xs::Vector begin
@@ -50,7 +51,18 @@ end
             fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
 end
 
-@render i::Inline x::Number Text(sprint(show, x))
+@render Inline x::Number span(".constant.number", string(x))
+
+@render i::Inline x::Complex begin
+  span(c(render(i, real(x)), " + ", render(i, imag(x)), "im"))
+end
+
+@render i::Inline x::AbstractString begin
+  span(".string", c(render(i, Text(stringmime("text/plain", x)), options = options)))
+end
+
+render{sym}(i::Inline, x::Irrational{sym}; options = d()) =
+  render(i, span(c(string(sym), " = ", render(i, float(x), options = options), "...")), options = options)
 
 handleundefs(X::Vector) = handleundefs(X, 1:length(X))
 

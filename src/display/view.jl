@@ -25,6 +25,9 @@ render(::Inline, n::Node; options = d()) = view(n)
 
 render(::Inline, x::HTML; options = d()) = view(x)
 
+render(::Inline, x::AbstractFloat; options = d()) =
+  d(:type => :number, :value => float64(x), :full => string(x))
+
 immutable Tree
   head
   children::Vector{Any}
