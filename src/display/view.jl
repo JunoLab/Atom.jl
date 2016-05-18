@@ -28,6 +28,17 @@ render(::Inline, x::HTML) = view(x)
 render(::Inline, x::AbstractFloat) =
   d(:type => :number, :value => float64(x), :full => string(x))
 
+@render Inline x::Expr begin
+  text = string(x)
+  length(split(text, "\n")) == 1 ?
+    Model(d(:type => :code, :text => text)) :
+    Tree(Text("Code"),
+         [Model(d(:type => :code, :text => text))])
+end
+
+render(::Console, x::Expr) =
+  @msg result(d(:type => :code, :text => string(x)))
+
 immutable Tree
   head
   children::Vector{Any}
