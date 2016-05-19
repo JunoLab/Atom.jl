@@ -75,3 +75,7 @@ function handleundefs(X::Vector, inds)
   end
   Xout
 end
+
+@render i::Inline xs::Tuple begin
+  span(c("(", (@_ xs map(x->render(i, x), _) interpose(_, ", "))..., ")"))
+end
