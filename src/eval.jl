@@ -48,57 +48,64 @@ withpath(f, path) =
 handle("eval") do data
   @destruct [text, line, path, mod] = data
   mod = getthing(mod)
-  @dynamic let Media.input = Editor()
-    result = @run withpath(path) do
-      @errs include_string(mod, text, path, line)
-    end
 
-    display = Media.getdisplay(typeof(result), default = Editor())
-    display ≠ Editor() && render(display, result)
-    render(Editor(), result)
+  result = @run begin
+    @dynamic let Media.input = Editor()
+      withpath(path) do
+        @errs include_string(mod, text, path, line)
+      end
+    end
   end
+
+  display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+  display ≠ Editor() && render(display, result)
+  render(Editor(), result)
 end
 
 handle("evalall") do data
-  @dynamic let Media.input = Editor()
-    @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    mod = Main
-    if setmod ≠ nothing
-      mod = getthing(setmod, Main)
-    elseif isabspath(path)
-      mod = getthing(CodeTools.filemodule(path), Main)
-    end
-    @run try
+  @destruct [setmod = :module || nothing, path || "untitled", code] = data
+  mod = Main
+  if setmod ≠ nothing
+    mod = getthing(setmod, Main)
+  elseif isabspath(path)
+    mod = getthing(CodeTools.filemodule(path), Main)
+  end
+  @run begin
+    @dynamic let Media.input = Editor()
       withpath(path) do
-        include_string(mod, code, path)
+        try
+          include_string(mod, code, path)
+        catch e
+          @msg error(d(:msg => "Error evaluating $(basename(path))",
+                       :detail => sprint(showerror, e, catch_backtrace()),
+                       :dismissable => true))
+        end
       end
-    catch e
-      @msg error(d(:msg => "Error evaluating $(basename(path))",
-                   :detail => sprint(showerror, e, catch_backtrace()),
-                   :dismissable => true))
     end
   end
   return
 end
 
 handle("evalrepl") do data
-  @dynamic let Media.input = Console()
-    @destruct [mode || nothing, code, mod || "Main"] = data
-    mod = getthing(mod)
-    if mode == "shell"
-      code = "run(`$code`)"
-    elseif mode == "help"
-      code = "@doc $code"
-    end
-    try
-      withpath(nothing) do
-        render(@run @errs eval(mod, :(include_string($code))))
-      end
-    catch e
-      showerror(STDERR, e, catch_backtrace())
-    end
-    return
+  @destruct [mode || nothing, code, mod || "Main"] = data
+  mod = getthing(mod)
+  if mode == "shell"
+    code = "run(`$code`)"
+  elseif mode == "help"
+    code = "@doc $code"
   end
+  try
+    @run begin
+      @dynamic let Media.input = Console()
+        withpath(nothing) do
+          render(@errs eval(mod, :(include_string($code))))
+        end
+      end
+    end
+  catch e
+    showerror(STDERR, e, catch_backtrace())
+  end
+  return
 end
 
 handle("docs") do data
