@@ -130,3 +130,46 @@ handle("methods") do data
   end
   d(:result => render(Editor(), result))
 end
+
+ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
+
+wstype(x) = nothing
+wstype(::Module) = "module"
+wstype(f::Function) = ismacro(f) ? "mixin" : "function"
+wstype(::Type) = "type"
+wstype(::Expr) = "mixin"
+wstype(::Symbol) = "tag"
+wstype(::AbstractString) = "property"
+wstype(::Number) = "constant"
+wstype(::Exception) = "tag"
+
+wsicon(x) = nothing
+wsicon(f::Function) = ismacro(f) ? "icon-mention" : nothing
+wsicon(::AbstractArray) = "icon-file-binary"
+wsicon(::AbstractVector) = "icon-list-ordered"
+wsicon(::AbstractString) = "icon-quote"
+wsicon(::Expr) = "icon-code"
+wsicon(::Symbol) = "icon-code"
+wsicon(::Exception) = "icon-bug"
+wsicon(::Number) = "n"
+
+wsnamed(name, val) = false
+wsnamed(name, f::Function) = name == methods(f).mt.name
+wsnamed(name, m::Module) = name == module_name(m)
+wsnamed(name, T::DataType) = name == symbol(T.name)
+
+function wsitem(mod, name)
+  val = getfield(mod, name)
+  d(:name  => wsnamed(name, val) ? nothing : name,
+    :value => render(Inline(), val),
+    :type  => wstype(val),
+    :icon  => wsicon(val))
+end
+
+handle("workspace") do mod
+  mod = getthing(mod)
+  ns = names(mod)
+  # TODO: only filter out imported modules
+  filter!(n -> !isa(getfield(mod, n), Module), ns)
+  return map(n -> wsitem(mod, n), ns)
+end
