@@ -12,6 +12,9 @@ render(::PlotPane, x) =
     div(d(:style=>"background: white"),
         HTML(stringmime("text/html", p)))
   end
+  @render Editor p::Gadfly.Plot begin
+    icon("graph")
+  end
 end
 
 @require Images begin

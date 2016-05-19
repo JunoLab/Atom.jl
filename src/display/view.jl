@@ -28,6 +28,8 @@ render(::Inline, x::HTML) = view(x)
 render(::Console, x::Node) =
   @msg result(view(x))
 
+render(::Editor, x::Node) = view(x)
+
 render(::Inline, x::AbstractFloat) =
   d(:type => :number, :value => float64(x), :full => string(x))
 

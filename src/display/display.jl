@@ -18,7 +18,7 @@ setdisplay(Console(), Any, Console())
 # Editor
 
 render(e::Editor, ::Void) =
-  render(e, Text("✓"))
+  render(e, icon("check"))
 
 render(::Editor, x) =
   render(Inline(), Copyable(x))

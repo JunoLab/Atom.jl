@@ -2,6 +2,8 @@ using Hiccup
 
 fade(x) = span(".fade", x)
 
+icon(x) = span(".icon.icon-$x", c())
+
 @render Inline x::Text begin
   ls = split(string(x), "\n")
   length(ls) > 1 ?
