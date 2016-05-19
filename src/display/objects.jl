@@ -31,11 +31,10 @@ isanon(f) = contains(string(f), "#")
          [(CodeTools.hasdoc(f) ? [doc(f)] : [])..., methods(f)])
 end
 
-@render Inline xs::Vector begin
+@render i::Inline xs::Vector begin
   length(xs) <= 25 ? children = handleundefs(xs) :
                      children = [handleundefs(xs, 1:10); span("..."); handleundefs(xs, length(xs)-9:length(xs))]
-    Tree(span(strong("Vector"),
-              fade(" $(eltype(xs)), $(length(xs))")),
+    Tree(span(c(render(i, eltype(xs)), fade("[$(length(xs))]"))),
          children)
 end
 
