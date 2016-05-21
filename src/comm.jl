@@ -58,7 +58,7 @@ function msg(t, args...)
   println(sock, json(c(t, args...)))
 end
 
-const handlers = Dict{UTF8String, Function}()
+const handlers = Dict{String, Function}()
 
 handle(f, t) = handlers[t] = f
 
@@ -80,7 +80,7 @@ function handlemsg(t, args...)
       result = handlers[t](args...)
       isa(callback, Integer) && msg("cb", callback, result)
     catch e
-      msg("cancelCallback", callback)
+      isa(callback, Integer) && msg("cancelCallback", callback)
       rethrow()
     end
   else

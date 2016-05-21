@@ -1,4 +1,4 @@
-export selector, input, progress, @progress
+export selector, input, progress, @progress, @!
 
 """
     selector([xs...]) -> x
@@ -44,6 +44,16 @@ macro progress(ex)
       $body
       progress(i/n)
     end
+  end
+end
+
+macro !(ex)
+  quote
+    result = $(esc(ex))
+    display(span(c(render(Inline(), $(Expr(:quote, ex))),
+                   " = ",
+                   render(Inline(), result))))
+    result
   end
 end
 

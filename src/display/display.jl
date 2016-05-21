@@ -17,20 +17,20 @@ setdisplay(Console(), Any, Console())
 
 # Editor
 
-render(e::Editor, ::Void; options = d()) =
-  render(e, Text("✓"), options = options)
+render(e::Editor, ::Void) =
+  render(e, icon("check"))
 
-render(::Editor, x; options = d()) =
-  render(Inline(), Copyable(x), options = options)
+render(::Editor, x) =
+  render(Inline(), Copyable(x))
 
 # Console
 
-render(::Console, x; options = d()) =
-  @msg result(render(Inline(), Copyable(x), options = options))
+render(::Console, x) =
+  @msg result(render(Inline(), Copyable(x)))
 
-render(::Console, ::Void; options = d()) = nothing
+render(::Console, ::Void) = nothing
 
-render(::Clipboard, x; options = d()) = stringmime(MIME"text/plain"(), x)
+render(::Clipboard, x) = stringmime(MIME"text/plain"(), x)
 
 include("plots.jl")
 include("view.jl")

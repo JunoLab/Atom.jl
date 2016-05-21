@@ -42,77 +42,70 @@ macro errs(ex)
     end)
 end
 
-const evallock = ReentrantLock()
-
-function Base.lock(f::Function, l::ReentrantLock)
-  lock(l)
-  try return f()
-  finally unlock(l) end
-end
-
 withpath(f, path) =
   Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 handle("eval") do data
   @destruct [text, line, path, mod] = data
   mod = getthing(mod)
-  lock(evallock) do
+
+  result = @run begin
     @dynamic let Media.input = Editor()
-      result = withpath(path) do
+      withpath(path) do
         @errs include_string(mod, text, path, line)
       end
+    end
+  end
 
-      display = Media.getdisplay(typeof(result), default = Editor())
-      display ≠ Editor() && render(display, result)
-      render(Editor(), result)
-     end
-   end
+  display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+  display ≠ Editor() && render(display, result)
+  render(Editor(), result)
 end
 
 handle("evalall") do data
-  lock(evallock) do
+  @destruct [setmod = :module || nothing, path || "untitled", code] = data
+  mod = Main
+  if setmod ≠ nothing
+    mod = getthing(setmod, Main)
+  elseif isabspath(path)
+    mod = getthing(CodeTools.filemodule(path), Main)
+  end
+  @run begin
     @dynamic let Media.input = Editor()
-      @destruct [setmod = :module || nothing, path || "untitled", code] = data
-      mod = Main
-      if setmod ≠ nothing
-        mod = getthing(setmod, Main)
-      elseif isabspath(path)
-        mod = getthing(CodeTools.filemodule(path), Main)
-      end
-      try
-        withpath(path) do
+      withpath(path) do
+        try
           include_string(mod, code, path)
+        catch e
+          @msg error(d(:msg => "Error evaluating $(basename(path))",
+                       :detail => sprint(showerror, e, catch_backtrace()),
+                       :dismissable => true))
         end
-      catch e
-        @msg error(d(:msg => "Error evaluating $(basename(path))",
-                     :detail => sprint(showerror, e, catch_backtrace()),
-                     :dismissable => true))
       end
     end
-    return
   end
+  return
 end
 
 handle("evalrepl") do data
-  lock(evallock) do
-    @dynamic let Media.input = Console()
-      @destruct [mode || nothing, code, mod || "Main"] = data
-      mod = getthing(mod)
-      if mode == "shell"
-        code = "run(`$code`)"
-      elseif mode == "help"
-        code = "@doc $code"
-      end
-      try
+  @destruct [mode || nothing, code, mod || "Main"] = data
+  mod = getthing(mod)
+  if mode == "shell"
+    code = "run(`$code`)"
+  elseif mode == "help"
+    code = "@doc $code"
+  end
+  try
+    @run begin
+      @dynamic let Media.input = Console()
         withpath(nothing) do
           render(@errs eval(mod, :(include_string($code))))
         end
-      catch e
-        showerror(STDERR, e, catch_backtrace())
       end
-      return
     end
+  catch e
+    showerror(STDERR, e, catch_backtrace())
   end
+  return
 end
 
 handle("docs") do data
@@ -136,4 +129,47 @@ handle("methods") do data
     result = @errs include_string(mod, "methodswith($word)")
   end
   d(:result => render(Editor(), result))
+end
+
+ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
+
+wstype(x) = nothing
+wstype(::Module) = "module"
+wstype(f::Function) = ismacro(f) ? "mixin" : "function"
+wstype(::Type) = "type"
+wstype(::Expr) = "mixin"
+wstype(::Symbol) = "tag"
+wstype(::AbstractString) = "property"
+wstype(::Number) = "constant"
+wstype(::Exception) = "tag"
+
+wsicon(x) = nothing
+wsicon(f::Function) = ismacro(f) ? "icon-mention" : nothing
+wsicon(::AbstractArray) = "icon-file-binary"
+wsicon(::AbstractVector) = "icon-list-ordered"
+wsicon(::AbstractString) = "icon-quote"
+wsicon(::Expr) = "icon-code"
+wsicon(::Symbol) = "icon-code"
+wsicon(::Exception) = "icon-bug"
+wsicon(::Number) = "n"
+
+wsnamed(name, val) = false
+wsnamed(name, f::Function) = name == methods(f).mt.name
+wsnamed(name, m::Module) = name == module_name(m)
+wsnamed(name, T::DataType) = name == symbol(T.name)
+
+function wsitem(mod, name)
+  val = getfield(mod, name)
+  d(:name  => wsnamed(name, val) ? nothing : name,
+    :value => render(Inline(), val),
+    :type  => wstype(val),
+    :icon  => wsicon(val))
+end
+
+handle("workspace") do mod
+  mod = getthing(mod)
+  ns = names(mod)
+  # TODO: only filter out imported modules
+  filter!(n -> !isa(getfield(mod, n), Module), ns)
+  return map(n -> wsitem(mod, n), ns)
 end

@@ -1,7 +1,7 @@
 type PlotPane end
 
-render(::PlotPane, x; options = d()) =
-  @msg plot(render(Inline(), x, options = options))
+render(::PlotPane, x) =
+  @msg plot(render(Inline(), x))
 
 @init setdisplay(Media.Graphical, PlotPane())
 
@@ -11,6 +11,9 @@ render(::PlotPane, x; options = d()) =
     Gadfly.set_default_plot_size(x*Gadfly.px, y*Gadfly.px)
     div(d(:style=>"background: white"),
         HTML(stringmime("text/html", p)))
+  end
+  @render Editor p::Gadfly.Plot begin
+    icon("graph")
   end
 end
 

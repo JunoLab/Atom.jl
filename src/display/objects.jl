@@ -2,6 +2,8 @@ using Hiccup
 
 fade(x) = span(".fade", x)
 
+icon(x) = span(".icon.icon-$x", c())
+
 @render Inline x::Text begin
   ls = split(string(x), "\n")
   length(ls) > 1 ?
@@ -17,28 +19,24 @@ end
   end
 end
 
-@render Inline x::Type strong(string(x))
+@render Inline x::Type span(".support.type", string(x))
 
-@render Inline x::Module strong(string(x))
-
-name(f::Function) =
-  isgeneric(f) ? string(f.env.name) :
-  isdefined(f, :env) && isa(f.env,Symbol) ? string(f.env) :
-  "λ"
+@render Inline x::Module span(".keyword.other", string(x))
 
 import Base.Docs: doc
 
+isanon(f) = contains(string(f), "#")
+
 @render Inline f::Function begin
-  isgeneric(f) ?
-    Tree(Text(name(f)), [(doc(f) != nothing ? [doc(f)] : [])..., methods(f)]) :
-    Text(name(f))
+  isanon(f) ? span(".support.function", "λ") :
+    Tree(span(".support.function", string(typeof(f).name.mt.name)),
+         [(CodeTools.hasdoc(f) ? [doc(f)] : [])..., methods(f)])
 end
 
-@render Inline xs::Vector begin
+@render i::Inline xs::Vector begin
   length(xs) <= 25 ? children = handleundefs(xs) :
                      children = [handleundefs(xs, 1:10); span("..."); handleundefs(xs, length(xs)-9:length(xs))]
-    Tree(span(strong("Vector"),
-              fade(" $(eltype(xs)), $(length(xs))")),
+    Tree(span(c(render(i, eltype(xs)), fade("[$(length(xs))]"))),
          children)
 end
 
@@ -46,7 +44,7 @@ end
   j = 0
   st = Array{Atom.SubTree}(0)
   for (key, val) in d
-    push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
+    push!(st, SubTree(span(c(render(i, key), " → ")), val))
     j += 1
     j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
   end
@@ -54,16 +52,31 @@ end
             fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
 end
 
-@render i::Inline x::Number Text(sprint(show, x))
+@render Inline x::Number span(".constant.number", string(x))
+
+@render i::Inline x::Complex begin
+  span(c(render(i, real(x)), " + ", render(i, imag(x)), "im"))
+end
+
+@render i::Inline x::AbstractString begin
+  span(".string", c(render(i, Text(stringmime("text/plain", x)))))
+end
+
+render{sym}(i::Inline, x::Irrational{sym}) =
+  render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 handleundefs(X::Vector) = handleundefs(X, 1:length(X))
 
 function handleundefs(X::Vector, inds)
-  Xout = Vector{Union{ASCIIString, eltype(X)}}(length(inds))
+  Xout = Vector{Union{String, eltype(X)}}(length(inds))
   j = 1
   for i in inds
     Xout[j] = isdefined(X, i) ? X[i] : "#undef"
     j += 1
   end
   Xout
+end
+
+@render i::Inline xs::Tuple begin
+  span(c("(", (@_ xs map(x->render(i, x), _) interpose(_, ", "))..., ")"))
 end
