@@ -13,8 +13,10 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-include("debugger.jl")
-@reexport using .Debugger
+@static if !is_windows()
+  include("debugger.jl")
+  @reexport using .Debugger
+end
 
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
