@@ -1,10 +1,10 @@
 module Debugger
 
-using MacroTools, ASTInterpreter
+using MacroTools, ASTInterpreter, Lazy
 
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line, next_line!,
   evaluated!, finish!, step_expr
-import ..Atom: fullpath, handle, @msg, @run
+import ..Atom: fullpath, handle, @msg, @run, wsitem
 
 export @step
 
@@ -17,6 +17,8 @@ stepto(i::Interpreter) = stepto(file(i), line(i), string(i.next_expr[2]))
 stepto(::Void) = debugmode(false)
 
 interp = nothing
+
+isdebugging() = interp ≠ nothing
 
 function step(args...)
   global interp
@@ -86,6 +88,22 @@ end
 handle("stepexpr") do
   @run step_expr(interp)
   stepto(interp)
+end
+
+contexts(i::Interpreter = interp) =
+  reverse!([d(:context => i.linfo.def.name, :items => context(i)) for i in i.stack])
+
+function context(i::Interpreter)
+  items = []
+  for (k, v) in zip(i.linfo.sparam_syms, i.env.sparams)
+    push!(items, wsitem(k, v))
+  end
+  for (k, v) in zip(i.linfo.slotnames, i.env.locals)
+    # TODO: explicit nulls
+    k in (symbol("#self#"), symbol("#unused#")) && continue
+    push!(items, wsitem(k, isnull(v) ? v : get(v)))
+  end
+  return items
 end
 
 end

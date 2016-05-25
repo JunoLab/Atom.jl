@@ -146,6 +146,7 @@ wstype(::Exception) = "tag"
 wsicon(x) = nothing
 wsicon(f::Function) = ismacro(f) ? "icon-mention" : nothing
 wsicon(::AbstractArray) = "icon-file-binary"
+wsicon(::AbstractArray) = "t"
 wsicon(::AbstractVector) = "icon-list-ordered"
 wsicon(::AbstractString) = "icon-quote"
 wsicon(::Expr) = "icon-code"
@@ -158,18 +159,23 @@ wsnamed(name, f::Function) = name == methods(f).mt.name
 wsnamed(name, m::Module) = name == module_name(m)
 wsnamed(name, T::DataType) = name == symbol(T.name)
 
-function wsitem(mod, name)
-  val = getfield(mod, name)
+function wsitem(name::Symbol, val)
   d(:name  => wsnamed(name, val) ? nothing : name,
     :value => render(Inline(), val),
     :type  => wstype(val),
     :icon  => wsicon(val))
 end
 
+wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
+
 handle("workspace") do mod
   mod = getthing(mod)
   ns = names(mod)
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)
-  return map(n -> wsitem(mod, n), ns)
+  contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
+  if Debugger.isdebugging()
+    prepend!(contexts, Debugger.contexts())
+  end
+  return contexts
 end
