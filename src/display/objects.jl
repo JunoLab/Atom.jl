@@ -52,7 +52,7 @@ end
             fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
 end
 
-@render Inline x::Number span(".constant.number", string(x))
+@render Inline x::Number span(".constant.number", sprint(show, x))
 
 @render i::Inline x::Complex begin
   span(c(render(i, real(x)), " + ", render(i, imag(x)), "im"))
