@@ -4,6 +4,7 @@ using MacroTools, ASTInterpreter, Lazy
 
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line, next_line!,
   evaluated!, finish!, step_expr
+using ..Atom
 import ..Atom: fullpath, handle, @msg, @run, wsitem
 
 export @step
@@ -104,6 +105,12 @@ function context(i::Interpreter)
     push!(items, wsitem(k, isnull(v) ? v : get(v)))
   end
   return items
+end
+
+function interpret(code::AbstractString, i::Interpreter = interp)
+  code = parse(code)
+  ok, result = ASTInterpreter.eval_in_interp(i, code)
+  return ok ? result : Atom.EvalError(result)
 end
 
 end

@@ -38,7 +38,7 @@ macro errs(ex)
   :(try
       $(esc(ex))
     catch e
-      EvalError(e.error, catch_backtrace())
+      EvalError(isa(e, LoadError) ? e.error : e, catch_backtrace())
     end)
 end
 
@@ -98,7 +98,7 @@ handle("evalrepl") do data
     @run begin
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          render(@errs eval(mod, :(include_string($code))))
+          render(@errs Debugger.isdebugging() ? Debugger.interpret(code) : eval(mod, :(include_string($code))))
         end
       end
     end

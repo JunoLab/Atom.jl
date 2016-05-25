@@ -3,6 +3,8 @@ type EvalError
   bt
 end
 
+EvalError(err) = EvalError(err, [])
+
 # @render Inline e::EvalError Text(sprint(Base.showerror, e.err, e.bt))
 
 rendererr(err) = strong(".error-description", err)
