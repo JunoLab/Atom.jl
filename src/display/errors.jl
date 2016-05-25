@@ -49,7 +49,8 @@ function render(::Editor, e::EvalError)
     :view => render(Inline(),
                     Copyable(
                       Tree(rendererr(tmp[1]),
-                           [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]),
+                           length(tmp) == 1 && isempty(e.bt) ? [] :
+                            [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]),
                       sprint(showerror, e.err, e.bt))),
     :highlights => highlights(e))
 end
