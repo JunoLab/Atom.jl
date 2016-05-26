@@ -1,11 +1,11 @@
 module Debugger
 
-using MacroTools, ASTInterpreter, Lazy
+using MacroTools, ASTInterpreter, Lazy, Hiccup
 
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line, next_line!,
   evaluated!, finish!, step_expr
 using ..Atom
-import ..Atom: fullpath, handle, @msg, @run, wsitem
+import ..Atom: fullpath, handle, @msg, @run, wsitem, render, Inline
 
 export @step
 
@@ -14,8 +14,16 @@ file(i::Interpreter) = fullpath(string(i.linfo.def.file))
 
 debugmode(on) = @msg debugmode(on)
 stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(i::Interpreter) = stepto(file(i), line(i), string(i.next_expr[2]))
+stepto(i::Interpreter) = stepto(file(i), line(i), stepview(i.next_expr[2]))
 stepto(::Void) = debugmode(false)
+
+function stepview(ex)
+  @capture(ex, f_(as__)) || return render(Inline(), Text(string(ex)))
+  render(Inline(), span(c(render(Inline(), f),
+                          "(",
+                          interpose([render(Inline(), a) for a in as], ", ")...,
+                          ")")))
+end
 
 interp = nothing
 
