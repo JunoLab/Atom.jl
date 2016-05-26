@@ -76,8 +76,10 @@ handle("evalall") do data
         try
           include_string(mod, code, path)
         catch e
+          ee = EvalError(e, catch_backtrace())
+          render(Console(), ee)
           @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => sprint(showerror, e, catch_backtrace()),
+                       :detail => sprint(showerror, e, ee.bt),
                        :dismissable => true))
         end
       end
