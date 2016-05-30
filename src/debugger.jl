@@ -2,19 +2,21 @@ module Debugger
 
 using MacroTools, ASTInterpreter, Lazy, Hiccup
 
-import ASTInterpreter: Interpreter, enter_call_expr, determine_line, next_line!,
+import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
   evaluated!, finish!, step_expr
 using ..Atom
 import ..Atom: fullpath, handle, @msg, @run, wsitem, render, Inline
 
 export @step
 
-line(i::Interpreter) = determine_line(i, i.next_expr[1])
-file(i::Interpreter) = fullpath(string(i.linfo.def.file))
+function fileline(i::Interpreter)
+  file, line = determine_line_and_file(i, i.next_expr[1])[end]
+  Atom.fullpath(string(file)), line
+end
 
 debugmode(on) = @msg debugmode(on)
 stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(i::Interpreter) = stepto(file(i), line(i), stepview(i.next_expr[2]))
+stepto(i::Interpreter) = stepto(fileline(i)..., stepview(i.next_expr[2]))
 stepto(::Void) = debugmode(false)
 
 function stepview(ex)
