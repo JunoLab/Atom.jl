@@ -31,7 +31,9 @@ render(::Console, x::Node) =
 render(::Editor, x::Node) = view(x)
 
 render(::Inline, x::AbstractFloat) =
-  d(:type => :number, :value => float64(x), :full => string(x))
+  isnan(x) || isinf(x) ?
+    view(span(".constant.number", string(x))) :
+    d(:type => :number, :value => float64(x), :full => string(x))
 
 @render Inline x::Expr begin
   text = string(x)
