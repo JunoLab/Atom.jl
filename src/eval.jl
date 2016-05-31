@@ -137,3 +137,7 @@ handle("methods") do data
   end
   d(:result => render(Editor(), result))
 end
+
+handle("workspace") do mod
+  return []
+end
