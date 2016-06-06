@@ -92,7 +92,7 @@ handle("evalrepl") do data
   @destruct [mode || nothing, code, mod || "Main"] = data
   mod = getthing(mod)
   if mode == "shell"
-    code = "run(`$code`)"
+    code = "Base.repl_cmd(`$code`, STDOUT)"
   elseif mode == "help"
     code = "@doc $code"
   end
