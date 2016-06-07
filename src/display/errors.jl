@@ -24,8 +24,8 @@ function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(In
     split(_, "\n")
     map(strip, _)
     filter(x->!isempty(x), _)
-    map(l -> match(r"^(?:in (.*) at|(.*) from) (.*)$", l), _)
-    map(l -> (@or(l.captures[1], l.captures[2]), splitlink(l.captures[3])...), _)
+    map(l -> match(r"^(?:in (.*) at|(.*) from) (.*?)( .*)?$", l), _)
+    map(l -> (@or(l.captures[1], l.captures[2]), splitlink(l.captures[3])..., l.captures[4]), _)
   end
 end
 
@@ -38,8 +38,8 @@ function renderbt(ls)
   span(".error-trace",
        [div(".trace-entry",
         c(fade("in "), f, fade(" at "),
-          render(Inline(), Copyable(baselink(loc, li)))))
-        for (f, loc, li) in ls])
+          render(Inline(), Copyable(baselink(loc, li))), fade(@or(postfix, ""))))
+        for (f, loc, li, postfix) in ls])
 end
 
 function render(::Editor, e::EvalError)
