@@ -112,9 +112,15 @@ end
 
 handle("docs") do data
   @destruct [mod || "Main", word] = data
-  mod = include_string(mod)
-  result = @errs include_string(mod, "@doc $word")
-  d(:result => render(Editor(), result))
+  mod = getthing(mod)
+  docstring = @errs include_string(mod, "@doc $word")
+  mtable = try include_string(mod, "methods($word)") catch [] end
+  out = [HTML(sprint(show, MIME"text/html"(), docstring)); mtable]
+  isa(docstring, EvalError) ?
+    d(:error    =>  true)   :
+    d(:type     => :dom,
+      :tag      => :div,
+      :contents =>  map(x -> render(Editor(), x), out))
 end
 
 handle("methods") do data
