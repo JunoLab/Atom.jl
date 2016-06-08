@@ -80,3 +80,9 @@ end
 @render i::Inline xs::Tuple begin
   span(c("(", (@_ xs map(x->render(i, x), _) interpose(_, ", "))..., ")"))
 end
+
+@render i::Inline md::Base.Markdown.MD begin
+  mds = CodeTools.flatten(md)
+  length(mds) == 1 ? Text(chomp(sprint(show, MIME"text/markdown"(), md))) :
+                     Tree(Text("MD"), [HTML(sprint(show, MIME"text/html"(), md))])
+end
