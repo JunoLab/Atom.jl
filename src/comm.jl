@@ -17,7 +17,7 @@ macro ierrs(ex)
   :(try
       $(ex)
     catch e
-      ee = EvalError(e, catch_backtrace())
+      ee = EvalError(e, backtrace())
       @msg error(d(:msg         => "Julia Client – Internal Error",
                    :detail      => sprint(showerror, e, ee.bt),
                    :dismissable => true))
