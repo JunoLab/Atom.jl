@@ -38,7 +38,7 @@ macro errs(ex)
   :(try
       $(esc(ex))
     catch e
-      EvalError(isa(e, LoadError) ? e.error : e, catch_backtrace())
+      EvalError(isa(e, LoadError) ? e.error : e, backtrace())
     end)
 end
 
@@ -76,7 +76,7 @@ handle("evalall") do data
         try
           include_string(mod, code, path)
         catch e
-          ee = EvalError(e, catch_backtrace())
+          ee = EvalError(e, backtrace())
           render(Console(), ee)
           @msg error(d(:msg => "Error evaluating $(basename(path))",
                        :detail => sprint(showerror, e, ee.bt),
@@ -105,16 +105,22 @@ handle("evalrepl") do data
       end
     end
   catch e
-    showerror(STDERR, e, catch_backtrace())
+    showerror(STDERR, e, backtrace())
   end
   return
 end
 
 handle("docs") do data
   @destruct [mod || "Main", word] = data
-  mod = include_string(mod)
-  result = @errs include_string(mod, "@doc $word")
-  d(:result => render(Editor(), result))
+  mod = getthing(mod)
+  docstring = @errs include_string(mod, "@doc $word")
+  mtable = try include_string(mod, "methods($word)") catch [] end
+  out = [HTML(sprint(show, MIME"text/html"(), docstring)); mtable]
+  isa(docstring, EvalError) ?
+    d(:error    =>  true)   :
+    d(:type     => :dom,
+      :tag      => :div,
+      :contents =>  map(x -> render(Editor(), x), out))
 end
 
 handle("methods") do data
