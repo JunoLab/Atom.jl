@@ -154,7 +154,6 @@ wstype(::Exception) = "tag"
 wsicon(x) = nothing
 wsicon(f::Function) = ismacro(f) ? "icon-mention" : nothing
 wsicon(::AbstractArray) = "icon-file-binary"
-wsicon(::AbstractArray) = "t"
 wsicon(::AbstractVector) = "icon-list-ordered"
 wsicon(::AbstractString) = "icon-quote"
 wsicon(::Expr) = "icon-code"
