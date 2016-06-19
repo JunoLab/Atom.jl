@@ -1,13 +1,7 @@
-module Debugger
-
-using MacroTools, ASTInterpreter, Lazy, Hiccup
-
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
   evaluated!, finish!, step_expr
-using ..Atom
-import ..Atom: fullpath, handle, @msg, @run, wsitem, render, Inline
 
-export @step
+import ..Atom: fullpath, handle, @msg, @run, wsitem, render, Inline
 
 function fileline(i::Interpreter)
   file, line = determine_line_and_file(i, i.next_expr[1])[end]
@@ -30,21 +24,6 @@ end
 interp = nothing
 
 isdebugging() = interp ≠ nothing
-
-function step(args...)
-  global interp
-  # interp == nothing || error("Already stepping!")
-  interp = enter_call_expr(nothing, :($(args...)()))
-  tocall!(interp)
-  debugmode(true)
-  stepto(interp)
-  return
-end
-
-macro step(ex)
-  @capture(ex, f_(args__)) || error("Syntax: @enter f(...)")
-  :(step($(esc(f)), $(map(esc, args)...)))
-end
 
 validcall(x) =
   @capture(x, f_(args__)) &&
@@ -122,5 +101,3 @@ function interpret(code::AbstractString, i::Interpreter = interp)
   ok, result = ASTInterpreter.eval_in_interp(i, code)
   return ok ? result : Atom.EvalError(result)
 end
-
-end # module
