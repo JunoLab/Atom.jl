@@ -23,6 +23,8 @@ end
 
 interp = nothing
 
+const cond = Condition()
+
 isdebugging() = interp ≠ nothing
 
 validcall(x) =
@@ -39,8 +41,10 @@ end
 
 function done(interp)
   stack, val = interp.stack, interp.retval
+  stack = filter(x -> isa(x, Interpreter), stack)
   if stack[1] == interp
     debugmode(false)
+    notify(cond)
     interp = nothing
   else
     i = findfirst(stack, interp)
@@ -53,7 +57,7 @@ function done(interp)
 end
 
 handle("nextline") do
-  global interp = @run next_line!(interp) && tocall!(interp) ? interp : done(interp)
+  global interp = next_line!(interp) && tocall!(interp) ? interp : done(interp)
   stepto(interp)
 end
 
@@ -63,20 +67,20 @@ handle("stepin") do
   new = enter_call_expr(interp, interp.next_expr[2])
   if new ≠ nothing
     interp = new
-    @run tocall!(interp)
+    tocall!(interp)
     stepto(interp)
   end
 end
 
 handle("finish") do
   global interp
-  @run finish!(interp)
+  finish!(interp)
   interp = done(interp)
   stepto(interp)
 end
 
 handle("stepexpr") do
-  @run step_expr(interp)
+  step_expr(interp)
   stepto(interp)
 end
 
@@ -95,6 +99,8 @@ function context(i::Interpreter)
   end
   return items
 end
+
+context(x) = []
 
 function interpret(code::AbstractString, i::Interpreter = interp)
   code = parse(code)
