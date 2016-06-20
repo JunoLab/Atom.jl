@@ -89,9 +89,6 @@ contexts(i::Interpreter = interp) =
 
 function context(i::Union{Interpreter,JuliaStackFrame})
   items = []
-  for f in fieldnames(i.linfo)
-    @show f isdefined(i.linfo, f)
-  end
   for (k, v) in zip(i.linfo.sparam_syms, i.env.sparams)
     push!(items, wsitem(k, v))
   end
