@@ -87,11 +87,15 @@ end
 contexts(i::Interpreter = interp) =
   reverse!([d(:context => i.linfo.def.name, :items => context(i)) for i in i.stack])
 
-function context(i::Interpreter)
+function context(i::Union{Interpreter,JuliaStackFrame})
   items = []
+  for f in fieldnames(i.linfo)
+    @show f isdefined(i.linfo, f)
+  end
   for (k, v) in zip(i.linfo.sparam_syms, i.env.sparams)
     push!(items, wsitem(k, v))
   end
+  isdefined(i.linfo, :slotnames) || return items
   for (k, v) in zip(i.linfo.slotnames, i.env.locals)
     # TODO: explicit nulls
     k in (symbol("#self#"), symbol("#unused#")) && continue
@@ -100,7 +104,7 @@ function context(i::Interpreter)
   return items
 end
 
-context(x) = []
+context(i) = []
 
 function interpret(code::AbstractString, i::Interpreter = interp)
   code = parse(code)

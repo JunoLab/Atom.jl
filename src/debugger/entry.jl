@@ -28,6 +28,8 @@ using Gallium
 import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
   Location, LocalSession, CStackFrame, JuliaStackFrame, Hooking, FileLineSource
 
+export breakpoint
+
 Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
 
 # function Gallium.breakpoint_hit(hook, RC)
