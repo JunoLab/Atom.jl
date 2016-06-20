@@ -1,7 +1,8 @@
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
   evaluated!, finish!, step_expr
 
-import ..Atom: fullpath, handle, @msg, @run, wsitem, render, Inline
+import ..Atom: fullpath, handle, @msg, @run, wsitem, Inline
+using Media
 
 function fileline(i::Interpreter)
   file, line = determine_line_and_file(i, i.next_expr[1])[end]
@@ -87,6 +88,14 @@ end
 contexts(i::Interpreter = interp) =
   reverse!([d(:context => i.linfo.def.name, :items => context(i)) for i in i.stack])
 
+import Gallium: JuliaStackFrame
+
+type Undefined end
+
+@render Inline u::Undefined span(".fade", "<undefined>")
+
+Atom.wsicon(::Undefined) = "icon-circle-slash" 
+
 function context(i::Union{Interpreter,JuliaStackFrame})
   items = []
   for (k, v) in zip(i.linfo.sparam_syms, i.env.sparams)
@@ -94,9 +103,8 @@ function context(i::Union{Interpreter,JuliaStackFrame})
   end
   isdefined(i.linfo, :slotnames) || return items
   for (k, v) in zip(i.linfo.slotnames, i.env.locals)
-    # TODO: explicit nulls
     k in (symbol("#self#"), symbol("#unused#")) && continue
-    push!(items, wsitem(k, isnull(v) ? v : get(v)))
+    push!(items, wsitem(k, isnull(v) ? Undefined() : get(v)))
   end
   return items
 end
