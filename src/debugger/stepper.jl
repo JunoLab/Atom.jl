@@ -40,13 +40,27 @@ function tocall!(interp)
   return true
 end
 
+function err(e)
+  debugmode(false)
+  interp = nothing
+  notify(cond, e, error = true)
+end
+
+macro errs(ex)
+  :(try
+      $(esc(ex))
+    catch e
+      err(e)
+    end)
+end
+
 function done(interp)
   stack, val = interp.stack, interp.retval
   stack = filter(x -> isa(x, Interpreter), stack)
   if stack[1] == interp
     debugmode(false)
-    notify(cond)
     interp = nothing
+    notify(cond)
   else
     i = findfirst(stack, interp)
     resize!(stack, i-1)
@@ -58,8 +72,10 @@ function done(interp)
 end
 
 handle("nextline") do
-  global interp = next_line!(interp) && tocall!(interp) ? interp : done(interp)
-  stepto(interp)
+  @errs begin
+    global interp = next_line!(interp) && tocall!(interp) ? interp : done(interp)
+    stepto(interp)
+  end
 end
 
 handle("stepin") do
@@ -75,14 +91,18 @@ end
 
 handle("finish") do
   global interp
-  finish!(interp)
-  interp = done(interp)
-  stepto(interp)
+  @errs begin
+    finish!(interp)
+    interp = done(interp)
+    stepto(interp)
+  end
 end
 
 handle("stepexpr") do
-  step_expr(interp)
-  stepto(interp)
+  @errs begin
+    step_expr(interp)
+    stepto(interp)
+  end
 end
 
 contexts(i::Interpreter = interp) =
@@ -94,7 +114,7 @@ type Undefined end
 
 @render Inline u::Undefined span(".fade", "<undefined>")
 
-Atom.wsicon(::Undefined) = "icon-circle-slash" 
+Atom.wsicon(::Undefined) = "icon-circle-slash"
 
 function context(i::Union{Interpreter,JuliaStackFrame})
   items = []
