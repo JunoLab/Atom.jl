@@ -96,16 +96,20 @@ handle("evalrepl") do data
   elseif mode == "help"
     code = "@doc $code"
   end
-  try
-    @run begin
-      @dynamic let Media.input = Console()
-        withpath(nothing) do
-          render(@errs Debugger.isdebugging() ? Debugger.interpret(code) : eval(mod, :(include_string($code))))
+  if Debugger.isdebugging()
+    render(Console(), @errs Debugger.interpret(code))
+  else
+    try
+      @run begin
+        @dynamic let Media.input = Console()
+          withpath(nothing) do
+            render(@errs eval(mod, :(include_string($code))))
+          end
         end
       end
+    catch e
+      showerror(STDERR, e, backtrace())
     end
-  catch e
-    showerror(STDERR, e, backtrace())
   end
   return
 end
