@@ -42,8 +42,9 @@ function connect(port; kws...)
   initialise(; kws...)
 end
 
-function serve(port)
-  server = listen(port)
+function serve(port; kws...)
+  server = listen(ip"127.0.0.1", port)
+  print(STDERR, "juno-msg-ready")
   global sock = accept(server)
   @async while isopen(sock)
     @ierrs let
@@ -51,6 +52,7 @@ function serve(port)
       @schedule @ierrs handlemsg(msg...)
     end
   end
+  initialise(; kws...)
 end
 
 function msg(t, args...)
