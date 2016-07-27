@@ -20,7 +20,7 @@ end
 
 function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(Int))
   @_ begin
-    sprint(Base.show_backtrace, top_function, bt, set)
+    sprint(Base.show_backtrace, bt)
     split(_, "\n")
     map(strip, _)
     filter(x->!isempty(x), _)
