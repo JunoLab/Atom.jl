@@ -103,7 +103,7 @@ handle("evalrepl") do data
       @run begin
         @dynamic let Media.input = Console()
           withpath(nothing) do
-            render(@errs include_string(mod, "ans=$code"))
+            render(@errs  eval(mod, :(ans = include_string($code))))
           end
         end
       end
