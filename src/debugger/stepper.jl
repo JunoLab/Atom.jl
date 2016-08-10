@@ -1,7 +1,7 @@
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
   evaluated!, finish!, step_expr
 
-import ..Atom: fullpath, handle, @msg, @run, wsitem, Inline
+import ..Atom: fullpath, handle, @msg, wsitem, Inline
 using Media
 
 function fileline(i::Interpreter)

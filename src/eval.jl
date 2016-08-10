@@ -45,17 +45,19 @@ end
 withpath(f, path) =
   Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
+const evallock = ReentrantLock()
+
 handle("eval") do data
   @destruct [text, line, path, mod] = data
   mod = getthing(mod)
 
-  result = @run begin
-    @dynamic let Media.input = Editor()
-      withpath(path) do
-        @errs include_string(mod, text, path, line)
-      end
+  lock(evallock)
+  result = @dynamic let Media.input = Editor()
+    withpath(path) do
+      @errs include_string(mod, text, path, line)
     end
   end
+  unlock(evallock)
 
   display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
   display ≠ Editor() && render(display, result)
@@ -70,21 +72,21 @@ handle("evalall") do data
   elseif isabspath(path)
     mod = getthing(CodeTools.filemodule(path), Main)
   end
-  @run begin
-    @dynamic let Media.input = Editor()
-      withpath(path) do
-        try
-          include_string(mod, code, path)
-        catch e
-          ee = EvalError(e, catch_backtrace())
-          render(Console(), ee)
-          @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => sprint(showerror, e, ee.bt),
-                       :dismissable => true))
-        end
+  lock(evallock)
+  @dynamic let Media.input = Editor()
+    withpath(path) do
+      try
+        include_string(mod, code, path)
+      catch e
+        ee = EvalError(e, catch_backtrace())
+        render(Console(), ee)
+        @msg error(d(:msg => "Error evaluating $(basename(path))",
+                     :detail => sprint(showerror, e, ee.bt),
+                     :dismissable => true))
       end
     end
   end
+  unlock(evallock)
   return
 end
 
@@ -100,13 +102,13 @@ handle("evalrepl") do data
     render(Console(), @errs Debugger.interpret(code))
   else
     try
-      @run begin
-        @dynamic let Media.input = Console()
-          withpath(nothing) do
-            render(@errs eval(mod, :(ans = include_string($code))))
-          end
+      lock(evallock)
+      @dynamic let Media.input = Console()
+        withpath(nothing) do
+          render(@errs eval(mod, :(ans = include_string($code))))
         end
       end
+      unlock(evallock)
     catch e
       showerror(STDERR, e, catch_backtrace())
     end
