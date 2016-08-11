@@ -6,7 +6,11 @@ isuntitled(p) = ismatch(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
 
 realpath′(p) = ispath(p) ? realpath(p) : p
 
-basepath(file) = normpath(joinpath(JULIA_HOME,"..","share","julia","base",file))
+function basepath(file)
+  srcdir = joinpath(JULIA_HOME,"..","..","base")
+  releasedir = joinpath(JULIA_HOME,"..","share","julia","base")
+  normpath(joinpath(isdir(srcdir) ? srcdir : releasedir, file))
+end
 
 fullpath(path) =
   (isuntitled(path) || isabspath(path) ? path : basepath(path)) |> realpath′
