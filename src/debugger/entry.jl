@@ -18,7 +18,7 @@ function step(args...)
 end
 
 macro step(ex)
-  @capture(ex, f_(args__)) || error("Syntax: @enter f(...)")
+  @capture(ex, f_(args__)) || error("Syntax: @step f(...)")
   :(step($(esc(f)), $(map(esc, args)...)))
 end
 
