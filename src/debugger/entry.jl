@@ -30,7 +30,7 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
 
 export breakpoint
 
-Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
+# Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
 
 # function Gallium.breakpoint_hit(hook, RC)
 _breakpoint_hit = function (hook, RC)
