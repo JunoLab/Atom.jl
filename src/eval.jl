@@ -105,7 +105,7 @@ handle("evalrepl") do data
       lock(evallock)
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          render(@errs eval(mod, :(ans = include_string($code))))
+          render(@errs eval(mod, :(ans = include_string($code, "console"))))
         end
       end
       unlock(evallock)
