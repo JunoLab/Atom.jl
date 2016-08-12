@@ -16,9 +16,12 @@ function splitlink(path)
 end
 
 # TODO: don't work on the text
-# TODO: clip traces so Atom/CodeTools doesn't show up
 
 function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(Int))
+  include_ind = Base.REPL.findfirst(addr->Base.REPL.ip_matches_func(addr, :include_string), bt)
+  if include_ind != 0
+    bt = bt[1:include_ind-1]
+  end
   @_ begin
     sprint(Base.show_backtrace, bt)
     split(_, "\n")
