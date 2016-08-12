@@ -15,18 +15,20 @@ function splitlink(path)
   m.captures[1], parse(Int, m.captures[2])
 end
 
-# TODO: don't work on the text
-# TODO: clip traces so Atom/CodeTools doesn't show up
-
-function btlines(bt, top_function::Symbol = :eval_user_input, set = 1:typemax(Int))
-  @_ begin
-    sprint(Base.show_backtrace, bt)
-    split(_, "\n")
-    map(strip, _)
-    filter(x->!isempty(x), _)
-    map(l -> match(r"^(?:in (.*) at|(.*) from) (.*?)( .*)?$", l), _)
-    map(l -> (@or(l.captures[1], l.captures[2]), splitlink(l.captures[3])..., l.captures[4]), _)
+function btlines(bt)
+  trace = Base.stacktrace(bt)
+  t_trace = map(trace) do frame
+    (sprint(Base.StackTraces.show_spec_linfo, frame),
+    string(frame.file),
+    frame.line,
+    frame.inlined ? " [inlined]" : "")
   end
+  # clip stack traces
+  internal_ind = findlast(t_trace) do t_frame
+    ismatch(r"loading\.jl", t_frame[2]) &&
+    ismatch(r"include_string", t_frame[1])
+  end
+  t_trace[1:internal_ind-1]
 end
 
 highlights(lines) =
@@ -38,20 +40,27 @@ function renderbt(ls)
   span(".error-trace",
        [div(".trace-entry",
         c(fade("in "), f, fade(" at "),
-          render(Inline(), Copyable(baselink(loc, li))), fade(@or(postfix, ""))))
-        for (f, loc, li, postfix) in ls])
+          render(Inline(), Copyable(baselink(loc, li))), fade(inlined)))
+        for (f, loc, li, inlined) in ls])
 end
 
 function render(::Editor, e::EvalError)
-  tmp = sprint(showerror, e.err)
-  tmp = split(tmp, '\n')
+  header = sprint(showerror, e.err)
+  header = split(header, '\n')
+  trace = btlines(e.bt)
+  view = if isempty(trace)
+    if length(header) == 1
+      rendererr(header[1])
+    else
+      Tree(rendererr(header[1]), rendererr(join(header[2:end], '\n')))
+    end
+  else
+    Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(trace)])
+  end
+
   d(:type => :error,
     :view => render(Inline(),
-                    Copyable(
-                      Tree(rendererr(tmp[1]),
-                           length(tmp) == 1 && isempty(e.bt) ? [] :
-                            [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]),
-                      sprint(showerror, e.err, e.bt))),
+                    Copyable(view, sprint(showerror, e.err, e.bt))),
     :highlights => highlights(e))
 end
 
