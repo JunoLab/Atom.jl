@@ -123,7 +123,7 @@ function context(i::Union{Interpreter,JuliaStackFrame})
   end
   isdefined(i.linfo, :slotnames) || return items
   for (k, v) in zip(i.linfo.slotnames, i.env.locals)
-    k in (symbol("#self#"), symbol("#unused#")) && continue
+    k in (Symbol("#self#"), Symbol("#unused#")) && continue
     push!(items, wsitem(k, isnull(v) ? Undefined() : get(v)))
   end
   return items
