@@ -16,6 +16,7 @@ function splitlink(path)
 end
 
 function btlines(bt)
+  isempty(bt) && return []
   trace = Base.stacktrace(bt)
   t_trace = map(trace) do frame
     (sprint(Base.StackTraces.show_spec_linfo, frame),
