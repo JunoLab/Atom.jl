@@ -52,7 +52,7 @@ function render(::Editor, e::EvalError)
     if length(header) == 1
       rendererr(header[1])
     else
-      Tree(rendererr(header[1]), rendererr(join(header[2:end], '\n')))
+      Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n'))])
     end
   else
     Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(trace)])
