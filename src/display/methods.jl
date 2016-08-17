@@ -53,7 +53,7 @@ end
 
 @render i::Inline m::Method begin
   sig, link = view(m)
-  r(x) = render(i, x, options = options)
+  r(x) = render(i, x)
   span(c(r(sig), " at ", r(link)))
 end
 
