@@ -29,7 +29,7 @@ view() = _display
 displaysize(x) = (500, 400)
 displaytitle(x) = "Julia"
 
-function Media.render(view::WebView, x; options = d())
+function Media.render(view::WebView, x)
   size = displaysize(x)
   w = @or(pinned(view), Window(d(:width => size[1], :height => size[2])))
   w == pinned(view)

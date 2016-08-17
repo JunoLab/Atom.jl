@@ -1,7 +1,7 @@
 type PlotPane end
 
-render(::PlotPane, x; options = d()) =
-  @msg plot(render(Inline(), x, options = options))
+render(::PlotPane, x) =
+  @msg plot(render(Inline(), x))
 
 @init setdisplay(Media.Graphical, PlotPane())
 

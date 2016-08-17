@@ -40,7 +40,7 @@ function renderbt(ls)
         for (f, loc, li) in ls])
 end
 
-function render(::Editor, e::EvalError; options = d())
+function render(::Editor, e::EvalError)
   tmp = sprint(showerror, e.err)
   tmp = split(tmp, '\n')
   d(:type => :error,
@@ -48,10 +48,9 @@ function render(::Editor, e::EvalError; options = d())
                     Copyable(
                       Tree(rendererr(tmp[1]),
                            [rendererr(join(tmp[2:end], '\n')); renderbt(btlines(e.bt))]),
-                      sprint(showerror, e.err, e.bt)),
-                    options = options),
+                      sprint(showerror, e.err, e.bt))),
     :highlights => highlights(e))
 end
 
-render(::Console, e::EvalError; options = d()) =
-  @msg result(render(Editor(), e, options = options))
+render(::Console, e::EvalError) =
+  @msg result(render(Editor(), e))

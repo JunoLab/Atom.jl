@@ -46,7 +46,7 @@ end
   j = 0
   st = Array{Atom.SubTree}(0)
   for (key, val) in d
-    push!(st, SubTree(span(c(render(i, key, options = options), " → ")), val))
+    push!(st, SubTree(span(c(render(i, key), " → ")), val))
     j += 1
     j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
   end
