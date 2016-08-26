@@ -29,7 +29,11 @@ function btlines(bt)
     ismatch(r"loading\.jl", t_frame[2]) &&
     ismatch(r"include_string", t_frame[1])
   end
-  t_trace[1:internal_ind-1]
+  if internal_ind == 0
+    t_trace
+  else
+    t_trace[1:internal_ind-1]
+  end
 end
 
 highlights(lines) =
