@@ -184,6 +184,7 @@ wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 handle("workspace") do mod
   mod = getthing(mod)
   ns = names(mod)
+  filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)
   contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
