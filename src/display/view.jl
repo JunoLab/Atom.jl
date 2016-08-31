@@ -2,9 +2,7 @@ using Hiccup
 
 typealias AString AbstractString
 
-type Model
-  data
-end
+import Juno: Model
 
 render(::Inline, m::Model) = m.data
 
@@ -46,10 +44,7 @@ end
 render(::Console, x::Expr) =
   @msg result(d(:type => :code, :text => string(x)))
 
-immutable Tree
-  head
-  children::Vector{Any}
-end
+import Juno: Tree, SubTree
 
 render(i::Inline, t::Tree) =
   isempty(t.children) ?
@@ -59,39 +54,19 @@ render(i::Inline, t::Tree) =
       :children => map(x->render(i, x),
                        t.children))
 
-immutable SubTree
-  label
-  child
-end
-
 render(i::Inline, t::SubTree) =
   d(:type  => :subtree,
     :label => render(i, t.label),
     :child => render(i, t.child))
 
-type Copyable
-  view
-  text::String
-  Copyable(view, text::AString) = new(view, text)
-end
-
-Copyable(view, text) = Copyable(view, render(Clipboard(), text))
-Copyable(view) = Copyable(view, view)
+import Juno: Copyable
 
 render(i::Inline, x::Copyable) =
   d(:type => :copy,
     :view => render(i, x.view),
     :text => x.text)
 
-immutable Link
-  file::String
-  line::Int
-  contents::Vector{Any}
-  Link(file::AString, line::Integer, contents...) =
-    new(file, line, c(contents...))
-end
-
-Link(file::AString, contents...) = Link(file, 0, contents...)
+import Juno: Link
 
 render(i::Inline, l::Link) =
   d(:type => :link,
