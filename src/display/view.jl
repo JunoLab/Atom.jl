@@ -50,7 +50,7 @@ render(i::Inline, x::Copyable) =
     :view => render(i, x.view),
     :text => x.text)
 
-import Juno: Link
+import Juno: Link, link
 
 render(i::Inline, l::Link) =
   d(:type => :link,
