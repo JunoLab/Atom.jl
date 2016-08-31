@@ -26,6 +26,7 @@ macro ierrs(ex)
 end
 
 function initialise(; welcome = false)
+  Juno.setactive!(true)
   exit_on_sigint(false)
   eval(AtomShell, :(_shell = $(Shell())))
   welcome && @msg welcome()
