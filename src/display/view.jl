@@ -28,22 +28,6 @@ render(::Console, x::Node) =
 
 render(::Editor, x::Node) = view(x)
 
-render(::Inline, x::AbstractFloat) =
-  isnan(x) || isinf(x) ?
-    view(span(".constant.number", string(x))) :
-    d(:type => :number, :value => Float64(x), :full => string(x))
-
-@render Inline x::Expr begin
-  text = string(x)
-  length(split(text, "\n")) == 1 ?
-    Model(d(:type => :code, :text => text)) :
-    Tree(Text("Code"),
-         [Model(d(:type => :code, :text => text))])
-end
-
-render(::Console, x::Expr) =
-  @msg result(d(:type => :code, :text => string(x)))
-
 import Juno: Tree, SubTree
 
 render(i::Inline, t::Tree) =
@@ -76,5 +60,3 @@ render(i::Inline, l::Link) =
 
 render(::Clipboard, l::Link) =
   "$(l.file):$(l.line)"
-
-link(a...) = Link(a...)
