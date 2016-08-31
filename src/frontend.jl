@@ -1,5 +1,3 @@
-export selector, input, progress, @progress, @!
-
 """
     selector([xs...]) -> x
 
