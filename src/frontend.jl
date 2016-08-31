@@ -1,18 +1,8 @@
-"""
-    selector([xs...]) -> x
-
-Allow the user to select one of the `xs`.
-
-`xs` should be an iterator of strings.
-"""
 selector(items) = @rpc select(items)
 
-"""
-    input() -> "..."
-
-Prompt the user to input some text, and return it.
-"""
 input() = @rpc input()
+
+info(s) = @msg info(string(s))
 
 """
   progress(x = [0..1])
@@ -25,25 +15,6 @@ progress(x::Real) =
   @msg progress(x < 0.01 ? nothing :
                 x > 1 ? 1 :
                 x)
-
-"""
-  @progress for i = ...
-
-Show a progress metre for the given loop.
-"""
-macro progress(ex)
-  @capture(ex, for x_ in range_ body_ end) ||
-    error("@progress requires a for loop")
-  @esc x range body
-  quote
-    range = $range
-    n = length(range)
-    for (i, $x) in enumerate(range)
-      $body
-      progress(i/n)
-    end
-  end
-end
 
 macro !(ex)
   quote
