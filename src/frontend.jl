@@ -39,3 +39,11 @@ AtomShell.dot(::Shell, win::Integer, code; callback = true) =
   (callback ? rpc : msg)(:withWin, win, Blink.jsstring(code))
 
 AtomShell.active(::Shell, win::Integer) = @rpc winActive(win)
+
+ploturl(url::String) = @msg ploturl(url)
+
+function blinkplot()
+  p = Page()
+  ploturl(Blink.localurl(p))
+  return wait(p)
+end
