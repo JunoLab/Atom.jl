@@ -1,7 +1,4 @@
-type PlotPane end
-
-render(::PlotPane, x) =
-  @msg plot(render(Inline(), x))
+import Juno: PlotPane
 
 @init setdisplay(Media.Graphical, PlotPane())
 
