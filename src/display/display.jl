@@ -13,5 +13,4 @@ setdisplay(Console(), Any, Console())
 
 include("plots.jl")
 include("view.jl")
-include("objects.jl")
 include("errors.jl")
