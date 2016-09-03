@@ -14,5 +14,7 @@ function render(i::Inline, tree::LazyTree)
     :id => id)
 end
 
-# LazyTree(Text("foo"),
-#          () -> [Text("bar")])
+handle("getlazy") do id
+  # TODO: caching?
+  return [render(Inline(), x) for x in trees[id].children()]
+end
