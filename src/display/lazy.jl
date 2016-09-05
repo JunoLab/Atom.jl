@@ -21,6 +21,8 @@ handle("getlazy") do id
   return [render(Inline(), x) for x in pop!(trees, id).children()]
 end
 
-handle("clearLazy") do id
-  delete!(trees, id)
+handle("clearLazy") do ids
+  for id in ids
+    delete!(trees, id)
+  end
 end
