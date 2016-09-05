@@ -1,3 +1,5 @@
+# TODO: only store last N trees
+
 import Juno: LazyTree
 
 _id = 0
