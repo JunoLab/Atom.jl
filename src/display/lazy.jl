@@ -16,6 +16,7 @@ end
 
 handle("getlazy") do id
   # TODO: caching?
+  haskey(trees, id) || return [render(Inline(), fade("[out of date result]"))]
   return [render(Inline(), x) for x in trees[id].children()]
 end
 
