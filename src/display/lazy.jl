@@ -18,3 +18,7 @@ handle("getlazy") do id
   # TODO: caching?
   return [render(Inline(), x) for x in trees[id].children()]
 end
+
+handle("clearLazy") do id
+  delete!(trees, id)
+end
