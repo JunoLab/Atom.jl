@@ -17,9 +17,8 @@ function render(i::Inline, tree::LazyTree)
 end
 
 handle("getlazy") do id
-  # TODO: caching?
   haskey(trees, id) || return [render(Inline(), fade("[out of date result]"))]
-  return [render(Inline(), x) for x in trees[id].children()]
+  return [render(Inline(), x) for x in pop!(trees, id).children()]
 end
 
 handle("clearLazy") do id
