@@ -61,6 +61,4 @@ render(i::Inline, l::Link) =
 render(::Clipboard, l::Link) =
   "$(l.file):$(l.line)"
 
-fade(x) = span(".fade", x)
-
-icon(x) = span(".icon.icon-$x", c())
+import Juno: icon, fade
