@@ -1,11 +1,11 @@
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
-  evaluated!, finish!, step_expr
+  evaluated!, finish!, step_expr, idx_stack
 
 import ..Atom: fullpath, handle, @msg, wsitem, Inline
 using Media
 
 function fileline(i::Interpreter)
-  file, line = determine_line_and_file(i, i.next_expr[1])[end]
+  file, line = determine_line_and_file(i, idx_stack(i))[end]
   Atom.fullpath(string(file)), line
 end
 
