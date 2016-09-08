@@ -6,12 +6,10 @@ import Juno: Model
 
 render(::Inline, m::Model) = m.data
 
+import Juno: view
+
 view(x::AString) = x
 view(x::Associative) = x
-
-view(x) =
-  d(:type    => :html,
-    :content => stringmime(MIME"text/html"(), x))
 
 view(n::Node) =
   d(:type     => :dom,
