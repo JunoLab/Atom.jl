@@ -17,6 +17,7 @@ end
 
 function btlines(bt)
   isempty(bt) && return []
+  length(bt) > 100 && (bt = bt[1:100])
   trace = Base.stacktrace(bt)
   t_trace = map(trace) do frame
     (split(sprint(Base.StackTraces.show_spec_linfo, frame), '(')[1],
