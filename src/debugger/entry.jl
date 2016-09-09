@@ -28,15 +28,17 @@ using Gallium
 import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
   Location, LocalSession, CStackFrame, JuliaStackFrame, Hooking, FileLineSource
 
+import Base.Meta: quot
+
 export breakpoint
 
-# Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
 function breakpoint(args...)
   Gallium.breakpoint(args...)
   return
 end
 
-# function Gallium.breakpoint_hit(hook, RC)
+Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
+
 _breakpoint_hit = function (hook, RC)
   if !process_lowlevel_conditionals(Location(LocalSession(), hook.addr), RC)
     return
