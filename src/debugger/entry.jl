@@ -31,6 +31,10 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
 export breakpoint
 
 # Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
+function breakpoint(args...)
+  Gallium.breakpoint(args...)
+  return
+end
 
 # function Gallium.breakpoint_hit(hook, RC)
 _breakpoint_hit = function (hook, RC)
@@ -62,9 +66,11 @@ _breakpoint_hit = function (hook, RC)
     (target_line != linfo.def.line ?
       :(ASTInterpreter.advance_to_line(interp, $target_line)) :
       :(nothing)),
+    # :(tty_state = Gallium.suspend_other_tasks()),
     :((isempty($conditions) ||
       any(c->Gallium.matches_condition(interp,c),$conditions)) &&
       Atom.Debugger.RunDebugIDE(interp)),
+    # :(Gallium.restore_other_tasks(tty_state)),
     :(ASTInterpreter.finish!(interp)),
     :(return interp.retval::$(linfo.rettype))))
   f = eval(thunk)
