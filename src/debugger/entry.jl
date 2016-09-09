@@ -10,8 +10,6 @@ end
 
 # Manual Entry
 
-export @step
-
 function step(args...)
   global interp
   RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
@@ -29,8 +27,6 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
   Location, LocalSession, CStackFrame, JuliaStackFrame, Hooking, FileLineSource
 
 import Base.Meta: quot
-
-export breakpoint
 
 function breakpoint(args...)
   Gallium.breakpoint(args...)
