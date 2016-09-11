@@ -16,6 +16,20 @@ progress(x::Real) =
                 x > 1 ? 1 :
                 x)
 
+function progress(i, n, Δt, file)
+  remaining = Δt/i*(n-i)
+  h = Base.div(remaining, 60*60)
+  m = Base.div(remaining -= h*60*60, 60)
+  s = remaining - m*60
+  t = @sprintf "%u:%02u:%02u" h m s
+
+  prog = i/n < 0.1 ? "indeterminate" :
+         i/n >   1 ?       1 :
+         i/n
+
+  msg("progress", i/n, "$t remaining @ $file", file)
+end
+
 macro !(ex)
   quote
     result = $(esc(ex))
