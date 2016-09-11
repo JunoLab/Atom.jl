@@ -4,32 +4,6 @@ input() = @rpc input()
 
 info(s) = @msg info(string(s))
 
-"""
-  progress(x = [0..1])
-
-Set Atom's progress bar to the given value.
-"""
-progress(x::Void = nothing) = @msg progress(x)
-
-progress(x::Real) =
-  @msg progress(x < 0.01 ? nothing :
-                x > 1 ? 1 :
-                x)
-
-function progress(i, n, Δt, file)
-  remaining = Δt/i*(n-i)
-  h = Base.div(remaining, 60*60)
-  m = Base.div(remaining -= h*60*60, 60)
-  s = remaining - m*60
-  t = @sprintf "%u:%02u:%02u" h m s
-
-  prog = i/n < 0.1 ? "indeterminate" :
-         i/n >   1 ?       1 :
-         i/n
-
-  msg("progress", i/n, "$t remaining @ $file", file)
-end
-
 macro !(ex)
   quote
     result = $(esc(ex))
