@@ -2,16 +2,12 @@ using Hiccup
 
 typealias AString AbstractString
 
-import Juno: Model
+import Juno: Model, view
 
 render(::Inline, m::Model) = m.data
 
 view(x::AString) = x
 view(x::Associative) = x
-
-view(x) =
-  d(:type    => :html,
-    :content => stringmime(MIME"text/html"(), x))
 
 view(n::Node) =
   d(:type     => :dom,
