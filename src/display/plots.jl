@@ -2,18 +2,6 @@ import Juno: PlotPane
 
 @init setdisplay(Media.Graphical, PlotPane())
 
-@require Gadfly begin
-  @render PlotPane p::Gadfly.Plot begin
-    x, y = @rpc plotsize()
-    Gadfly.set_default_plot_size(x*Gadfly.px, y*Gadfly.px)
-    div(d(:style=>"background: white"),
-        HTML(stringmime("text/html", p)))
-  end
-  @render Editor p::Gadfly.Plot begin
-    icon("graph")
-  end
-end
-
 @require Images begin
   @render PlotPane img::Images.Image begin
     HTML() do io
