@@ -40,6 +40,8 @@ AtomShell.dot(::Shell, win::Integer, code; callback = true) =
 
 AtomShell.active(::Shell, win::Integer) = @rpc winActive(win)
 
+plotsize() = @rpc plotsize()
+
 ploturl(url::String) = @msg ploturl(url)
 
 function blinkplot()
