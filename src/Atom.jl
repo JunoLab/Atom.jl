@@ -14,8 +14,11 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-include("debugger/debugger.jl")
-@reexport using .Debugger
+# only require the debugger on 0.5.x for now
+if VERSION.minor == 5
+  include("debugger/debugger.jl")
+  @reexport using .Debugger
+end
 
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
