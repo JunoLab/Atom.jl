@@ -15,9 +15,11 @@ include("frontend.jl")
 include("utils.jl")
 
 # only require the debugger on 0.5.x for now
-if VERSION.minor == 5
+@static if VERSION.minor == 5
   include("debugger/debugger.jl")
   @reexport using .Debugger
+else
+  include("debugger/mockingbird.jl")
 end
 
 include("blink/BlinkDisplay.jl")
