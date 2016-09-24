@@ -3,7 +3,7 @@ matchesprefix(c::Dict, pre::AString) = matchesprefix(c[:text], pre)
 matchesprefix(c, ::Void) = true
 
 handle("completions") do data
-  @destruct [path || nothing, mod, line, column, force] = data
+  @destruct [path || nothing, mod || "Main", line, column, force] = data
   withpath(path) do
     pre = CodeTools.prefix(line[1:column-1])
     pre = isempty(pre) ? nothing : pre[end]
