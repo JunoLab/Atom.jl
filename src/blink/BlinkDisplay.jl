@@ -1,9 +1,8 @@
 module BlinkDisplay
 
-using Blink, Media, Lazy, Requires
+using Blink, Media, Lazy
 
 include("display.jl")
-include("objects.jl")
 include("mimes.jl")
 
 export docs

@@ -1,4 +1,4 @@
-using CodeTools, LNR, Media, Requires
+using CodeTools, LNR, Media
 
 import CodeTools: getthing
 
@@ -43,7 +43,7 @@ macro errs(ex)
 end
 
 withpath(f, path) =
-  Requires.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
+  CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 const evallock = ReentrantLock()
 

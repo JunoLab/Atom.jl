@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, Blink, MacroTools, Reexport, Requires
+using Juno, Lazy, JSON, Blink, MacroTools, Reexport
 
 @init Juno.activate()
 
