@@ -5,9 +5,11 @@ edit(pkg) =
 
 isuntitled(p) = ismatch(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
 
+jlhome() = ccall(:jl_get_julia_home, Any, ())
+
 function basepath(file)
-  srcdir = joinpath(JULIA_HOME,"..","..","base")
-  releasedir = joinpath(JULIA_HOME,"..","share","julia","base")
+  srcdir = joinpath(jlhome(),"..","..","base")
+  releasedir = joinpath(jlhome(),"..","share","julia","base")
   normpath(joinpath(isdir(srcdir) ? srcdir : releasedir, file))
 end
 
