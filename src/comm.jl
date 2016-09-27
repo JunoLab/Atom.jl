@@ -99,6 +99,18 @@ function serve(port; kws...)
   end
   initialise(; kws...)
 end
+
+function connect(port; kws...)
+  global sock = Base.connect(ip"127.0.0.1", port)
+  @async while isopen(sock)
+    @ierrs let
+      msg = JSON.parse(sock)
+      @schedule @ierrs handlemsg(msg...)
+    end
+  end
+  initialise(; kws...)
+end
+
 """
     msg(typ, args...)
 
