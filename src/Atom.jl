@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, Blink, MacroTools, Reexport
+using Juno, Lazy, JSON, MacroTools, Reexport
 
 @init Juno.activate()
 
@@ -22,7 +22,7 @@ else
   include("debugger/mockingbird.jl")
 end
 
-include("blink/BlinkDisplay.jl")
-@reexport using .BlinkDisplay
+# include("blink/BlinkDisplay.jl")
+# @reexport using .BlinkDisplay
 
 end # module

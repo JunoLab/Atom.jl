@@ -28,24 +28,24 @@ end
 
 # Blink stuff
 
-type Shell <: AtomShell.Shell end
-
-AtomShell.active(::Shell) = true
-
-AtomShell.raw_window(::Shell, opts) =
-  @rpc createWindow(merge(AtomShell.window_defaults, opts))
-
-AtomShell.dot(::Shell, win::Integer, code; callback = true) =
-  (callback ? rpc : msg)(:withWin, win, Blink.jsstring(code))
-
-AtomShell.active(::Shell, win::Integer) = @rpc winActive(win)
+# type Shell <: AtomShell.Shell end
+#
+# AtomShell.active(::Shell) = true
+#
+# AtomShell.raw_window(::Shell, opts) =
+#   @rpc createWindow(merge(AtomShell.window_defaults, opts))
+#
+# AtomShell.dot(::Shell, win::Integer, code; callback = true) =
+#   (callback ? rpc : msg)(:withWin, win, Blink.jsstring(code))
+#
+# AtomShell.active(::Shell, win::Integer) = @rpc winActive(win)
 
 plotsize() = @rpc plotsize()
 
 ploturl(url::String) = @msg ploturl(url)
 
-function blinkplot()
-  p = Page()
-  ploturl(Blink.localurl(p))
-  return wait(p)
-end
+# function blinkplot()
+#   p = Page()
+#   ploturl(Blink.localurl(p))
+#   return wait(p)
+# end
