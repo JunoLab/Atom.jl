@@ -15,11 +15,6 @@ function step(args...)
   RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
 end
 
-macro step(ex)
-  @capture(ex, f_(args__)) || error("Syntax: @step f(...)")
-  :(step($(esc(f)), $(map(esc, args)...)))
-end
-
 # Breakpoints
 
 using Gallium
