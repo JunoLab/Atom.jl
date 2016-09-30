@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, MacroTools, Reexport
+using Juno, Lazy, JSON, Blink, MacroTools, Reexport
 
 @init Juno.activate()
 
@@ -15,8 +15,8 @@ include("frontend.jl")
 include("utils.jl")
 include("debugger/load.jl")
 
-# include("blink/BlinkDisplay.jl")
-# @reexport using .BlinkDisplay
+include("blink/BlinkDisplay.jl")
+@reexport using .BlinkDisplay
 
 include("precompile.jl")
 
