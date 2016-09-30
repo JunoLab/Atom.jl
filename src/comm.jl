@@ -75,6 +75,7 @@ Sets up the environment for Atom.jl: Stop `SIGINT`s from killing Julia and send
 a welcome message to Atom if `welcome == true`.
 """
 function initialise(; welcome = false)
+  Juno.isprecompiling() && return
   Juno.setactive!(true)
   exit_on_sigint(false)
   eval(AtomShell, :(_shell = $(Shell())))
