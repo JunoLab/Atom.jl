@@ -23,7 +23,7 @@ baselink(path, line) =
     isuntitled(path) ? link(path, line, Text(appendline("untitled", line))) :
     isabspath(path)  ?
       link(path, line, Text(pkgpath(appendline(path, line)))) :
-      link(basepath(path), line, Text(normpath(joinpath("base", appendline(path, line)))))
+      link(basepath(path), line, Text(appendline(normpath(joinpath("base", path)), line)))
 
 function pkgpath(path)
   m = match(r"([^/\\]+[/\\]src[/\\].*)$", path)
