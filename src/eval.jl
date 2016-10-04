@@ -141,3 +141,6 @@ end
 handle("workspace") do mod
   return []
 end
+
+handle("clearLazy") do _
+end
