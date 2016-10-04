@@ -75,6 +75,7 @@ Sets up the environment for Atom.jl: Stop `SIGINT`s from killing Julia and send
 a welcome message to Atom if `welcome == true`.
 """
 function initialise(; welcome = false)
+  Juno.isprecompiling() && return
   Juno.setactive!(true)
   exit_on_sigint(false)
   eval(AtomShell, :(_shell = $(Shell())))
@@ -99,6 +100,18 @@ function serve(port; kws...)
   end
   initialise(; kws...)
 end
+
+function connect(port; kws...)
+  global sock = Base.connect(ip"127.0.0.1", port)
+  @async while isopen(sock)
+    @ierrs let
+      msg = JSON.parse(sock)
+      @schedule @ierrs handlemsg(msg...)
+    end
+  end
+  initialise(; kws...)
+end
+
 """
     msg(typ, args...)
 

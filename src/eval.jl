@@ -98,7 +98,7 @@ handle("evalrepl") do data
   elseif mode == "help"
     code = "@doc $code"
   end
-  if Debugger.isdebugging()
+  if isdebugging()
     render(Console(), @errs Debugger.interpret(code))
   else
     try
@@ -187,7 +187,7 @@ handle("workspace") do mod
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)
   contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
-  if Debugger.isdebugging()
+  if isdebugging()
     prepend!(contexts, Debugger.contexts())
   end
   return contexts
