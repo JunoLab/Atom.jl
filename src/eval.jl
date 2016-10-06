@@ -90,6 +90,17 @@ handle("evalall") do data
   return
 end
 
+function ends_with_semicolon(line)
+    match = rsearch(line, ';')
+    if match != 0
+        for c in line[(match+1):end]
+            isspace(c) || return c == '#'
+        end
+        return true
+    end
+    return false
+end
+
 handle("evalrepl") do data
   @destruct [mode || nothing, code, mod || "Main"] = data
   mod = getthing(mod)
@@ -105,7 +116,8 @@ handle("evalrepl") do data
       lock(evallock)
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          render(@errs eval(mod, :(ans = include_string($code, "console"))))
+          ans = @errs eval(mod, :(ans = include_string($code, "console")))
+          !ends_with_semicolon(code) && render(ans)
         end
       end
       unlock(evallock)
