@@ -20,6 +20,17 @@ function getmodule(data, pos)
   getthing("$main.$sub", getthing(main, Main))
 end
 
+function ends_with_semicolon(line)
+    match = rsearch(line, ';')
+    if match != 0
+        for c in line[(match+1):end]
+            isspace(c) || return c == '#'
+        end
+        return true
+    end
+    return false
+end
+
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
   return d(:main => main,
@@ -34,9 +45,10 @@ end
 
 isselection(data) = data["start"] ≠ data["stop"]
 
-macro errs(ex)
+macro errs(ex , suppress = false)
   :(try
-      $(esc(ex))
+      ans = $(esc(ex))
+      $(esc(suppress)) ? nothing : ans
     catch e
       EvalError(isa(e, LoadError) ? e.error : e, catch_backtrace())
     end)
@@ -54,7 +66,7 @@ handle("eval") do data
   lock(evallock)
   result = @dynamic let Media.input = Editor()
     withpath(path) do
-      @errs include_string(mod, text, path, line)
+      @errs include_string(mod, text, path, line) ends_with_semicolon(text)
     end
   end
   unlock(evallock)
@@ -90,17 +102,6 @@ handle("evalall") do data
   return
 end
 
-function ends_with_semicolon(line)
-    match = rsearch(line, ';')
-    if match != 0
-        for c in line[(match+1):end]
-            isspace(c) || return c == '#'
-        end
-        return true
-    end
-    return false
-end
-
 handle("evalrepl") do data
   @destruct [mode || nothing, code, mod || "Main"] = data
   mod = getthing(mod)
@@ -116,8 +117,7 @@ handle("evalrepl") do data
       lock(evallock)
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          ans = @errs eval(mod, :(ans = include_string($code, "console")))
-          !ends_with_semicolon(code) && render(ans)
+          render(@errs eval(mod, :(ans = include_string($code, "console"))) ends_with_semicolon(code))
         end
       end
       unlock(evallock)
