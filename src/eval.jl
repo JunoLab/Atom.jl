@@ -1,5 +1,5 @@
 using CodeTools, LNR, Media
-
+using Base.REPL.ends_with_semicolon
 import CodeTools: getthing
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
@@ -20,16 +20,7 @@ function getmodule(data, pos)
   getthing("$main.$sub", getthing(main, Main))
 end
 
-function ends_with_semicolon(line)
-    match = rsearch(line, ';')
-    if match != 0
-        for c in line[(match+1):end]
-            isspace(c) || return c == '#'
-        end
-        return true
-    end
-    return false
-end
+
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
@@ -45,10 +36,9 @@ end
 
 isselection(data) = data["start"] ≠ data["stop"]
 
-macro errs(ex , suppress = false)
+macro errs(ex)
   :(try
-      ans = $(esc(ex))
-      $(esc(suppress)) ? nothing : ans
+      $(esc(ex))
     catch e
       EvalError(isa(e, LoadError) ? e.error : e, catch_backtrace())
     end)
@@ -66,13 +56,14 @@ handle("eval") do data
   lock(evallock)
   result = @dynamic let Media.input = Editor()
     withpath(path) do
-      @errs include_string(mod, text, path, line) ends_with_semicolon(text)
+      @errs include_string(mod, text, path, line)
     end
   end
   unlock(evallock)
 
   display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
   display ≠ Editor() && render(display, result)
+  !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
   render(Editor(), result)
 end
 
@@ -117,7 +108,9 @@ handle("evalrepl") do data
       lock(evallock)
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          render(@errs eval(mod, :(ans = include_string($code, "console"))) ends_with_semicolon(code))
+          result = @errs eval(mod, :(ans = include_string($code, "console")))
+          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
+          render(result)
         end
       end
       unlock(evallock)
