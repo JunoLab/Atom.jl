@@ -134,18 +134,21 @@ end
 
 handle("methods") do data
   @destruct [mod || "Main", word] = data
-  mod = include_string(mod)
-  wordtype = try
-    include_string("typeof($word)")
-  catch
-    Function
-  end
-  if wordtype == Function
-    result = @errs include_string(mod, "methods($word)")
-  elseif wordtype == DataType
-    result = @errs include_string(mod, "methodswith($word)")
-  end
-  d(:result => render(Editor(), result))
+  mod = getthing(mod)
+  mtable = @errs include_string(mod, "methods($word)")
+  isa(mtable, EvalError) ?
+    d(:error => true, :items => sprint(showerror, mtable.err)) :
+    d(:items => [gotoitem(m) for m in mtable])
+end
+
+function gotoitem(m::Method)
+  _, link = view(m)
+  sig = sprint(show, m)
+  sig = sig[1:rsearch(sig, ')')]
+  Dict(:text => sig,
+       :file => link.file,
+       :line => link.line - 1,
+       :secondary => join(link.contents))
 end
 
 ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
