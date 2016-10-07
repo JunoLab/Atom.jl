@@ -1,6 +1,7 @@
 using CodeTools, LNR, Media
-
 import CodeTools: getthing
+
+ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
@@ -61,6 +62,7 @@ handle("eval") do data
 
   display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
   display ≠ Editor() && render(display, result)
+  !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
   render(Editor(), result)
 end
 
@@ -105,7 +107,9 @@ handle("evalrepl") do data
       lock(evallock)
       @dynamic let Media.input = Console()
         withpath(nothing) do
-          render(@errs eval(mod, :(ans = include_string($code, "console"))))
+          result = @errs eval(mod, :(ans = include_string($code, "console")))
+          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
+          render(result)
         end
       end
       unlock(evallock)
