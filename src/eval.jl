@@ -1,6 +1,7 @@
 using CodeTools, LNR, Media
-using Base.REPL.ends_with_semicolon
 import CodeTools: getthing
+
+ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
@@ -19,8 +20,6 @@ function getmodule(data, pos)
   main, sub = modulenames(data, pos)
   getthing("$main.$sub", getthing(main, Main))
 end
-
-
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
