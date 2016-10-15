@@ -101,8 +101,8 @@ function serve(port; kws...)
   initialise(; kws...)
 end
 
-function connect(port; kws...)
-  global sock = Base.connect(ip"127.0.0.1", port)
+function connect(host, port; kws...)
+  global sock = Base.connect(host, port)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
@@ -111,6 +111,8 @@ function connect(port; kws...)
   end
   initialise(; kws...)
 end
+
+connect(port; kws...) = connect(ip"127.0.0.1", port; kws...)
 
 """
     msg(typ, args...)
