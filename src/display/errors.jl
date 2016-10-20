@@ -1,68 +1,56 @@
-type EvalError
-  err
-  bt
+type EvalError{T}
+  err::T
+  trace::StackTrace
 end
 
 EvalError(err) = EvalError(err, [])
 
-# @render Inline e::EvalError Text(sprint(Base.showerror, e.err, e.bt))
+EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, stacktrace(bt))
 
-rendererr(err) = strong(".error-description", err)
-
-function splitlink(path)
-  m = match(r"^(.?:?[^:]*)(?::(\d+))$", path)
-  m == nothing && return path, 0
-  m.captures[1], parse(Int, m.captures[2])
+function Base.show(io::IO, err::EvalError)
+  show(io, err.err)
+  for frame in err.trace
+    show(io, frame)
+  end
 end
 
-function btlines(bt)
-  isempty(bt) && return []
-  length(bt) > 100 && (bt = bt[1:100])
-  trace = Base.stacktrace(bt)
-  t_trace = map(trace) do frame
-    (split(sprint(Base.StackTraces.show_spec_linfo, frame), '(')[1],
-    string(frame.file),
-    frame.line,
-    frame.inlined ? " [inlined]" : "")
-  end
-  # clip stack traces
-  internal_ind = findlast(t_trace) do t_frame
-    ismatch(r"loading\.jl", t_frame[2]) &&
-    ismatch(r"include_string", t_frame[1])
-  end
-  internal_ind == 0 ? t_trace : t_trace[1:internal_ind-1]
+function cliptrace(trace::StackTrace)
+  ind = findlast(frame -> frame.func == :include_string &&
+                          frame.file == symbol("./loading.jl"), trace)
+  trace[1:(ind==0 ? end : ind-1)]
 end
 
-highlights(lines) =
-  @>> lines filter(x->x[3]>0) map(x->d(:file=>fullpath(x[2]),:line=>x[3]))
+highlights(trace::StackTrace) =
+  @>> trace filter(x->x.line > 0) map(x->d(:file=>fullpath(string(x.file)),:line=>x.line))
 
-highlights(e::EvalError) = highlights(btlines(e.bt))
+highlights(e::EvalError) = highlights(e.trace)
 
-function renderbt(ls)
+function renderbt(trace::StackTrace)
   span(".error-trace",
        [div(".trace-entry",
-        c(fade("in "), f, fade(" at "),
-          render(Inline(), Copyable(baselink(loc, li))), fade(inlined)))
-        for (f, loc, li, inlined) in ls])
+            c(fade("in "), string(frame.func), fade(" at "),
+              render(Inline(), Copyable(baselink(string(frame.file), frame.line)))))
+        for frame in reverse(cliptrace(trace))])
 end
+
+rendererr(err) = strong(".error-description", err)
 
 function render(::Editor, e::EvalError)
   header = sprint(showerror, e.err)
   header = split(header, '\n')
-  trace = btlines(e.bt)
-  view = if isempty(trace)
+  view = if isempty(e.trace)
     if length(header) == 1
       rendererr(header[1])
     else
       Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n'))])
     end
   else
-    Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(trace)])
+    Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(e.trace)])
   end
 
   d(:type => :error,
     :view => render(Inline(),
-                    Copyable(view, sprint(showerror, e.err, e.bt))),
+                    Copyable(view, string(e))),
     :highlights => highlights(e))
 end
 

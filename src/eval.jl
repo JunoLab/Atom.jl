@@ -83,7 +83,7 @@ handle("evalall") do data
         ee = EvalError(e, catch_backtrace())
         render(Console(), ee)
         @msg error(d(:msg => "Error evaluating $(basename(path))",
-                     :detail => sprint(showerror, e, ee.bt),
+                     :detail => string(ee),
                      :dismissable => true))
       end
     end
