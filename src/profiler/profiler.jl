@@ -35,7 +35,7 @@ rawtree()::ProfileTree = reduce(mergetrace!, tobranch.(traces()))
 
 function cleantree(tree::ProfileTree)
   postwalk(tree) do x
-    length(x.children) == 1 ? first(x.children) : x
+    length(x.children) == 1 ? Tree(x.head, x.children[1].children) : x
   end
 end
 
