@@ -21,7 +21,7 @@ fullpath(path) =
 appendline(path, line) = line > 0 ? "$path:$line" : path
 
 baselink(path, line) =
-  path == "no file" ? span(".fade", path) :
+  path == "./<missing>" ? span(".fade", "<unknown file>") :
     isuntitled(path) ? link(path, line, Text(appendline("untitled", line))) :
     isabspath(path)  ?
       link(path, line, Text(pkgpath(appendline(path, line)))) :
