@@ -9,8 +9,10 @@ EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, stacktrace(bt))
 
 function Base.show(io::IO, err::EvalError)
   show(io, err.err)
+  println(io)
   for frame in err.trace
     show(io, frame)
+    println(io)
   end
 end
 
