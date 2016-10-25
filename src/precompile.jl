@@ -17,6 +17,7 @@ function precompile()
 
   close(mock)
   wait(task)
+  global sock = nothing
 end
 
 Juno.isprecompiling() && precompile()
