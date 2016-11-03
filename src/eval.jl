@@ -53,7 +53,7 @@ handle("eval") do data
   mod = getthing(mod)
 
   lock(evallock)
-  result = @dynamic let Media.input = Editor()
+  result = Media.@dynamic let Media.input = Editor()
     withpath(path) do
       @errs include_string(mod, text, path, line)
     end
@@ -75,7 +75,7 @@ handle("evalall") do data
     mod = getthing(CodeTools.filemodule(path), Main)
   end
   lock(evallock)
-  @dynamic let Media.input = Editor()
+  Media.@dynamic let Media.input = Editor()
     withpath(path) do
       try
         include_string(mod, code, path)
@@ -105,7 +105,7 @@ handle("evalrepl") do data
   else
     try
       lock(evallock)
-      @dynamic let Media.input = Console()
+      Media.@dynamic let Media.input = Console()
         withpath(nothing) do
           result = @errs eval(mod, :(ans = include_string($code, "console")))
           !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
