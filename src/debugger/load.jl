@@ -5,7 +5,7 @@ function __debug__()
   @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))
 end
 
-isdebugging() = isdefined(:Debugger) && Debugger.isdebugging()
+isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
 
 for f in :[step, breakpoint].args
   @eval function $f(args...)
