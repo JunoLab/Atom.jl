@@ -20,7 +20,7 @@ handle("togglebp") do file, line
 
   if haskey(bps, k)
     thebp = bps[k]
-    Gallium.disable(thebp)
+    Gallium.remove(thebp)
     delete!(bps, k)
   else
     bps[k] = Gallium.breakpoint(file, line)
