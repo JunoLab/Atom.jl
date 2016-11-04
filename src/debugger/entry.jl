@@ -13,6 +13,21 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
 
 import Base.Meta: quot
 
+bps = Dict()
+
+handle("togglebp") do file, line
+  k = hash((file, line))
+
+  if haskey(bps, k)
+    thebp = bps[k]
+    Gallium.disable(thebp)
+    delete!(bps, k)
+  else
+    bps[k] = Gallium.breakpoint(file, line)
+  end
+  nothing
+end
+
 function breakpoint(args...)
   Gallium.breakpoint(args...)
   return
