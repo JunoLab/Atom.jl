@@ -7,8 +7,25 @@ const precomp = [
 ]
 
 function precompile()
-  server = listen(ip"127.0.0.1", 3000)
-  task = @schedule @sync connect(3000)
+  # use an ephemeral port for the mock server
+  local port, server
+  for p in 49152:65535
+    s = try
+      listen(ip"127.0.0.1", p)
+    catch e
+      # if EADDRINUSE, try the next port, otherwise rethrow
+      if isa(e, Base.UVError) && e.code == -4091
+        continue
+      else
+        rethrow(e)
+      end
+    end
+    server = s
+    port = p
+    break
+  end
+
+  task = @schedule @sync connect(port)
   mock = accept(server)
 
   for msg in precomp
