@@ -39,6 +39,13 @@ render(i::Inline, t::SubTree) =
     :label => render(i, t.label),
     :child => render(i, t.child))
 
+import Juno: Table
+
+@render i::Inline t::Table begin
+  xs = map(x -> render(i, x), t.xs)
+  table("", vec(mapslices(xs -> tr("", map(x->td("", [x]), xs)), xs, 2)))
+end
+
 import Juno: Copyable
 
 render(i::Inline, x::Copyable) =
