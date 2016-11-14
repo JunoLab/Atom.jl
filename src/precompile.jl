@@ -14,7 +14,7 @@ function precompile()
       listen(ip"127.0.0.1", p)
     catch e
       # if EADDRINUSE, try the next port, otherwise rethrow
-      if isa(e, Base.UVError) && e.code == -4091
+      if isa(e, Base.UVError) && e.code == Base.UV_EADDRINUSE
         continue
       else
         rethrow(e)
