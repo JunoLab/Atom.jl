@@ -9,16 +9,13 @@ const precomp = [
 function precompile()
   # use an ephemeral port for the mock server
   local port, server
-  for p in 49152:65535
+  for p in 49160:65500
     s = try
       listen(ip"127.0.0.1", p)
-    catch e
-      # if EADDRINUSE, try the next port, otherwise rethrow
-      if isa(e, Base.UVError) && e.code == Base.UV_EADDRINUSE
-        continue
-      else
-        rethrow(e)
-      end
+    catch
+      # this should not catch all errors, but `listen` can error with a generic
+      # error if `bind` doesn't succeed and who knows where else...
+      continue
     end
     server = s
     port = p
