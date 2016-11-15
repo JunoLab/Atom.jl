@@ -189,7 +189,7 @@ wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 
 handle("workspace") do mod
   mod = getthing(mod)
-  ns = names(mod)
+  ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, true))))
   filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)
