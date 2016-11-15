@@ -10,8 +10,8 @@ exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
 function modulenames(data, pos)
   main = haskey(data, "module") ? data["module"] :
          haskey(data, "path") ? CodeTools.filemodule(data["path"]) :
-         "Main"
-  main == "" && (main = "Main")
+         "JunoMain"
+  main == "" && (main = "JunoMain")
   sub = CodeTools.codemodule(data["code"], pos)
   main, sub
 end
@@ -93,7 +93,7 @@ handle("evalall") do data
 end
 
 handle("evalrepl") do data
-  @destruct [mode || nothing, code, mod || "Main"] = data
+  @destruct [mode || nothing, code, mod || "JunoMain"] = data
   mod = getthing(mod)
   if mode == "shell"
     code = "Base.repl_cmd(`$code`, STDOUT)"
@@ -121,7 +121,7 @@ handle("evalrepl") do data
 end
 
 handle("docs") do data
-  @destruct [mod || "Main", word] = data
+  @destruct [mod || "JunoMain", word] = data
   mod = getthing(mod)
   docstring = @errs HTML(sprint(show, MIME"text/html"(), include_string(mod, "@doc $word")))
   mtable = try include_string(mod, "methods($word)") catch [] end
@@ -133,7 +133,7 @@ handle("docs") do data
 end
 
 handle("methods") do data
-  @destruct [mod || "Main", word] = data
+  @destruct [mod || "JunoMain", word] = data
   mod = getthing(mod)
   mtable = @errs include_string(mod, "methods($word)")
   isa(mtable, EvalError) ?
@@ -189,7 +189,7 @@ wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 
 handle("workspace") do mod
   mod = getthing(mod)
-  ns = names(mod)
+  ns = names(mod, true)
   filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)
@@ -198,4 +198,10 @@ handle("workspace") do mod
     prepend!(contexts, Debugger.contexts())
   end
   return contexts
+end
+
+resetJunoMain() = eval(Main, :(module JunoMain; using $(VERSION < v"0.5-" ? :Atom : :Juno); end))
+
+handle("clearall") do
+  resetJunoMain()
 end
