@@ -199,3 +199,9 @@ handle("workspace") do mod
   end
   return contexts
 end
+
+resetJunoMain() = eval(Main, :(module JunoMain; using $(VERSION < v"0.5-" ? :Atom : :Juno); end))
+
+handle("clearall") do
+  resetJunoMain()
+end
