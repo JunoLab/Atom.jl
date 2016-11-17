@@ -14,7 +14,7 @@ function traces()
       filter(x->!isempty(x)))
 end
 
-const NULLFRAME = StackFrame(symbol(""), symbol(""), -1)
+const NULLFRAME = StackFrame(Symbol(""), Symbol(""), -1)
 
 immutable ProfileFrame
   frame::StackFrame
