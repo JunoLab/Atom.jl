@@ -2,7 +2,7 @@ module Profiler
 
 using Lazy, Juno
 import Juno: Row, LazyTree, link, icon
-import ..Atom: baselink, cliptrace
+import ..Atom: baselink, cliptrace, expandpath
 
 include("tree.jl")
 
@@ -44,11 +44,19 @@ tree() = cleantree(rawtree())
 head(s::StackFrame) =
   Row(Text("$(s.func) at "), baselink(string(s.file), s.line))
 
-@render Juno.Inline prof::Tree{ProfileFrame} begin
+@render Juno.Inline prof::ProfileTree begin
   LazyTree(prof.head.frame == NULLFRAME ?
              icon("history") :
              Row(prof.head.count, text" ", head(prof.head.frame)),
            ()->prof.children)
+end
+
+function tojson(prof::ProfileTree)
+  name, path = expandpath(string(prof.head.frame.file))
+  Dict(:file => path,
+       :name => name,
+       :line => prof.head.frame.line,
+       :children => map(tojson, prof.children))
 end
 
 end
