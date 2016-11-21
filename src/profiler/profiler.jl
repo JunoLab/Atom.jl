@@ -2,7 +2,7 @@ module Profiler
 
 using Lazy, Juno
 import Juno: Row, LazyTree, link, icon
-import ..Atom: baselink, cliptrace, expandpath
+import ..Atom: baselink, cliptrace, expandpath, @msg
 
 include("tree.jl")
 
@@ -58,5 +58,7 @@ function tojson(prof::ProfileTree)
        :line => prof.head.frame.line,
        :children => map(tojson, prof.children))
 end
+
+profiler() = @msg profile(tojson(tree()))
 
 end
