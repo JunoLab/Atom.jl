@@ -53,9 +53,11 @@ end
 
 function tojson(prof::ProfileTree)
   name, path = expandpath(string(prof.head.frame.file))
-  Dict(:file => path,
-       :name => name,
+  Dict(:path => path,
+       :location => name,
+       :func => prof.head.frame.func,
        :line => prof.head.frame.line,
+       :count => prof.head.count,
        :children => map(tojson, prof.children))
 end
 
