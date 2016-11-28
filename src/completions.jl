@@ -7,7 +7,9 @@ handle("completions") do data
   withpath(path) do
     pre = CodeTools.prefix(line[1:column-1])
     pre = isempty(pre) ? nothing : pre[end]
-    cs = CodeTools.completions(line[1:column-1], getthing(mod), default = false)
+    m = getthing(mod)
+    m = isa(m, Module) ? m : Main
+    cs = CodeTools.completions(line[1:column-1], m, default = false)
     cs == nothing && pre == nothing && !force && (cs = [])
     d(:completions => cs,
       :prefix      => pre,
@@ -16,5 +18,7 @@ handle("completions") do data
 end
 
 handle("cacheCompletions") do mod
-  CodeTools.completions(getthing(mod))
+  m = getthing(mod)
+  m = isa(m, Module) ? m : Main
+  CodeTools.completions(m)
 end
