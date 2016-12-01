@@ -21,15 +21,15 @@ handle("togglebp") do file, line
   k = hash((file, line))
 
   if haskey(bps, k)
-    thebp = bps[k]
-    Gallium.remove(thebp)
+    Gallium.remove(bps[k])
     delete!(bps, k)
+    return Dict(:msg => "bpremoved")
   else
     # if breakpoint is in base, set it with the filename only
     basepath(basename(file)) == file && (file = basename(file))
     bps[k] = Gallium.breakpoint(file, line)
+    return Dict(:msg => "bpset")
   end
-  nothing
 end
 
 function breakpoint(args...)
