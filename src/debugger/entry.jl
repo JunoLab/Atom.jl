@@ -13,6 +13,8 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
 
 import Base.Meta: quot
 
+import Atom: basepath
+
 bps = Dict()
 
 handle("togglebp") do file, line
@@ -23,6 +25,8 @@ handle("togglebp") do file, line
     Gallium.remove(thebp)
     delete!(bps, k)
   else
+    # if breakpoint is in base, set it with the filename only
+    basepath(basename(file)) == file && (file = basename(file))
     bps[k] = Gallium.breakpoint(file, line)
   end
   nothing
