@@ -17,6 +17,13 @@ import Atom: basepath
 
 bps = Dict()
 
+handle("clearbps") do
+  for (k, bp) in bps
+    Gallium.remove(bp)
+    delete!(bps, k)
+  end
+end
+
 handle("togglebp") do file, line
   k = hash((file, line))
 
