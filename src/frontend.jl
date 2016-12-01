@@ -4,18 +4,6 @@ input() = @rpc input()
 
 info(s) = @msg info(string(s))
 
-"""
-  progress(x = [0..1])
-
-Set Atom's progress bar to the given value.
-"""
-progress(x::Void = nothing) = @msg progress(x)
-
-progress(x::Real) =
-  @msg progress(x < 0.01 ? nothing :
-                x > 1 ? 1 :
-                x)
-
 macro !(ex)
   quote
     result = $(esc(ex))
