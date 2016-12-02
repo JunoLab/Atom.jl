@@ -24,6 +24,27 @@ handle("clearbps") do
   end
 end
 
+Juno.@render Juno.Inline bp::Gallium.Breakpoint begin
+  if isempty(bp.active_locations) && isempty(bp.inactive_locations) && isempty(bp.sources)
+    Text("Empty Breakpoint.")
+  else
+    if !isempty(bp.sources)
+      Juno.Row(Text("Breakpoint at "), Atom.baselink(string(bp.sources[1].fname), bp.sources[1].line))
+    else
+      sprint(show, bp)
+    end
+  end
+end
+
+handle("getbps") do
+  ret = []
+  for (k, bp) in bps
+    Atom.baselink
+    push!(ret, Dict(:view => render(Juno.Inline(), bp)))
+  end
+  ret
+end
+
 handle("togglebp") do file, line
   k = hash((file, line))
 
