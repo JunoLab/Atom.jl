@@ -22,87 +22,76 @@ function stepview(ex)
                           ")")))
 end
 
-interp = nothing
+global interp = nothing
+global chan = nothing
+isdebugging() = chan ≠ nothing
 
-const cond = Condition()
-
-isdebugging() = interp ≠ nothing
+framedone(interp) = isexpr(interp.next_expr[2], :return)
+interpdone(interp) = framedone(interp) && interp.stack[1] == interp
 
 validcall(x) =
   @capture(x, f_(args__)) &&
   !isa(f, Core.IntrinsicFunction) &&
   f ∉ [tuple, getfield]
 
-function tocall!(interp)
-  while !validcall(interp.next_expr[2])
+function skip!(interp)
+  while !(validcall(interp.next_expr[2]) || isexpr(interp.next_expr[2], :return, :(=)))
     step_expr(interp) || return false
   end
   return true
 end
 
-function err(e)
-  debugmode(false)
-  interp = nothing
-  notify(cond, e, error = true)
-end
-
-macro errs(ex)
-  :(try
-      $(esc(ex))
-    catch e
-      err(e)
-    end)
-end
-
-function done(interp)
+function endframe!(interp)
+  finish!(interp)
   stack, val = interp.stack, interp.retval
   stack = filter(x -> isa(x, Interpreter), stack)
   if stack[1] == interp
-    debugmode(false)
-    interp = nothing
-    notify(cond)
+    return interp
   else
-    i = findfirst(stack, interp)
-    resize!(stack, i-1)
-    interp = stack[end]
+    i = findfirst(interp.stack, interp)
+    resize!(interp.stack, i-1)
+    interp = interp.stack[end]
     evaluated!(interp, val)
-    tocall!(interp)
-  end
-  return interp
-end
-
-handle("nextline") do
-  @errs begin
-    global interp = next_line!(interp) && tocall!(interp) ? interp : done(interp)
-    stepto(interp)
+    skip!(interp)
+    return interp
   end
 end
 
-handle("stepin") do
-  global interp
-  isexpr(interp.next_expr[2], :call) || return
-  new = enter_call_expr(interp, interp.next_expr[2])
-  if new ≠ nothing
-    interp = new
-    tocall!(interp)
+function RunDebugIDE(i)
+  global interp = i
+  global chan = Channel()
+  @schedule begin
+    skip!(interp)
+    debugmode(true)
     stepto(interp)
+    for val in chan
+      if val in (:nextline, :stepexpr)
+        interpdone(interp) && continue
+        step = val == :nextline ? next_line! : step_expr
+        framedone(interp) ? (interp = endframe!(interp)) :
+          (step(interp) && skip!(interp))
+      elseif val == :stepin
+        isexpr(interp.next_expr[2], :call) || continue
+        next = enter_call_expr(interp, interp.next_expr[2])
+        if next ≠ nothing
+          interp = next
+          skip!(interp)
+        end
+      elseif val == :finish
+        finish!(interp)
+        interpdone(interp) && break
+        interp = endframe!(interp)
+      end
+      stepto(interp)
+    end
+    chan = nothing
+    interp = nothing
+    debugmode(false)
   end
 end
 
-handle("finish") do
-  global interp
-  @errs begin
-    finish!(interp)
-    interp = done(interp)
-    stepto(interp)
-  end
-end
-
-handle("stepexpr") do
-  @errs begin
-    step_expr(interp)
-    stepto(interp)
-  end
+for cmd in :[nextline, stepin, stepexpr, finish].args
+  handle(()->put!(chan, cmd), string(cmd))
 end
 
 contexts(i::Interpreter = interp) =
@@ -111,9 +100,7 @@ contexts(i::Interpreter = interp) =
 import Gallium: JuliaStackFrame
 
 type Undefined end
-
 @render Inline u::Undefined span(".fade", "<undefined>")
-
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
 function context(i::Union{Interpreter,JuliaStackFrame})
