@@ -1,18 +1,8 @@
-function RunDebugIDE(in)
-  global interp = in
-  tocall!(in)
-  debugmode(true)
-  stepto(in)
-  wait(cond)
-  finish!(in)
-  in.retval
-end
-
 # Manual Entry
 
 function step(args...)
-  global interp
-  RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
+  @schedule RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
+  return
 end
 
 # Breakpoints
