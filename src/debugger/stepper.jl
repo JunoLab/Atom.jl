@@ -2,6 +2,7 @@ import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, ne
   evaluated!, finish!, step_expr, idx_stack
 
 import ..Atom: fullpath, handle, @msg, wsitem, Inline
+import Juno: Row
 using Media
 
 function fileline(i::Interpreter)
@@ -11,16 +12,24 @@ end
 
 debugmode(on) = @msg debugmode(on)
 stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(i::Interpreter) = stepto(fileline(i)..., stepview(i.next_expr[2]))
+stepto(i::Interpreter) = stepto(fileline(i)..., stepview(i))
 stepto(::Void) = debugmode(false)
 
-function stepview(ex)
-  @capture(ex, f_(as__)) || return render(Inline(), Text(string(ex)))
-  render(Inline(), span(c(render(Inline(), f),
-                          "(",
-                          interpose([render(Inline(), a) for a in as], ", ")...,
-                          ")")))
+function fillslots(ex, names)
+  MacroTools.prewalk(ex) do ex
+    isa(ex, SlotNumber) ? names[ex.id] : ex
+  end
 end
+
+function stepview(ex)
+  render(Inline(),
+    @capture(ex, f_(as__)) ? Row(f, text"(", interpose(as, text", ")..., text")") :
+    @capture(ex, x_ = y_) ? Row(Text(string(x)), text" = ", y) :
+    @capture(ex, return x_) ? Row(text"return ", x) :
+    Text(string(ex)))
+end
+
+stepview(i::Interpreter) = stepview(fillslots(i.next_expr[2], i.linfo.slotnames))
 
 global interp = nothing
 global chan = nothing
