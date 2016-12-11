@@ -20,6 +20,4 @@ include("debugger/load.jl")
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
 
-include("precompile.jl")
-
 end # module
