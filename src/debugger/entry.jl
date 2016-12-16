@@ -17,6 +17,8 @@ import Atom: basepath
 
 bps = Dict()
 
+using Juno
+
 handle("clearbps") do
   for (k, bp) in bps
     Gallium.remove(bp)
@@ -39,7 +41,6 @@ end
 handle("getbps") do
   ret = []
   for (k, bp) in bps
-    Atom.baselink
     push!(ret, Dict(:view => render(Juno.Inline(), bp)))
   end
   ret
@@ -99,7 +100,7 @@ _breakpoint_hit = function (hook, RC)
     # :(tty_state = Gallium.suspend_other_tasks()),
     :((isempty($conditions) ||
       any(c->Gallium.matches_condition(interp,c),$conditions)) &&
-      Atom.Debugger.RunDebugIDE(interp)),
+      Atom.Debugger.RunDebugIDE(interp, true)),
     # :(Gallium.restore_other_tasks(tty_state)),
     :(ASTInterpreter.finish!(interp)),
     :(return interp.retval::$(linfo.rettype))))

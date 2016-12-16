@@ -66,10 +66,10 @@ function endframe!(interp)
   end
 end
 
-function RunDebugIDE(i)
+function RunDebugIDE(i, block = false)
   global interp = i
   global chan = Channel()
-  @schedule begin
+  t = @schedule begin
     skip!(interp)
     debugmode(true)
     stepto(interp)
@@ -103,6 +103,7 @@ function RunDebugIDE(i)
     interp = nothing
     debugmode(false)
   end
+  block && wait(t)
 end
 
 for cmd in :[nextline, stepin, stepexpr, finish].args
