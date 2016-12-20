@@ -5,6 +5,11 @@ function __debug__()
   @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))
 end
 
+handle("loadgallium") do
+  __debug__()
+  nothing
+end
+
 isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
 
 for f in :[step, breakpoint].args
