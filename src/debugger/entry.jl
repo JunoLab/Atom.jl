@@ -55,7 +55,7 @@ handle("togglebp") do file, line
     return Dict(:msg => "bpremoved")
   else
     # if breakpoint is in base, set it with the filename only
-    basepath(basename(file)) == file && (file = basename(file))
+    contains(file, basepath("")) && (file = basename(file))
     bps[k] = Gallium.breakpoint(file, line)
     return Dict(:msg => "bpset")
   end
