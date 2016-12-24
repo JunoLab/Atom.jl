@@ -58,7 +58,7 @@ Catches errors internal to Atom.jl and renders them in the client.
 """
 macro ierrs(ex)
   :(try
-      $(ex)
+      $(esc(ex))
     catch e
       ee = EvalError(e, catch_backtrace())
       @msg error(d(:msg         => "Julia Client – Internal Error",
