@@ -1,7 +1,7 @@
 import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
   evaluated!, finish!, step_expr, idx_stack
 
-import ..Atom: fullpath, handle, @msg, wsitem, Inline
+import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row
 using Media
 
@@ -74,24 +74,30 @@ function RunDebugIDE(i)
     debugmode(true)
     stepto(interp)
     for val in chan
-      if val in (:nextline, :stepexpr)
-        interpdone(interp) && continue
-        step = val == :nextline ? next_line! : step_expr
-        framedone(interp) ? (interp = endframe!(interp)) :
-          (step(interp) && skip!(interp))
-      elseif val == :stepin
-        isexpr(interp.next_expr[2], :call) || continue
-        next = enter_call_expr(interp, interp.next_expr[2])
-        if next ≠ nothing
-          interp = next
-          skip!(interp)
+      try
+        if val in (:nextline, :stepexpr)
+          interpdone(interp) && continue
+          step = val == :nextline ? next_line! : step_expr
+          framedone(interp) ? (interp = endframe!(interp)) :
+            (step(interp) && skip!(interp))
+        elseif val == :stepin
+          isexpr(interp.next_expr[2], :call) || continue
+          next = enter_call_expr(interp, interp.next_expr[2])
+          if next ≠ nothing
+            interp = next
+            skip!(interp)
+          end
+        elseif val == :finish
+          finish!(interp)
+          interpdone(interp) && break
+          interp = endframe!(interp)
         end
-      elseif val == :finish
-        finish!(interp)
-        interpdone(interp) && break
-        interp = endframe!(interp)
+        stepto(interp)
+      catch e
+        ee = EvalError(e, catch_backtrace())
+        render(Console(), ee)
+        break
       end
-      stepto(interp)
     end
     chan = nothing
     interp = nothing
