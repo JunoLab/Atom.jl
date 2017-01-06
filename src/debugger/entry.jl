@@ -49,7 +49,7 @@ end
 handle("addsourcebp") do file, line
   k = hash((file, line))
 
-  haskey(bps, k) && (return Dict(:msg => "ERR:bpalreadyexists")
+  haskey(bps, k) && (return Dict(:msg => "ERR:bpalreadyexists"))
 
   contains(file, basepath("")) && (file = basename(file))
   bps[k] = Gallium.breakpoint(file, line)
@@ -59,7 +59,7 @@ end
 handle("removesourcebp") do file, line
   k = hash((file, line))
 
-  !haskey(bps, k) && (return Dict(:msg => "ERR:bpdoesnotexist")
+  !haskey(bps, k) && (return Dict(:msg => "ERR:bpdoesnotexist"))
 
   Gallium.remove(bps[k])
   delete!(bps, k)
