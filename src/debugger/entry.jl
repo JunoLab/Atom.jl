@@ -46,19 +46,24 @@ handle("getbps") do
   ret
 end
 
-handle("togglebp") do file, line
+handle("addsourcebp") do file, line
   k = hash((file, line))
 
-  if haskey(bps, k)
-    Gallium.remove(bps[k])
-    delete!(bps, k)
-    return Dict(:msg => "bpremoved")
-  else
-    # if breakpoint is in base, set it with the filename only
-    contains(file, basepath("")) && (file = basename(file))
-    bps[k] = Gallium.breakpoint(file, line)
-    return Dict(:msg => "bpset")
-  end
+  haskey(bps, k) && (return Dict(:msg => "ERR:bpalreadyexists")
+
+  contains(file, basepath("")) && (file = basename(file))
+  bps[k] = Gallium.breakpoint(file, line)
+  return Dict(:msg => "bpset")
+end
+
+handle("removesourcebp") do file, line
+  k = hash((file, line))
+
+  !haskey(bps, k) && (return Dict(:msg => "ERR:bpdoesnotexist")
+
+  Gallium.remove(bps[k])
+  delete!(bps, k)
+  return Dict(:msg => "bpremoved")
 end
 
 function breakpoint(args...)
