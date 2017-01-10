@@ -39,7 +39,7 @@ function cleantree(tree::ProfileTree)
   end
 end
 
-tree() = cleantree(rawtree())
+tree() = isempty(Profile.fetch()) ? error("No profile data") : cleantree(rawtree())
 
 head(s::StackFrame) =
   Row(Text("$(s.func) at "), baselink(string(s.file), s.line))
