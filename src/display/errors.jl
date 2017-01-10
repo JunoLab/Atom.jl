@@ -18,7 +18,7 @@ end
 
 function cliptrace(trace::StackTrace)
   ind = findlast(frame -> frame.func == :include_string &&
-                          frame.file == symbol("./loading.jl"), trace)
+                          frame.file == Symbol("./loading.jl"), trace)
   trace[1:(ind==0 ? end : ind-1)]
 end
 
