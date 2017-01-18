@@ -19,7 +19,7 @@ end
 
 function cliptrace(trace::StackTrace)
   ind = findlast(frame -> frame.func == :include_string &&
-                          frame.file == Symbol("./loading.jl"), trace)
+                          frame.file == Symbol(joinpath(".", "loading.jl")), trace)
   trace[1:(ind==0 ? end : ind-1)]
 end
 
@@ -33,7 +33,7 @@ function renderbt(trace::StackTrace)
        [div(".trace-entry",
             c(fade("in "), string(frame.func), fade(" at "),
               render(Inline(), Copyable(baselink(string(frame.file), frame.line)))))
-        for frame in reverse(cliptrace(trace))])
+        for frame in reverse(trace)])
 end
 
 rendererr(err) = strong(".error-description", err)
@@ -41,14 +41,15 @@ rendererr(err) = strong(".error-description", err)
 function render(::Editor, e::EvalError)
   header = sprint(showerror, e.err)
   header = split(header, '\n')
-  view = if isempty(e.trace)
+  trace = cliptrace(e.trace)
+  view = if isempty(trace)
     if length(header) == 1
       rendererr(header[1])
     else
       Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n'))])
     end
   else
-    Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(e.trace)])
+    Tree(rendererr(header[1]), [rendererr(join(header[2:end], '\n')); renderbt(trace)])
   end
 
   d(:type => :error,
