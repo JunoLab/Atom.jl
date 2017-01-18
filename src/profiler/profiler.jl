@@ -1,6 +1,6 @@
 module Profiler
 
-using Lazy, Juno
+using Lazy, Juno, Hiccup
 import Juno: Row, LazyTree, link, icon, SubTree
 import ..Atom: baselink, cliptrace, expandpath, @msg
 
@@ -42,7 +42,9 @@ end
 tree() = isempty(Profile.fetch()) ? error("No profile data") : cleantree(rawtree())
 
 head(s::StackFrame) =
-  Row(Text("$(s.func) at "), baselink(string(s.file), s.line))
+  Row(span(".syntax--support.syntax--function", string(s.func)),
+      text" at ",
+      baselink(string(s.file), s.line))
 
 @render Juno.Inline prof::ProfileTree begin
   h = prof.head.frame == NULLFRAME ?
