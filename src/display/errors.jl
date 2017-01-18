@@ -5,7 +5,8 @@ end
 
 EvalError(err) = EvalError(err, [])
 
-EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, stacktrace(bt))
+# Stacktrace fails on empty traces
+EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
 
 function Base.show(io::IO, err::EvalError)
   show(io, err.err)
