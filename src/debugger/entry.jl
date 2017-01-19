@@ -1,7 +1,7 @@
 # Manual Entry
 
 function step(args...)
-  @schedule RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
+  RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
   return
 end
 
