@@ -1,17 +1,15 @@
 export Debugger
 
-const loadLock = ReentrantLock()
-
 function __debug__()
-  lock(loadLock)
   isdefined(Atom, :Debugger) && return
+  lock(evallock)
   @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))
-  unlock(loadLock)
+  unlock(evallock)
 end
 
 handle("loadgallium") do
   __debug__()
-  nothing
+  return
 end
 
 isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
