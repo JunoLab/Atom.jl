@@ -10,12 +10,13 @@ EvalError(err) = EvalError(err, [])
 # Stacktrace fails on empty traces
 EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
 
-errtrace(e::EvalError) = errtrace(e.err, stacktrace(e.bt))
+errtrace(e::EvalError) = errtrace(e.err, e.trace)
+errmsg(e::EvalError) = errmsg(e.err)
 
-function Base.showerror(io::IO, err::EvalError)
-  show(io, err.err)
+function Base.show(io::IO, err::EvalError)
+  print(io, errmsg(err))
   println(io)
-  for frame in err.trace
+  for frame in errtrace(err)
     show(io, frame)
     println(io)
   end
@@ -45,7 +46,7 @@ rendererr(err) = strong(".error-description", err)
 function render(::Editor, e::EvalError)
   header = errmsg(e.err)
   header = split(header, '\n')
-  trace = cliptrace(errtrace(e.err, e.trace))
+  trace = cliptrace(errtrace(e))
   view = if isempty(trace)
     if length(header) == 1
       rendererr(header[1])
