@@ -5,7 +5,7 @@ type EvalError{T}
   trace::StackTrace
 end
 
-EvalError(err) = EvalError(err, [])
+EvalError(err) = EvalError(err, StackTrace())
 
 # Stacktrace fails on empty traces
 EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
