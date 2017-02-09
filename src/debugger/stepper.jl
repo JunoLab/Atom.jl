@@ -47,7 +47,12 @@ global chan = nothing
 isdebugging() = chan ≠ nothing
 
 framedone(interp) = isexpr(interp.next_expr[2], :return)
-interpdone(interp) = framedone(interp) && interp.stack[1] == interp
+
+function interpdone(interp)
+  framedone(interp) || return false
+  i = findfirst(s -> s == interp, interp.stack)
+  i ≤ 1 || !isa(interp.stack[i-1], Interpreter)
+end
 
 validcall(x) =
   @capture(x, f_(args__)) &&
