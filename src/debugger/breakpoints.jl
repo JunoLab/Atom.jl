@@ -31,18 +31,21 @@ handle("getbps") do
   ret
 end
 
+normbase(file) = contains(file, basepath("")) && basename(file)
+
 handle("addsourcebp") do file, line
-  haskey(bps, (file, line)) && return Dict(:msg => "ERR:bpalreadyexists")
-  contains(file, basepath("")) && (file = basename(file))
+  file = normbase(file)
+  haskey(bps, (file, line)) && return false
   bps[(file, line)] = Gallium.breakpoint(file, line)
-  return Dict(:msg => "bpset")
+  return true
 end
 
 handle("removesourcebp") do file, line
-  !haskey(bps, (file, line)) && return Dict(:msg => "ERR:bpdoesnotexist")
+  file = normbase(file)
+  !haskey(bps, (file, line)) && return false
   Gallium.remove(bps[(file, line)])
   delete!(bps, (file, line))
-  return Dict(:msg => "bpremoved")
+  return true
 end
 
 function breakpoint(args...)
