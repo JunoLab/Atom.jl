@@ -112,7 +112,7 @@ function RunDebugIDE(i)
       end
     end
   catch e
-    ee = EvalError(e, catch_backtrace())
+    ee = EvalError(e, catch_stacktrace())
     render(Console(), ee)
   finally
     chan = nothing

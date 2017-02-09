@@ -39,7 +39,7 @@ macro errs(ex)
   :(try
       $(esc(ex))
     catch e
-      EvalError(isa(e, LoadError) ? e.error : e, catch_backtrace())
+      EvalError(isa(e, LoadError) ? e.error : e, catch_stacktrace())
     end)
 end
 
@@ -80,7 +80,7 @@ handle("evalall") do data
       try
         include_string(mod, code, path)
       catch e
-        ee = EvalError(e, catch_backtrace())
+        ee = EvalError(e, catch_stacktrace())
         render(Console(), ee)
         @msg error(d(:msg => "Error evaluating $(basename(path))",
                      :detail => string(ee),
@@ -113,7 +113,7 @@ handle("evalrepl") do data
         end
         unlock(evallock)
       catch e
-        showerror(STDERR, e, catch_backtrace())
+        showerror(STDERR, e, catch_stacktrace())
       end
     end
   end

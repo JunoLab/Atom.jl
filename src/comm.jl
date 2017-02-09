@@ -60,7 +60,7 @@ macro ierrs(ex)
   :(try
       $(esc(ex))
     catch e
-      ee = EvalError(e, catch_backtrace())
+      ee = EvalError(e, catch_stacktrace())
       Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
                              :detail      => string(ee),
                              :dismissable => true))
