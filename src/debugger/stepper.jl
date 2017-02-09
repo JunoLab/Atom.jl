@@ -5,6 +5,17 @@ import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row
 using Media
 
+function evalscope(f)
+  try
+    @msg doneWorking()
+    unlock(Atom.evallock)
+    f()
+  finally
+    lock(Atom.evallock)
+    @msg working()
+  end
+end
+
 function fileline(i::Interpreter)
   file, line = determine_line_and_file(i, idx_stack(i))[end]
   Atom.fullpath(string(file)), line
@@ -73,25 +84,27 @@ function RunDebugIDE(i)
   debugmode(true)
   stepto(interp)
   try
-    for val in chan
-      if val in (:nextline, :stepexpr)
-        interpdone(interp) && continue
-        step = val == :nextline ? next_line! : step_expr
-        framedone(interp) ? (interp = endframe!(interp)) :
-          (step(interp) && skip!(interp))
-      elseif val == :stepin
-        isexpr(interp.next_expr[2], :call) || continue
-        next = enter_call_expr(interp, interp.next_expr[2])
-        if next ≠ nothing
-          interp = next
-          skip!(interp)
+    evalscope() do
+      for val in chan
+        if val in (:nextline, :stepexpr)
+          interpdone(interp) && continue
+          step = val == :nextline ? next_line! : step_expr
+          framedone(interp) ? (interp = endframe!(interp)) :
+            (step(interp) && skip!(interp))
+        elseif val == :stepin
+          isexpr(interp.next_expr[2], :call) || continue
+          next = enter_call_expr(interp, interp.next_expr[2])
+          if next ≠ nothing
+            interp = next
+            skip!(interp)
+          end
+        elseif val == :finish
+          finish!(interp)
+          interpdone(interp) && return interp.retval
+          interp = endframe!(interp)
         end
-      elseif val == :finish
-        finish!(interp)
-        interpdone(interp) && return interp.retval
-        interp = endframe!(interp)
+        stepto(interp)
       end
-      stepto(interp)
     end
   catch e
     ee = EvalError(e, catch_backtrace())
