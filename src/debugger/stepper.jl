@@ -72,8 +72,8 @@ function RunDebugIDE(i)
   skip!(interp)
   debugmode(true)
   stepto(interp)
-  for val in chan
-    try
+  try
+    for val in chan
       if val in (:nextline, :stepexpr)
         interpdone(interp) && continue
         step = val == :nextline ? next_line! : step_expr
@@ -88,19 +88,19 @@ function RunDebugIDE(i)
         end
       elseif val == :finish
         finish!(interp)
-        interpdone(interp) && break
+        interpdone(interp) && return interp.retval
         interp = endframe!(interp)
       end
       stepto(interp)
-    catch e
-      ee = EvalError(e, catch_backtrace())
-      render(Console(), ee)
-      break
     end
+  catch e
+    ee = EvalError(e, catch_backtrace())
+    render(Console(), ee)
+  finally
+    chan = nothing
+    interp = nothing
+    debugmode(false)
   end
-  chan = nothing
-  interp = nothing
-  debugmode(false)
 end
 
 for cmd in :[nextline, stepin, stepexpr, finish].args
