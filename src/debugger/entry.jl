@@ -1,7 +1,7 @@
 # Manual Entry
 
 function step(args...)
-  RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
+  @schedule RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
   return
 end
 
@@ -48,7 +48,7 @@ _breakpoint_hit = function (hook, RC)
     # :(tty_state = Gallium.suspend_other_tasks()),
     :((isempty($conditions) ||
       any(c->Gallium.matches_condition(interp,c),$conditions)) &&
-      Atom.Debugger.RunDebugIDE(interp, true)),
+      Atom.Debugger.RunDebugIDE(interp)),
     # :(Gallium.restore_other_tasks(tty_state)),
     :(ASTInterpreter.finish!(interp)),
     :(return interp.retval::$(linfo.rettype))))

@@ -66,44 +66,41 @@ function endframe!(interp)
   end
 end
 
-function RunDebugIDE(i, block = false)
+function RunDebugIDE(i)
   global interp = i
   global chan = Channel()
-  t = @schedule begin
-    skip!(interp)
-    debugmode(true)
-    stepto(interp)
-    for val in chan
-      try
-        if val in (:nextline, :stepexpr)
-          interpdone(interp) && continue
-          step = val == :nextline ? next_line! : step_expr
-          framedone(interp) ? (interp = endframe!(interp)) :
-            (step(interp) && skip!(interp))
-        elseif val == :stepin
-          isexpr(interp.next_expr[2], :call) || continue
-          next = enter_call_expr(interp, interp.next_expr[2])
-          if next ≠ nothing
-            interp = next
-            skip!(interp)
-          end
-        elseif val == :finish
-          finish!(interp)
-          interpdone(interp) && break
-          interp = endframe!(interp)
+  skip!(interp)
+  debugmode(true)
+  stepto(interp)
+  for val in chan
+    try
+      if val in (:nextline, :stepexpr)
+        interpdone(interp) && continue
+        step = val == :nextline ? next_line! : step_expr
+        framedone(interp) ? (interp = endframe!(interp)) :
+          (step(interp) && skip!(interp))
+      elseif val == :stepin
+        isexpr(interp.next_expr[2], :call) || continue
+        next = enter_call_expr(interp, interp.next_expr[2])
+        if next ≠ nothing
+          interp = next
+          skip!(interp)
         end
-        stepto(interp)
-      catch e
-        ee = EvalError(e, catch_backtrace())
-        render(Console(), ee)
-        break
+      elseif val == :finish
+        finish!(interp)
+        interpdone(interp) && break
+        interp = endframe!(interp)
       end
+      stepto(interp)
+    catch e
+      ee = EvalError(e, catch_backtrace())
+      render(Console(), ee)
+      break
     end
-    chan = nothing
-    interp = nothing
-    debugmode(false)
   end
-  block && wait(t)
+  chan = nothing
+  interp = nothing
+  debugmode(false)
 end
 
 for cmd in :[nextline, stepin, stepexpr, finish].args
