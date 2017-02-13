@@ -31,7 +31,7 @@ handle("getbps") do
   ret
 end
 
-normbase(file) = contains(file, basepath("")) && basename(file)
+normbase(file) = contains(file, basepath("")) ? basename(file) : file
 
 handle("addsourcebp") do file, line
   file = normbase(file)
