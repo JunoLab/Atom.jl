@@ -1,8 +1,7 @@
 # Manual Entry
 
 function step(args...)
-  @schedule RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
-  return
+  RunDebugIDE(enter_call_expr(nothing, :($(args...)())))
 end
 
 # Breakpoints
@@ -13,13 +12,9 @@ import Gallium: stackwalk, process_lowlevel_conditionals, bps_at_location,
 
 import Base.Meta: quot
 
-function breakpoint(args...)
-  Gallium.breakpoint(args...)
-  return
-end
-
 Gallium.breakpoint_hit(hook, RC) = _breakpoint_hit(hook, RC)
 
+# Make this a global so it can be redefined
 _breakpoint_hit = function (hook, RC)
   if !process_lowlevel_conditionals(Location(LocalSession(), hook.addr), RC)
     return
