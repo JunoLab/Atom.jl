@@ -16,10 +16,7 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-# Gallium.jl only works on 0.5
-if VERSION.minor == 5
-  include("debugger/load.jl")
-end
+include("debugger/load.jl")
 include("profiler/profiler.jl")
 
 include("blink/BlinkDisplay.jl")
