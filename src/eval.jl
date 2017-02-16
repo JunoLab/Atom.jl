@@ -35,14 +35,6 @@ end
 
 isselection(data) = data["start"] ≠ data["stop"]
 
-macro errs(ex)
-  :(try
-      $(esc(ex))
-    catch e
-      EvalError(isa(e, LoadError) ? e.error : e, catch_stacktrace())
-    end)
-end
-
 withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
@@ -62,7 +54,7 @@ handle("eval") do data
     display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
     display ≠ Editor() && render(display, result)
     !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
-    render(Editor(), result)
+    render′(Editor(), result)
   end
 end
 
@@ -109,7 +101,7 @@ handle("evalrepl") do data
         withpath(nothing) do
           result = @errs eval(mod, :(ans = include_string($code, "console")))
           !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
-          render(result)
+          render′(result)
         end
         unlock(evallock)
       catch e
@@ -180,7 +172,7 @@ wsnamed(name, T::DataType) = name == Symbol(T.name)
 
 function wsitem(name::Symbol, val)
   d(:name  => wsnamed(name, val) ? nothing : name,
-    :value => render(Inline(), val),
+    :value => render′(Inline(), val),
     :type  => wstype(val),
     :icon  => wsicon(val))
 end

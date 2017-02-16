@@ -10,6 +10,14 @@ EvalError(err) = EvalError(err, StackTrace())
 # Stacktrace fails on empty traces
 EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
 
+macro errs(ex)
+  :(try
+      $(esc(ex))
+    catch e
+      EvalError(isa(e, LoadError) ? e.error : e, catch_stacktrace())
+    end)
+end
+
 errtrace(e::EvalError) = errtrace(e.err, e.trace)
 errmsg(e::EvalError) = errmsg(e.err)
 
@@ -65,3 +73,22 @@ end
 
 render(::Console, e::EvalError) =
   @msg result(render(Editor(), e))
+
+type DisplayError
+  obj
+  err
+end
+
+errmsg(d::DisplayError) =
+  "Error displaying $(typeof(d.obj)): $(errmsg(d.err))"
+
+function render′(display, obj)
+  try
+    render(display, obj)
+  catch e
+    render(display, EvalError(DisplayError(obj, e), catch_stacktrace()))
+  end
+end
+
+render′(x) =
+  render′(Media.getdisplay(Media.primarytype(x)), x)
