@@ -31,8 +31,10 @@ function Base.show(io::IO, err::EvalError)
 end
 
 function cliptrace(trace::StackTrace)
-  ind = findlast(frame -> frame.func == :include_string &&
-                          frame.file == Symbol(joinpath(".", "loading.jl")), trace)
+  ind = findlast(frame -> (frame.func == :include_string &&
+                           frame.file == Symbol(joinpath(".", "loading.jl"))) ||
+                          (frame.func == :render′ &&
+                           endswith(string(frame.file), joinpath("display", "errors.jl"))), trace)
   trace[1:(ind==0 ? end : ind-1)]
 end
 
