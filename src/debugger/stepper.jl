@@ -59,8 +59,13 @@ validcall(x) =
   !isa(f, Core.IntrinsicFunction) &&
   f ∉ [tuple, getfield]
 
+validassign(x) =
+  isexpr(x, :(=)) && !isa(x.args[1], SSAValue)
+
+validexpr(x) = validcall(x) || validassign(x) || isexpr(x, :return)
+
 function skip!(interp)
-  while !(validcall(interp.next_expr[2]) || isexpr(interp.next_expr[2], :return, :(=)))
+  while !validexpr(interp.next_expr[2])
     step_expr(interp) || return false
   end
   return true
