@@ -1,6 +1,7 @@
 using CodeTools, LNR, Media
 import CodeTools: getthing
 
+preprocess(x) = x
 ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
@@ -43,6 +44,7 @@ const evallock = ReentrantLock()
 handle("eval") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
+    text = preprocess(text)
     mod = getthing(mod)
 
     lock(evallock)
@@ -61,6 +63,7 @@ end
 handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
+    code = preprocess(code)
     mod = Main
     if setmod ≠ nothing
       mod = getthing(setmod, Main)
@@ -87,6 +90,7 @@ end
 handle("evalrepl") do data
   @dynamic let Media.input = Console()
     @destruct [mode || nothing, code, mod || "Main"] = data
+    code = preprocess(code)
     mod = getthing(mod)
     if mode == "shell"
       code = "Base.repl_cmd(`$code`, STDOUT)"
