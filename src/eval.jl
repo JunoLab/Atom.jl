@@ -1,7 +1,7 @@
 using CodeTools, LNR, Media
 import CodeTools: getthing
 
-preprocess(x) = x
+preprocess = identity
 ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
 
 LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
