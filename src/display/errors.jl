@@ -70,7 +70,7 @@ function render(::Editor, e::EvalError)
   d(:type => :error,
     :view => render(Inline(),
                     Copyable(view, string(e))),
-    :highlights => highlights(e))
+    :highlights => highlights(trace))
 end
 
 render(::Console, e::EvalError) =
