@@ -6,6 +6,8 @@ import Juno: Model, view
 
 render(::Inline, m::Model) = m.data
 
+import Juno: view
+
 view(x::AString) = x
 view(x::Associative) = x
 
