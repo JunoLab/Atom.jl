@@ -23,7 +23,7 @@ end
 
 ProfileFrame(frame::StackFrame) = ProfileFrame(frame, 1)
 
-typealias ProfileTree Tree{ProfileFrame}
+const ProfileTree = Tree{ProfileFrame}
 
 tobranch(trace::StackTrace) = Tree(ProfileFrame(NULLFRAME), [branch(ProfileFrame.(trace))])
 

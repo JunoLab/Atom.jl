@@ -1,6 +1,6 @@
 using Hiccup
 
-typealias AString AbstractString
+const AString = AbstractString
 
 import Juno: Model, view
 
