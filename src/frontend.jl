@@ -4,7 +4,7 @@ input() = @rpc input()
 
 info(s) = @msg info(string(s))
 
-notify(s) = @msg notify(string(s))
+sendnotify(s::AbstractString) = @msg notify(s)
 
 # Provide our own readline implementation when readline(STDIN) is called.
 # This is the same hack as the one used by IJulia.jl.
