@@ -52,8 +52,8 @@ handle("eval") do data
     unlock(evallock)
 
     display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-    display ≠ Editor() && render(display, result)
     !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
+    display ≠ Editor() && result ≠ nothing && render(display, result)
     render′(Editor(), result)
   end
 end
