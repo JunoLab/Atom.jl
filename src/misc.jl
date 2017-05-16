@@ -2,6 +2,10 @@ handle("ping") do
   "pong"
 end
 
+handle("args") do args
+  append!(ARGS, args)
+end
+
 handle("echo") do data
   data
 end
