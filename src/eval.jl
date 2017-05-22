@@ -70,7 +70,10 @@ handle("evalall") do data
     lock(evallock)
     withpath(path) do
       try
-        include_string(mod, code, path)
+        result = include_string(mod, code, path)
+        display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Console())
+        render(Console(), result)
+        display ≠ Console() && render(display, result)
       catch e
         ee = EvalError(e, catch_stacktrace())
         render(Console(), ee)
