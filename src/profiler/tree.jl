@@ -1,7 +1,8 @@
 type Tree{T}
   head::T
   children::Vector{Tree{T}}
-  Tree(x::T, children = Tree{T}[]) = new(x, children)
+  Tree{T}(x::T, children = Tree{T}[]) where T =
+    new{T}(x, children)
 end
 
 Tree(x, children = []) = Tree{typeof(x)}(x, children)
