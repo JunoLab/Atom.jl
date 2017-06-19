@@ -27,6 +27,8 @@ macro !(ex)
   end
 end
 
+clearconsole() = @msg clearconsole()
+
 # Blink stuff
 
 type Shell <: AtomShell.Shell end
