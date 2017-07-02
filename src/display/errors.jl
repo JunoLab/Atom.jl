@@ -43,11 +43,22 @@ highlights(trace::StackTrace) =
 
 highlights(e::EvalError) = highlights(e.trace)
 
+function locationshading(file)
+  f, p = expandpath(file)
+
+  # error in base
+  ismatch(r"^base/.*", f) && return ".dark"
+  # error in package
+  contains(p, Pkg.dir()) && return ".medium"
+  # error in "user code"
+  return ".bright"
+end
+
 function renderbt(trace::StackTrace)
   span(".error-trace",
-       [div(".trace-entry",
-            c(fade("in "), string(frame.func), fade(" at "),
-              render(Inline(), Copyable(baselink(string(frame.file), frame.line)))))
+       [div(".trace-entry $(locationshading(string(frame.file)))",
+            [fade("in "), string(frame.func), fade(" at "),
+             render(Inline(), Copyable(baselink(string(frame.file), frame.line)))])
         for frame in reverse(trace)])
 end
 
