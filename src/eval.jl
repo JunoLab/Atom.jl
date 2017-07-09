@@ -52,7 +52,7 @@ handle("eval") do data
     unlock(evallock)
 
     display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-    !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
+    !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
     display ≠ Editor() && result ≠ nothing && render(display, result)
     render′(Editor(), result)
   end
@@ -100,7 +100,9 @@ handle("evalrepl") do data
         lock(evallock)
         withpath(nothing) do
           result = @errs eval(mod, :(ans = include_string($code, "console")))
-          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
+          display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Console())
+          !isa(result, EvalError) && ends_with_semicolon(code) && (result = nothing)
+          display ≠ Console() && result ≠ nothing && render(display, result)
           render′(result)
         end
         unlock(evallock)
