@@ -35,5 +35,5 @@ expandpath(path) =
 function baselink(path, line)
   name, path = expandpath(path)
   name == "<unkown file>" ? span(".fade", "<unknown file>") :
-  link(path, line, Text(appendline(name, line)))
+                            link(path, line, Text(appendline(name, line)))
 end
