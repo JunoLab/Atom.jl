@@ -140,6 +140,13 @@ handle("methods") do data
     d(:items => [gotoitem(m) for m in mtable])
 end
 
+using DocSeeker
+handle("searchdocs") do data
+  @destruct [mod || Main, query] = data
+  # mod = getthing(mod)
+  Dict(:items => search(query)[2])
+end
+
 function gotoitem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
