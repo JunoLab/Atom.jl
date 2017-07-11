@@ -151,7 +151,7 @@ end
 
 ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
 
-wstype(x) = nothing
+wstype(x) = ""
 wstype(::Module) = "module"
 wstype(f::Function) = ismacro(f) ? "mixin" : "function"
 wstype(::Type) = "type"
@@ -161,8 +161,8 @@ wstype(::AbstractString) = "property"
 wstype(::Number) = "constant"
 wstype(::Exception) = "tag"
 
-wsicon(x) = nothing
-wsicon(f::Function) = ismacro(f) ? "icon-mention" : nothing
+wsicon(x) = ""
+wsicon(f::Function) = ismacro(f) ? "icon-mention" : ""
 wsicon(::AbstractArray) = "icon-file-binary"
 wsicon(::AbstractVector) = "icon-list-ordered"
 wsicon(::AbstractString) = "icon-quote"
@@ -177,7 +177,7 @@ wsnamed(name, m::Module) = name == module_name(m)
 wsnamed(name, T::DataType) = name == Symbol(T.name)
 
 function wsitem(name::Symbol, val)
-  d(:name  => wsnamed(name, val) ? nothing : name,
+  d(:name  => name,
     :value => render′(Inline(), val),
     :type  => wstype(val),
     :icon  => wsicon(val))
