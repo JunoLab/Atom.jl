@@ -7,6 +7,12 @@ LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
 
 exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
 
+# define this until Base's invokelatest can handle kwargs
+function invokelatestkw(f, args...; kwargs...)
+  inner = () -> f(args...; kwargs...)
+  Core._apply_latest(inner)
+end
+
 function modulenames(data, pos)
   main = haskey(data, "module") ? data["module"] :
          haskey(data, "path") ? CodeTools.filemodule(data["path"]) :
@@ -51,10 +57,10 @@ handle("eval") do data
     end
     unlock(evallock)
 
-    display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+    display = invokelatestmethod(Media.getdisplay, typeof(result), Media.pool(Editor()), default = Editor())
     !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
-    display ≠ Editor() && result ≠ nothing && render(display, result)
-    render′(Editor(), result)
+    display ≠ Editor() && result ≠ nothing && invokelatestkw(render, display, result)
+    invokelatestkw(render′, Editor(), result)
   end
 end
 
@@ -101,7 +107,7 @@ handle("evalrepl") do data
         withpath(nothing) do
           result = @errs eval(mod, :(ans = include_string($code, "console")))
           !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
-          render′(result)
+          invokelatestkw(render′, result)
         end
         unlock(evallock)
       catch e
