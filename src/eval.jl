@@ -57,7 +57,7 @@ handle("eval") do data
     end
     unlock(evallock)
 
-    display = invokelatestmethod(Media.getdisplay, typeof(result), Media.pool(Editor()), default = Editor())
+    display = invokelatestkw(Media.getdisplay, typeof(result), Media.pool(Editor()), default = Editor())
     !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
     display ≠ Editor() && result ≠ nothing && invokelatestkw(render, display, result)
     invokelatestkw(render′, Editor(), result)
