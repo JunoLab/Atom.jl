@@ -143,8 +143,8 @@ end
 using DocSeeker
 handle("searchdocs") do data
   @destruct [mod || Main, query] = data
-  # mod = getthing(mod)
-  Dict(:items => search(query)[2])
+  mod = getthing(mod)
+  Dict(:items => DocSeeker.searchdocs(query, mod = mod)[2])
 end
 
 function gotoitem(m::Method)
