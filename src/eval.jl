@@ -144,7 +144,7 @@ using DocSeeker
 handle("searchdocs") do data
   @destruct [mod || Main, exported || false, query] = data
   mod = getthing(mod)
-  Dict(:items => DocSeeker.searchdocs(query, mod = mod, exported = exported))
+  Dict(:items => DocSeeker.searchdocs(query, mod = mod, exportedonly = exported))
 end
 
 function gotoitem(m::Method)
