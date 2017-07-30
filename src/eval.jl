@@ -142,10 +142,14 @@ end
 
 using DocSeeker
 handle("searchdocs") do data
-  @destruct [mod || Main, exported || false, query] = data
+  @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
   mod = getthing(mod)
-  items = DocSeeker.searchdocs(query, mod = mod, exportedonly = exported)
+  items = DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
   Dict(:items => [i[2] for i in items], :scores => [i[1] for i in items])
+end
+
+handle("regenerateCache") do
+  DocSeeker.createdocsdb()
 end
 
 function gotoitem(m::Method)
