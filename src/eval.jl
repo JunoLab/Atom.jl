@@ -145,7 +145,13 @@ handle("searchdocs") do data
   @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
   mod = getthing(mod)
   items = DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
-  Dict(:items => [i[2] for i in items], :scores => [i[1] for i in items])
+  Dict(:items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
+end
+
+function renderitem(x)
+  r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
+  r[:html] = Juno.view(x.html)
+  r
 end
 
 handle("regenerateCache") do

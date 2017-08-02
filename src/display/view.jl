@@ -15,6 +15,11 @@ view(n::Node) =
     :attrs    => n.attrs,
     :contents => map(view, n.children))
 
+view(n::Node{:code}) =
+  d(:type  => :code,
+    :attrs => n.attrs,
+    :text  => join(n.children, '\n'))
+
 render(::Inline, n::Node) = view(n)
 
 render(::Inline, x::HTML) = view(x)
