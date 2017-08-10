@@ -143,7 +143,7 @@ end
 using DocSeeker
 handle("searchdocs") do data
   @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
-  mod = getthing(mod)
+  # mod = getthing(mod)
   items = DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
   Dict(:items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
 end
