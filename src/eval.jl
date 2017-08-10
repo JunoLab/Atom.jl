@@ -116,19 +116,15 @@ end
 handle("docs") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
-  docstring = @errs sprint(show, MIME"text/html"(), include_string(mod, "@doc $word"))
-  if isa(docstring, EvalError)
-    Dict(:error    =>  true)
-  else
-    if contains(docstring, "No documentation found.")
-      docstring = "No documentation found."
-    end
-    docstring =  HTML(docstring)
-    mtable = try include_string(mod, "methods($word)") catch [] end
-    Dict(:type     => :dom,
-      :tag      => :div,
-      :contents =>  map(x -> render(Editor(), x), [docstring; mtable]))
-  end
+  docstring = @errs include_string(mod, "@doc $word")
+  
+  docstring isa EvalError && return Dict(:error => true)
+
+  mtable = try include_string(mod, "methods($word)") catch [] end
+  Dict(:error    => false,
+       :type     => :dom,
+       :tag      => :div,
+       :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
 end
 
 handle("methods") do data
