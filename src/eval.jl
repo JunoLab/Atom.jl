@@ -117,7 +117,7 @@ handle("docs") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
   docstring = @errs include_string(mod, "@doc $word")
-  
+
   docstring isa EvalError && return Dict(:error => true)
 
   mtable = try include_string(mod, "methods($word)") catch [] end
@@ -141,7 +141,7 @@ handle("searchdocs") do data
   @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
   items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
   items isa EvalError ?
-    Dict(:error => true, :errmsg => render(Inline(), items.err)) :
+    Dict(:error => true, :errmsg => render(Editor(), items.err)) :
     Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
 end
 
@@ -149,6 +149,13 @@ function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
   r[:html] = Juno.view(x.html)
   r
+end
+
+handle("moduleinfo") do data
+  @destruct [mod] = data
+  d = Juno.view(DocSeeker.getmoduleinfo(mod))
+  # @show d
+  Dict(:doc => d)
 end
 
 handle("regenerateCache") do
