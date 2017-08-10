@@ -143,9 +143,10 @@ end
 using DocSeeker
 handle("searchdocs") do data
   @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
-  # mod = getthing(mod)
-  items = DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
-  Dict(:items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
+  items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
+  items isa EvalError ?
+    Dict(:error => true, :errmsg => render(Inline(), items.err)) :
+    Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
 end
 
 function renderitem(x)
