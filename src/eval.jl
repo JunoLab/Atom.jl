@@ -134,7 +134,7 @@ end
 handle("methods") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
-  mtable = @errs include_string(mod, "methods($word)")
+  mtable = @errs methods(getfield(mod, Symbol(word))) 
   isa(mtable, EvalError) ?
     d(:error => true, :items => sprint(showerror, mtable.err)) :
     d(:items => [gotoitem(m) for m in mtable])
