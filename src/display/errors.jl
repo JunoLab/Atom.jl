@@ -60,7 +60,8 @@ function renderbt(trace::StackTrace)
             [fade("in "),
              isnull(frame.linfo) ?
                string(frame.func) :
-               sprint(Base.show_tuple_as_call, get(frame.linfo).def.name, get(frame.linfo).specTypes),
+               replace(sprint(Base.show_tuple_as_call, get(frame.linfo).def.name, get(frame.linfo).specTypes),
+                       r"\(.*\)$", ""),
              fade(" at "),
              render(Inline(), Copyable(baselink(string(frame.file), frame.line))),
              fade(frame.inlined ? " <inlined>" : "")])
