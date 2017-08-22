@@ -130,7 +130,7 @@ end
 handle("methods") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
-  mtable = @errs methods(getfield(mod, Symbol(word))) 
+  mtable = @errs methods(getfield(mod, Symbol(word)))
   isa(mtable, EvalError) ?
     d(:error => true, :items => sprint(showerror, mtable.err)) :
     d(:items => [gotoitem(m) for m in mtable])
@@ -138,8 +138,9 @@ end
 
 using DocSeeker
 handle("searchdocs") do data
-  @destruct [mod || Main, exportedOnly || false, allPackages || false, query] = data
-  items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly, loaded = !allPackages)
+  @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
+  items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
+                                     loaded = !allPackages, name_only = nameOnly)
   items isa EvalError ?
     Dict(:error => true, :errmsg => render(Editor(), items.err)) :
     Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
@@ -147,14 +148,13 @@ end
 
 function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
-  r[:html] = Juno.view(x.html)
+  r[:html] = Juno.view(DocSeeker.renderMD(x.html))
   r
 end
 
 handle("moduleinfo") do data
   @destruct [mod] = data
   d = Juno.view(DocSeeker.getmoduleinfo(mod))
-  # @show d
   Dict(:doc => d)
 end
 
