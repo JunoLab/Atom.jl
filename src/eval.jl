@@ -92,7 +92,8 @@ handle("evalrepl") do data
     if mode == "shell"
       code = "Base.repl_cmd(`$code`, STDOUT)"
     elseif mode == "help"
-      code = "@doc $code"
+      render′(@errs getdocs(mod, code))
+      return
     end
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
@@ -116,11 +117,11 @@ end
 handle("docs") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
-  docstring = @errs include_string(mod, "@doc $word")
+  docstring = @errs getdocs(mod, word)
 
   docstring isa EvalError && return Dict(:error => true)
 
-  mtable = try include_string(mod, "methods($word)") catch [] end
+  mtable = try getmethods(mod, word) catch [] end
   Dict(:error    => false,
        :type     => :dom,
        :tag      => :div,
@@ -130,10 +131,20 @@ end
 handle("methods") do data
   @destruct [mod || "Main", word] = data
   mod = getthing(mod)
-  mtable = @errs methods(getfield(mod, Symbol(word)))
+  mtable = @errs getmethods(mod, word)
   isa(mtable, EvalError) ?
     d(:error => true, :items => sprint(showerror, mtable.err)) :
     d(:items => [gotoitem(m) for m in mtable])
+end
+
+getmethods(mod, word) = methods(getfield(mod, Symbol(word)))
+
+function getdocs(mod, word)
+  if Symbol(word) in keys(Docs.keywords)
+    eval(:(@doc($(Symbol(word)))))
+  else
+    include_string(mod, "@doc $word")
+  end
 end
 
 using DocSeeker
