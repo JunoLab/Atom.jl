@@ -153,7 +153,7 @@ handle("searchdocs") do data
   items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
                                      loaded = !allPackages, name_only = nameOnly)
   items isa EvalError ?
-    Dict(:error => true, :errmsg => render(Editor(), items.err)) :
+    Dict(:error => true, :errmsg => sprint(showerror, items.err)) :
     Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
 end
 
@@ -165,8 +165,9 @@ end
 
 handle("moduleinfo") do data
   @destruct [mod] = data
-  d = Juno.view(DocSeeker.getmoduleinfo(mod))
-  Dict(:doc => d)
+  d, items = DocSeeker.getmoduleinfo(mod)
+  items = [renderitem(i) for i in items]
+  Dict(:doc => Juno.view(d), :items => items)
 end
 
 handle("regenerateCache") do
