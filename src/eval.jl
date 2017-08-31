@@ -147,33 +147,6 @@ function getdocs(mod, word)
   end
 end
 
-using DocSeeker
-handle("searchdocs") do data
-  @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
-  items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
-                                     loaded = !allPackages, name_only = nameOnly)
-  items isa EvalError ?
-    Dict(:error => true, :errmsg => sprint(showerror, items.err)) :
-    Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
-end
-
-function renderitem(x)
-  r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
-  r[:html] = Juno.view(DocSeeker.renderMD(x.html))
-  r
-end
-
-handle("moduleinfo") do data
-  @destruct [mod] = data
-  d, items = DocSeeker.getmoduleinfo(mod)
-  items = [renderitem(i) for i in items]
-  Dict(:doc => Juno.view(d), :items => items)
-end
-
-handle("regenerateCache") do
-  DocSeeker.createdocsdb()
-end
-
 function gotoitem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)

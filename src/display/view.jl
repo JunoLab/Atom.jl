@@ -20,6 +20,11 @@ view(n::Node{:code}) =
     :attrs => n.attrs,
     :text  => join(n.children, '\n'))
 
+view(n::Hiccup.Node{:latex}) =
+  Dict(:type  => :latex,
+       :attrs => n.attrs,
+       :text  => join(n.children, ' '))
+
 render(::Inline, n::Node) = view(n)
 
 render(::Inline, x::HTML) = view(x)
