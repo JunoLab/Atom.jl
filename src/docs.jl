@@ -39,7 +39,7 @@ end
 
 function packageinfo(mod)
   Hiccup.div(
-    Juno.renderMD(Markdown.parse(String(read(readmepath(mod))))),
+    Juno.renderMD(Markdown.parse(String(read(DocSeeker.readmepath(mod))))),
     Hiccup.Node(:hr),
     Hiccup.h2("defined symbols:")
   ), modulesymbols(mod)
