@@ -4,8 +4,7 @@ import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row
 using Media
 
-
-export @enter
+chan = nothing
 
 macro enter(arg)
   quote
@@ -49,6 +48,8 @@ function startdebugging(stack)
   end
 end
 
+isdebugging() = false # chan ≠ nothing
+
 # setup handlers for stepper commands
 for cmd in :[nextline, stepin, stepexpr, finish].args
   handle(()->put!(chan, cmd), string(cmd))
@@ -81,6 +82,7 @@ function nextstate(state)
 end
 
 function stepview(ex)
+  # FIXME: `f` will usually be rendered to a lazy tree which needs to be registered
   render(Inline(),
     @capture(ex, f_(as__)) ? Row(f, text"(", interpose(as, text", ")..., text")") :
     @capture(ex, x_ = y_) ? Row(Text(string(x)), text" = ", y) :
@@ -98,3 +100,6 @@ function evalscope(f)
     @msg working()
   end
 end
+
+# TODO: workspace integration
+# TODO: evaluation in current context

@@ -6,6 +6,4 @@ using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup
 include("stepper2.jl")
 # include("entry.jl")
 
-isdebugging() = false
-
 end # module
