@@ -1,7 +1,9 @@
 export Debugger
 
+include("debugger.jl")
+
+
 function __debug__()
-  VERSION.minor == 5 || error("Gallium only works on Julia 0.5")
   isdefined(Atom, :Debugger) && return
   lock(evallock)
   @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))

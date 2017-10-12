@@ -1,9 +1,11 @@
 module Debugger
 
-using ..Atom, MacroTools, ASTInterpreter, Lazy, Hiccup
+using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup
 
-include("breakpoints.jl")
-include("stepper.jl")
-include("entry.jl")
+# include("breakpoints.jl")
+include("stepper2.jl")
+# include("entry.jl")
+
+isdebugging() = false
 
 end # module
