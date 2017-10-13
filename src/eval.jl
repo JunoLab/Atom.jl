@@ -184,7 +184,7 @@ wsnamed(name, f::Function) = name == methods(f).mt.name
 wsnamed(name, m::Module) = name == module_name(m)
 wsnamed(name, T::DataType) = name == Symbol(T.name)
 
-function wsitem(name::Symbol, val)
+function wsitem(name, val)
   d(:name  => name,
     :value => render′(Inline(), val),
     :type  => wstype(val),

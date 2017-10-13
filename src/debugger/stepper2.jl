@@ -5,6 +5,7 @@ import Juno: Row
 using Media
 
 chan = nothing
+state = nothing
 
 macro enter(arg)
   quote
@@ -15,8 +16,7 @@ macro enter(arg)
 end
 
 function startdebugging(stack)
-  state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing)
-
+  global state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing)
   global chan = Channel(0)
 
   debugmode(true)
@@ -34,8 +34,8 @@ function startdebugging(stack)
           execute_command(state, state.stack[state.level], Val{:s}(), "s")
         elseif val == :finish
           execute_command(state, state.stack[state.level], Val{:finish}(), "finish")
-          length(state.stack) == 0 && break
         end
+        length(state.stack) == 0 && break
         stepto(state)
       end
     end
@@ -44,11 +44,12 @@ function startdebugging(stack)
     render(Console(), ee)
   finally
     chan = nothing
+    state = nothing
     debugmode(false)
   end
 end
 
-isdebugging() = false # chan ≠ nothing
+isdebugging() = chan ≠ nothing
 
 # setup handlers for stepper commands
 for cmd in :[nextline, stepin, stepexpr, finish].args
@@ -76,7 +77,7 @@ function nextstate(state)
       expr = expr.args[2]
   end
   if isexpr(expr, :call) || isexpr(expr, :return)
-      expr.args = map(var->ASTInterpreter2.lookup_var_if_var(frame, var), expr.args)
+      expr.args = map(var -> ASTInterpreter2.lookup_var_if_var(frame, var), expr.args)
   end
   expr
 end
@@ -100,6 +101,39 @@ function evalscope(f)
     @msg working()
   end
 end
+
+function contexts(s::DebuggerState = state)
+  [Dict(:context => string(frame.meth.name), :items => localvars(frame)) for frame in state.stack]
+end
+
+function localvars(frame::ASTInterpreter2.JuliaStackFrame)
+  items = []
+  for i = 1:length(frame.locals)
+    if !isnull(frame.locals[i])
+      if frame.code.slotnames[i] == Symbol("#self#") && sizeof(get(frame.locals[i])) == 0
+        continue
+      end
+      push!(items, wsitem(frame.code.slotnames[i], get(frame.locals[i], Undefined())))
+    end
+  end
+  for i = 1:length(frame.sparams)
+    push!(items, wsitem(frame.meth.sparam_syms[i], get(Nullable{Any}(frame.sparams[i]), Undefined())))
+  end
+
+  return items
+end
+
+type Undefined end
+@render Inline u::Undefined span(".fade", "<undefined>")
+Atom.wsicon(::Undefined) = "icon-circle-slash"
+
+context(i) = []
+
+# function interpret(code::AbstractString, i::Interpreter = interp)
+#   code = parse(code)
+#   ok, result = ASTInterpreter.eval_in_interp(i, code)
+#   return ok ? result : Atom.EvalError(result)
+# end
 
 # TODO: workspace integration
 # TODO: evaluation in current context
