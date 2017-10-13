@@ -1,5 +1,5 @@
 import ASTInterpreter2
-import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo
+import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row
 using Media
@@ -7,6 +7,7 @@ using Media
 chan = nothing
 state = nothing
 
+# entrypoint
 macro enter(arg)
   quote
     let stack = $(ASTInterpreter2._make_stack(arg))
@@ -15,6 +16,8 @@ macro enter(arg)
   end
 end
 
+
+# setup interpreter
 function startdebugging(stack)
   global state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing)
   global chan = Channel(0)
@@ -69,6 +72,7 @@ end
 stepto(file, line, text) = @msg stepto(file, line, text)
 stepto(::Void) = debugmode(false)
 
+# return expression that will be evaluated next
 function nextstate(state)
   frame = state.stack[state.level]
   expr = ASTInterpreter2.pc_expr(frame, frame.pc)
@@ -102,6 +106,8 @@ function evalscope(f)
   end
 end
 
+## Workspace
+
 function contexts(s::DebuggerState = state)
   [Dict(:context => string(frame.meth.name), :items => localvars(frame)) for frame in state.stack]
 end
@@ -127,13 +133,8 @@ type Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
-context(i) = []
+## Evaluation
 
-# function interpret(code::AbstractString, i::Interpreter = interp)
-#   code = parse(code)
-#   ok, result = ASTInterpreter.eval_in_interp(i, code)
-#   return ok ? result : Atom.EvalError(result)
-# end
-
-# TODO: workspace integration
-# TODO: evaluation in current context
+function interpret(code::AbstractString, frame::DebuggerState = state)
+  eval_code(state, state.stack[state.level], code)
+end
