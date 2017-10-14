@@ -1,7 +1,7 @@
 import ASTInterpreter2
 import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
-import Juno: Row
+import Juno: Row, ProgressBar, Tree
 using Media
 
 chan = nothing
@@ -27,6 +27,8 @@ function startdebugging(stack)
 
   stepto(state)
 
+  p = ProgressBar(name = "Debugging")
+
   try
     evalscope() do
       for val in chan
@@ -49,6 +51,7 @@ function startdebugging(stack)
   finally
     chan = nothing
     state = nothing
+    done(p)
     debugmode(false)
   end
 end
@@ -88,12 +91,19 @@ function nextstate(state)
 end
 
 function stepview(ex)
-  # FIXME: `f` will usually be rendered to a lazy tree which needs to be registered
-  render(Inline(),
-    @capture(ex, f_(as__)) ? Row(f, text"(", interpose(as, text", ")..., text")") :
-    @capture(ex, x_ = y_) ? Row(Text(string(x)), text" = ", y) :
-    @capture(ex, return x_) ? Row(text"return ", x) :
-    Text(string(ex)))
+  out = if @capture(ex, f_(as__))
+    # performance hopefully isn't super bad when *not* using a LazyTree for the docs etc.
+    Tree(Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
+             text"(", interpose(as, text", ")..., text")"),
+         [(Atom.CodeTools.hasdoc(f) ? [Base.Docs.doc(f)] : [])..., methods(f)])
+  elseif @capture(ex, x_ = y_)
+    Row(Text(string(x)), text" = ", y)
+  elseif @capture(ex, return x_)
+    Row(text"return ", x)
+  else
+    Text(string(ex))
+  end
+  render(Inline(), out)
 end
 
 function evalscope(f)
