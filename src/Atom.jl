@@ -8,6 +8,7 @@ import Media: @dynamic
 
 @init Juno.activate()
 
+
 include("comm.jl")
 include("display/display.jl")
 include("eval.jl")
@@ -17,7 +18,8 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-include("debugger/load.jl")
+include("debugger/debugger.jl")
+
 include("profiler/profiler.jl")
 
 include("blink/BlinkDisplay.jl")
