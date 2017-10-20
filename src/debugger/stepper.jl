@@ -92,10 +92,8 @@ end
 
 function stepview(ex)
   out = if @capture(ex, f_(as__))
-    # performance hopefully isn't super bad when *not* using a LazyTree for the docs etc.
-    Tree(Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
-             text"(", interpose(as, text", ")..., text")"),
-         [(Atom.CodeTools.hasdoc(f) ? [Base.Docs.doc(f)] : [])..., methods(f)])
+    Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
+             text"(", interpose(as, text", ")..., text")")
   elseif @capture(ex, x_ = y_)
     Row(Text(string(x)), text" = ", y)
   elseif @capture(ex, return x_)
@@ -120,7 +118,14 @@ end
 ## Workspace
 
 function contexts(s::DebuggerState = state)
-  [Dict(:context => string("Debug: ", frame.meth.name), :items => localvars(frame)) for frame in state.stack]
+  cxt = []
+  trace = ""
+  for frame in reverse(state.stack)
+    trace = string(trace, "/", frame.meth.name)
+    c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
+    push!(cxt, c)
+  end
+  cxt
 end
 
 function localvars(frame::ASTInterpreter2.JuliaStackFrame)
