@@ -97,7 +97,7 @@ function stepview(ex)
   elseif @capture(ex, x_ = y_)
     Row(Text(string(x)), text" = ", y)
   elseif @capture(ex, return x_)
-    Row(text"return ", x)
+    Row(span(".syntax--support.syntax--keyword", "return "), x)
   else
     Text(string(ex))
   end
