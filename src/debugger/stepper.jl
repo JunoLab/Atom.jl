@@ -9,14 +9,6 @@ state = nothing
 
 isdebugging() = chan ≠ nothing
 
-macro enter(ex)
-  quote
-    let stack = $(Atom.Debugger.ASTInterpreter2._make_stack(ex))
-      Atom.Debugger.startdebugging(stack)
-    end
-  end
-end
-
 # entrypoint
 macro enter(arg)
   quote
@@ -36,6 +28,7 @@ function startdebugging(stack)
   stepto(state)
 
   p = ProgressBar(name = "Debugging")
+  res = nothing
 
   try
     evalscope() do
@@ -64,11 +57,13 @@ function startdebugging(stack)
     ee = EvalError(e, catch_stacktrace())
     render(Console(), ee)
   finally
+    res = state.overall_result
     chan = nothing
     state = nothing
     done(p)
     debugmode(false)
   end
+  res
 end
 
 # setup handlers for stepper commands
