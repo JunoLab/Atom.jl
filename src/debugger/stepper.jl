@@ -1,5 +1,5 @@
 import ASTInterpreter2
-import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code
+import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row, ProgressBar, Tree
 using Media
@@ -28,7 +28,7 @@ end
 
 # setup interpreter
 function startdebugging(stack)
-  global state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing, nothing)
+  global state = dummy_state(stack)
   global chan = Channel(0)
 
   debugmode(true)
