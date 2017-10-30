@@ -116,7 +116,6 @@ end
 
 handle("docs") do data
   @destruct [mod || "Main", word] = data
-  mod = getthing(mod)
   docstring = @errs getdocs(mod, word)
 
   docstring isa EvalError && return Dict(:error => true)
@@ -130,20 +129,21 @@ end
 
 handle("methods") do data
   @destruct [mod || "Main", word] = data
-  mod = getthing(mod)
   mtable = @errs getmethods(mod, word)
-  isa(mtable, EvalError) ?
-    d(:error => true, :items => sprint(showerror, mtable.err)) :
-    d(:items => [gotoitem(m) for m in mtable])
+  if isa(mtable, EvalError)
+    Dict(:error => true, :items => sprint(showerror, mtable.err))
+  else
+    Dict(:items => [gotoitem(m) for m in mtable])
+  end
 end
 
-getmethods(mod, word) = methods(getfield(mod, Symbol(word)))
+getmethods(mod, word) = methods(getthing("$mod.$word"))
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
     eval(:(@doc($(Symbol(word)))))
   else
-    include_string(mod, "@doc $word")
+    include_string(getthing(mod), "@doc $word")
   end
 end
 
