@@ -1,4 +1,4 @@
-isdebugging() = Debugger.isdebugging()
+isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
 
 module Debugger
 using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup

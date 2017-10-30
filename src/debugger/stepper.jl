@@ -9,6 +9,14 @@ state = nothing
 
 isdebugging() = chan ≠ nothing
 
+macro enter(ex)
+  quote
+    let stack = $(Atom.Debugger.ASTInterpreter2._make_stack(ex))
+      Atom.Debugger.startdebugging(stack)
+    end
+  end
+end
+
 # entrypoint
 macro enter(arg)
   quote
@@ -20,7 +28,7 @@ end
 
 # setup interpreter
 function startdebugging(stack)
-  global state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing)
+  global state = DebuggerState(stack, 1, nothing, nothing, nothing, nothing, nothing, nothing)
   global chan = Channel(0)
 
   debugmode(true)
@@ -32,14 +40,21 @@ function startdebugging(stack)
   try
     evalscope() do
       for val in chan
-        if val in (:nextline, :stepexpr)
-          val == :nextline ?
-            execute_command(state, state.stack[state.level], Val{:n}(), "n") :
-            execute_command(state, state.stack[state.level], Val{:se}(), "nc")
+        if val == :nextline
+          execute_command(state, state.stack[state.level], Val{:n}(), "n")
+        elseif val == :stepexpr
+            execute_command(state, state.stack[state.level], Val{:nc}(), "nc")
         elseif val == :stepin
           execute_command(state, state.stack[state.level], Val{:s}(), "s")
         elseif val == :finish
           execute_command(state, state.stack[state.level], Val{:finish}(), "finish")
+        elseif typeof(val) <: Tuple && val[1] == :toline
+          while locinfo(state.stack[state.level]).line < val[2]
+            execute_command(state, state.stack[state.level], Val{:n}(), "n")
+            length(state.stack) == 0 && break
+          end
+        else
+          warn("Internal: Unknown debugger message $val.")
         end
         length(state.stack) == 0 && break
         stepto(state)
@@ -57,9 +72,11 @@ function startdebugging(stack)
 end
 
 # setup handlers for stepper commands
-for cmd in :[nextline, stepin, stepexpr, finish].args
+for cmd in [:nextline, :stepin, :stepexpr, :finish]
   handle(()->put!(chan, cmd), string(cmd))
 end
+
+handle((line)->put!(chan, (:toline, line)), "toline")
 
 # notify the frontend that we start debugging now
 debugmode(on) = @msg debugmode(on)
