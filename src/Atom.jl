@@ -18,7 +18,7 @@ include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
 
-include("debugger/debugger.jl")
+include("debugger/load.jl")
 
 include("profiler/profiler.jl")
 

@@ -3,6 +3,7 @@ import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo,
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row, ProgressBar, Tree
 using Media
+using MacroTools
 
 chan = nothing
 state = nothing
@@ -10,16 +11,52 @@ state = nothing
 isdebugging() = chan ≠ nothing
 
 # entrypoint
-macro enter(arg)
+function enter(arg)
   quote
-    let stack = $(ASTInterpreter2._make_stack(arg))
-      startdebugging(stack)
+    # FIXME: should use `qualifyASTInterpreter(ASTInterpreter2._make_stack(arg))`
+    # instead, but I can't get that to work.
+    let stack = $(make_stack(arg))
+      Atom.Debugger.startdebugging(stack)
+    end
+  end
+end
+
+function make_stack(arg)
+    arg = expand(arg)
+    @assert isa(arg, Expr) && arg.head == :call
+    kws = collect(filter(x->isexpr(x,:kw),arg.args))
+    if !isempty(kws)
+      args = Expr(:tuple,:(Core.kwfunc($(args[1]))),
+        Expr(:call,Base.vector_any,mapreduce(
+          x->[QuoteNode(x.args[1]),x.args[2]],vcat,kws)...),
+        map(x->isexpr(x,:parameters)?QuoteNode(x):x,
+          filter(x->!isexpr(x,:kw),arg.args))...)
+    else
+      args = Expr(:tuple,
+        map(x->isexpr(x,:parameters)?QuoteNode(x):x, arg.args)...)
+    end
+    quote
+        theargs = $(esc(args))
+        stack = [Atom.Debugger.ASTInterpreter2.enter_call_expr(Expr(:call,theargs...))]
+        Atom.Debugger.ASTInterpreter2.maybe_step_through_wrapper!(stack)
+        stack[1] = Atom.Debugger.ASTInterpreter2.JuliaStackFrame(stack[1], Atom.Debugger.ASTInterpreter2.maybe_next_call!(stack[1]))
+        stack
+    end
+end
+
+function qualifyASTInterpreter(expr)
+  postwalk(expr) do ex
+    if @capture(ex, f_(xs__)) && startswith(string(f), "ASTInterpreter2")
+      :($(Symbol("Atom.Debugger.", f))($(xs...)))
+    else
+      ex
     end
   end
 end
 
 # setup interpreter
 function startdebugging(stack)
+  # println(stack)
   global state = dummy_state(stack)
   global chan = Channel(0)
 
