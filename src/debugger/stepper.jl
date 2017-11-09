@@ -1,9 +1,154 @@
-import ASTInterpreter: Interpreter, enter_call_expr, determine_line_and_file, next_line!,
-  evaluated!, finish!, step_expr, idx_stack
-
+import ASTInterpreter2
+import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
-import Juno: Row
+import Juno: Row, ProgressBar, Tree
 using Media
+using MacroTools
+
+chan = nothing
+state = nothing
+
+isdebugging() = chan ≠ nothing
+
+# entrypoint
+function enter(arg)
+  quote
+    # FIXME: should use `qualifyASTInterpreter(ASTInterpreter2._make_stack(arg))`
+    # instead, but I can't get that to work.
+    let stack = $(make_stack(arg))
+      Atom.Debugger.startdebugging(stack)
+    end
+  end
+end
+
+function make_stack(arg)
+    arg = expand(arg)
+    @assert isa(arg, Expr) && arg.head == :call
+    kws = collect(filter(x->isexpr(x,:kw),arg.args))
+    if !isempty(kws)
+      args = Expr(:tuple,:(Core.kwfunc($(args[1]))),
+        Expr(:call,Base.vector_any,mapreduce(
+          x->[QuoteNode(x.args[1]),x.args[2]],vcat,kws)...),
+        map(x->isexpr(x,:parameters)?QuoteNode(x):x,
+          filter(x->!isexpr(x,:kw),arg.args))...)
+    else
+      args = Expr(:tuple,
+        map(x->isexpr(x,:parameters)?QuoteNode(x):x, arg.args)...)
+    end
+    quote
+        theargs = $(esc(args))
+        stack = [Atom.Debugger.ASTInterpreter2.enter_call_expr(Expr(:call,theargs...))]
+        Atom.Debugger.ASTInterpreter2.maybe_step_through_wrapper!(stack)
+        stack[1] = Atom.Debugger.ASTInterpreter2.JuliaStackFrame(stack[1], Atom.Debugger.ASTInterpreter2.maybe_next_call!(stack[1]))
+        stack
+    end
+end
+
+function qualifyASTInterpreter(expr)
+  postwalk(expr) do ex
+    if @capture(ex, f_(xs__)) && startswith(string(f), "ASTInterpreter2")
+      :($(Symbol("Atom.Debugger.", f))($(xs...)))
+    else
+      ex
+    end
+  end
+end
+
+# setup interpreter
+function startdebugging(stack)
+  # println(stack)
+  global state = dummy_state(stack)
+  global chan = Channel(0)
+
+  debugmode(true)
+
+  stepto(state)
+  res = nothing
+
+  try
+    evalscope() do
+      for val in chan
+        if val == :nextline
+          execute_command(state, state.stack[state.level], Val{:n}(), "n")
+        elseif val == :stepexpr
+            execute_command(state, state.stack[state.level], Val{:nc}(), "nc")
+        elseif val == :stepin
+          execute_command(state, state.stack[state.level], Val{:s}(), "s")
+        elseif val == :finish
+          execute_command(state, state.stack[state.level], Val{:finish}(), "finish")
+        elseif typeof(val) <: Tuple && val[1] == :toline
+          while locinfo(state.stack[state.level]).line < val[2]
+            execute_command(state, state.stack[state.level], Val{:n}(), "n")
+            length(state.stack) == 0 && break
+          end
+        else
+          warn("Internal: Unknown debugger message $val.")
+        end
+        length(state.stack) == 0 && break
+        stepto(state)
+      end
+    end
+  catch e
+    ee = EvalError(e, catch_stacktrace())
+    render(Console(), ee)
+  finally
+    res = state.overall_result
+    chan = nothing
+    state = nothing
+    debugmode(false)
+  end
+  res
+end
+
+# setup handlers for stepper commands
+for cmd in [:nextline, :stepin, :stepexpr, :finish]
+  handle(()->put!(chan, cmd), string(cmd))
+end
+
+handle((line)->put!(chan, (:toline, line)), "toline")
+
+# notify the frontend that we start debugging now
+debugmode(on) = @msg debugmode(on)
+
+## Stepping
+
+# perform step in frontend
+function stepto(state::DebuggerState)
+  file, line = ASTInterpreter2.determine_line_and_file(state.stack[state.level])[end]
+  file = Atom.fullpath(string(file))
+  loc = locinfo(state.stack[state.level])
+  stepto(file, loc.line, stepview(nextstate(state)))
+end
+stepto(file, line, text) = @msg stepto(file, line, text)
+stepto(::Void) = debugmode(false)
+
+# return expression that will be evaluated next
+function nextstate(state)
+  frame = state.stack[state.level]
+  expr = ASTInterpreter2.pc_expr(frame, frame.pc)
+  isa(expr, Expr) && (expr = copy(expr))
+  if isexpr(expr, :(=))
+      expr = expr.args[2]
+  end
+  if isexpr(expr, :call) || isexpr(expr, :return)
+      expr.args = map(var -> ASTInterpreter2.lookup_var_if_var(frame, var), expr.args)
+  end
+  expr
+end
+
+function stepview(ex)
+  out = if @capture(ex, f_(as__))
+    Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
+             text"(", interpose(as, text", ")..., text")")
+  elseif @capture(ex, x_ = y_)
+    Row(Text(string(x)), text" = ", y)
+  elseif @capture(ex, return x_)
+    Row(span(".syntax--support.syntax--keyword", "return "), x)
+  else
+    Text(string(ex))
+  end
+  render(Inline(), out)
+end
 
 function evalscope(f)
   try
@@ -16,146 +161,42 @@ function evalscope(f)
   end
 end
 
-function fileline(i::Interpreter)
-  file, line = determine_line_and_file(i, idx_stack(i))[end]
-  Atom.fullpath(string(file)), line
-end
+## Workspace
 
-debugmode(on) = @msg debugmode(on)
-stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(i::Interpreter) = stepto(fileline(i)..., stepview(i))
-stepto(::Void) = debugmode(false)
-
-function fillslots(ex, names)
-  MacroTools.prewalk(ex) do ex
-    isa(ex, SlotNumber) ? names[ex.id] : ex
+function contexts(s::DebuggerState = state)
+  cxt = []
+  trace = ""
+  for frame in reverse(state.stack)
+    trace = string(trace, "/", frame.meth.name)
+    c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
+    push!(cxt, c)
   end
+  cxt
 end
 
-function stepview(ex)
-  render(Inline(),
-    @capture(ex, f_(as__)) ? Row(f, text"(", interpose(as, text", ")..., text")") :
-    @capture(ex, x_ = y_) ? Row(Text(string(x)), text" = ", y) :
-    @capture(ex, return x_) ? Row(text"return ", x) :
-    Text(string(ex)))
-end
-
-stepview(i::Interpreter) = stepview(fillslots(i.next_expr[2], i.linfo.slotnames))
-
-global interp = nothing
-global chan = nothing
-isdebugging() = chan ≠ nothing
-
-framedone(interp) = isexpr(interp.next_expr[2], :return)
-
-function interpdone(interp)
-  framedone(interp) || return false
-  i = findfirst(s -> s == interp, interp.stack)
-  i ≤ 1 || !isa(interp.stack[i-1], Interpreter)
-end
-
-validcall(x) =
-  @capture(x, f_(args__)) &&
-  !isa(f, Core.IntrinsicFunction) &&
-  f ∉ [tuple, getfield]
-
-validassign(x) =
-  isexpr(x, :(=)) && !isa(x.args[1], SSAValue)
-
-validexpr(x) = validcall(x) || validassign(x) || isexpr(x, :return)
-
-function skip!(interp)
-  while !validexpr(interp.next_expr[2])
-    step_expr(interp) || return false
-  end
-  return true
-end
-
-function endframe!(interp)
-  finish!(interp)
-  stack, val = interp.stack, interp.retval
-  stack = filter(x -> isa(x, Interpreter), stack)
-  if stack[1] == interp
-    return interp
-  else
-    i = findfirst(interp.stack, interp)
-    resize!(interp.stack, i-1)
-    interp = interp.stack[end]
-    evaluated!(interp, val)
-    skip!(interp)
-    return interp
-  end
-end
-
-function RunDebugIDE(i)
-  global interp = i
-  global chan = Channel()
-  skip!(interp)
-  debugmode(true)
-  stepto(interp)
-  try
-    evalscope() do
-      for val in chan
-        if val in (:nextline, :stepexpr)
-          interpdone(interp) && continue
-          step = val == :nextline ? next_line! : step_expr
-          framedone(interp) ? (interp = endframe!(interp)) :
-            (step(interp) && skip!(interp))
-        elseif val == :stepin
-          isexpr(interp.next_expr[2], :call) || continue
-          next = enter_call_expr(interp, interp.next_expr[2])
-          if next ≠ nothing
-            interp = next
-            skip!(interp)
-          end
-        elseif val == :finish
-          finish!(interp)
-          interpdone(interp) && return interp.retval
-          interp = endframe!(interp)
-        end
-        stepto(interp)
+function localvars(frame::ASTInterpreter2.JuliaStackFrame)
+  items = []
+  for i = 1:length(frame.locals)
+    if !isnull(frame.locals[i])
+      if frame.code.slotnames[i] == Symbol("#self#") && sizeof(get(frame.locals[i])) == 0
+        continue
       end
+      push!(items, wsitem(frame.code.slotnames[i], get(frame.locals[i], Undefined())))
     end
-  catch e
-    ee = EvalError(e, catch_stacktrace())
-    render(Console(), ee)
-  finally
-    chan = nothing
-    interp = nothing
-    debugmode(false)
   end
+  for i = 1:length(frame.sparams)
+    push!(items, wsitem(frame.meth.sparam_syms[i], get(Nullable{Any}(frame.sparams[i]), Undefined())))
+  end
+
+  return items
 end
-
-for cmd in :[nextline, stepin, stepexpr, finish].args
-  handle(()->put!(chan, cmd), string(cmd))
-end
-
-contexts(i::Interpreter = interp) =
-  reverse!([d(:context => i.linfo.def.name, :items => context(i)) for i in i.stack])
-
-import Gallium: JuliaStackFrame
 
 type Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
-function context(i::Union{Interpreter,JuliaStackFrame})
-  items = []
-  for (k, v) in zip(i.linfo.sparam_syms, i.env.sparams)
-    push!(items, wsitem(k, v))
-  end
-  isdefined(i.linfo, :slotnames) || return items
-  for (k, v) in zip(i.linfo.slotnames, i.env.locals)
-    k in (Symbol("#self#"), Symbol("#unused#")) && continue
-    push!(items, wsitem(k, isnull(v) ? Undefined() : get(v)))
-  end
-  return items
-end
+## Evaluation
 
-context(i) = []
-
-function interpret(code::AbstractString, i::Interpreter = interp)
-  code = parse(code)
-  ok, result = ASTInterpreter.eval_in_interp(i, code)
-  return ok ? result : Atom.EvalError(result)
+function interpret(code::AbstractString, frame::DebuggerState = state)
+  eval_code(state, state.stack[state.level], code)
 end

@@ -1,23 +1,6 @@
-export Debugger
-
-function __debug__()
-  VERSION.minor == 5 || error("Gallium only works on Julia 0.5")
-  isdefined(Atom, :Debugger) && return
-  lock(evallock)
-  @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))
-  unlock(evallock)
-end
-
-handle("loadgallium") do
-  __debug__()
-  return
+function enter(ex)
+  !isdefined(Atom, :Debugger) && @eval include(joinpath(dirname($@__FILE__), "debugger.jl"))
+  Base.invokelatest(Atom.Debugger.enter, :($ex))
 end
 
 isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
-
-for f in :[step, breakpoint].args
-  @eval function $f(args...)
-    __debug__()
-    Debugger.$f(args...)
-  end
-end

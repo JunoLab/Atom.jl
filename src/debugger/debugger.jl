@@ -1,9 +1,8 @@
+# isdebugging() = isdefined(Atom, :Debugger) && Debugger.isdebugging()
+
 module Debugger
+using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup
 
-using ..Atom, MacroTools, ASTInterpreter, Lazy, Hiccup
-
-include("breakpoints.jl")
 include("stepper.jl")
-include("entry.jl")
 
 end # module
