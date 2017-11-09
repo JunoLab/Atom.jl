@@ -63,8 +63,6 @@ function startdebugging(stack)
   debugmode(true)
 
   stepto(state)
-
-  p = ProgressBar(name = "Debugging")
   res = nothing
 
   try
@@ -97,7 +95,6 @@ function startdebugging(stack)
     res = state.overall_result
     chan = nothing
     state = nothing
-    done(p)
     debugmode(false)
   end
   res
