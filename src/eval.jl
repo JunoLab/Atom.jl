@@ -88,13 +88,13 @@ end
 handle("evalrepl") do data
   @dynamic let Media.input = Console()
     @destruct [mode || nothing, code, mod || "Main"] = data
-    mod = getthing(mod)
     if mode == "shell"
       code = "Base.repl_cmd(`$code`, STDOUT)"
     elseif mode == "help"
       render′(@errs getdocs(mod, code))
       return
     end
+    mod = getthing(mod)
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
     else
