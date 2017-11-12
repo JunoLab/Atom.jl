@@ -115,7 +115,12 @@ debugmode(on) = @msg debugmode(on)
 # perform step in frontend
 function stepto(state::DebuggerState)
   loc = locinfo(state.stack[state.level])
-  stepto(Atom.fullpath(loc.filepath), loc.line, stepview(nextstate(state)))
+  if loc == nothing
+    file, line = ASTInterpreter2.determine_line_and_file(state.stack[state.level])[end]
+  else
+    file, line = loc.filepath, loc.line
+  end
+  stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
 end
 stepto(file, line, text) = @msg stepto(file, line, text)
 stepto(::Void) = debugmode(false)
