@@ -121,7 +121,6 @@ function stepto(state::DebuggerState)
   else
     file, line = loc.filepath, loc.line
   end
-  @show file, line
   stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
 end
 stepto(file, line, text) = @msg stepto(file, line, text)
