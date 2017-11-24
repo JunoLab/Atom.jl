@@ -114,6 +114,34 @@ handle("evalrepl") do data
   return
 end
 
+handle("changerepl") do data
+  @destruct [prompt || ""] = data
+  if !isempty(prompt)
+    changeREPLprompt(prompt)
+  end
+  nothing
+end
+
+function changeREPLprompt(prompt)
+  repl = Base.active_repl
+  main_mode = repl.interface.modes[1]
+  main_mode.prompt = "$(prompt)> "
+  print(" \r")
+  print_with_color(:green, "$(prompt)> ", bold = true)
+  nothing
+end
+
+function initREPL()
+  repl = Base.active_repl
+  main_mode = repl.interface.modes[1]
+  # main_mode.on_enter = .... do
+    # progress begin
+  # end
+  main_mode.on_done = Base.REPL.respond(repl,main_mode; pass_empty = false) do line
+    # progress end
+  end
+end
+
 handle("docs") do data
   @destruct [mod || "Main", word] = data
   docstring = @errs getdocs(mod, word)
