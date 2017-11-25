@@ -122,24 +122,55 @@ handle("changerepl") do data
   nothing
 end
 
-function changeREPLprompt(prompt)
+handle("changemodule") do data
+  @destruct [mod || "", cols || 30] = data
+  if !isempty(mod)
+    changeREPLprompt(mod, cols)
+    changeREPLmodule(mod)
+  end
+  nothing
+end
+
+function changeREPLprompt(prompt, cols = 30)
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = "$(prompt)> "
-  print(" \r")
+  print("\r"*" "^cols*"\r")
   print_with_color(:green, "$(prompt)> ", bold = true)
   nothing
 end
 
-function initREPL()
+function changeREPLmodule(mod)
+  mod = getthing(mod)
+
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  # main_mode.on_enter = .... do
-    # progress begin
-  # end
-  main_mode.on_done = Base.REPL.respond(repl,main_mode; pass_empty = false) do line
-    # progress end
+  old_on_enter = main_mode.on_enter
+  main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
+    if !isempty(line)
+      ex = parse(line)
+      if ex isa Expr && ex.head == :module
+        ret = quote
+          Juno.progress(name = "Julia") do p
+            eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
+          end
+        end
+      else
+        ret = quote
+          Juno.progress(name = "Julia") do p
+            eval($mod, Expr(:(=), :ans, parse($line)))
+          end
+        end
+      end
+    else
+      ret = :(  )
+    end
+    return ret
   end
+end
+
+function initREPL()
+
 end
 
 handle("docs") do data
