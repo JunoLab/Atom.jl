@@ -89,10 +89,6 @@ handle("evalall") do data
   return
 end
 
-# FIXME: Should refactor all REPL related functions into a struct that keeps track
-#        of global state (terminal size, current prompt, current module etc).
-# FIXME: Find a way to reprint what's currently entered in the REPL after changing
-#        the module (or delete it in the buffer).
 
 handle("evalrepl") do data
   @dynamic let Media.input = Console()
@@ -122,6 +118,11 @@ handle("evalrepl") do data
   end
   return
 end
+
+# FIXME: Should refactor all REPL related functions into a struct that keeps track
+#        of global state (terminal size, current prompt, current module etc).
+# FIXME: Find a way to reprint what's currently entered in the REPL after changing
+#        the module (or delete it in the buffer).
 
 handle("changerepl") do data
   @destruct [prompt || ""] = data
@@ -164,6 +165,10 @@ function changeREPLprompt(prompt, cols = 30)
   nothing
 end
 
+function updateworkspace()
+  msg("updateWorkspace")
+end
+
 function changeREPLmodule(mod)
   mod = getthing(mod)
 
@@ -176,13 +181,17 @@ function changeREPLmodule(mod)
       if ex isa Expr && ex.head == :module
         ret = quote
           Juno.progress(name = "Julia") do p
-            eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
+            r = eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
+            Atom.updateworkspace()
+            r
           end
         end
       else
         ret = quote
           Juno.progress(name = "Julia") do p
-            eval($mod, Expr(:(=), :ans, parse($line)))
+            r = eval($mod, Expr(:(=), :ans, parse($line)))
+            Atom.updateworkspace()
+            r
           end
         end
       end
