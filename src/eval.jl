@@ -89,6 +89,11 @@ handle("evalall") do data
   return
 end
 
+# FIXME: Should refactor all REPL related functions into a struct that keeps track
+#        of global state (terminal size, current prompt, current module etc).
+# FIXME: Find a way to reprint what's currently entered in the REPL after changing
+#        the module (or delete it in the buffer).
+
 handle("evalrepl") do data
   @dynamic let Media.input = Console()
     @destruct [mode || nothing, code, mod || "Main"] = data
@@ -118,8 +123,6 @@ handle("evalrepl") do data
   return
 end
 
-current_prompt = "julia> "
-
 handle("changerepl") do data
   @destruct [prompt || ""] = data
   if !isempty(prompt)
@@ -136,6 +139,8 @@ handle("changemodule") do data
   end
   nothing
 end
+
+current_prompt = "julia> "
 
 function withREPLprompt(f, prompt, cols = 30)
   old_prompt = current_prompt
