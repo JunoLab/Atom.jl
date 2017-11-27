@@ -41,46 +41,50 @@ withpath(f, path) =
 const evallock = ReentrantLock()
 
 handle("eval") do data
-  @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod] = data
-    mod = getthing(mod)
+  withREPLprompt("") do
+    @dynamic let Media.input = Editor()
+      @destruct [text, line, path, mod] = data
+      mod = getthing(mod)
 
-    lock(evallock)
-    result = withpath(path) do
-      @errs include_string(mod, text, path, line)
-    end
-    unlock(evallock)
-    Base.invokelatest() do
-      display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-      !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display ≠ Editor() && result ≠ nothing && render(display, result)
-      render′(Editor(), result)
+      lock(evallock)
+      result = withpath(path) do
+        @errs include_string(mod, text, path, line)
+      end
+      unlock(evallock)
+      Base.invokelatest() do
+        display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+        !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
+        display ≠ Editor() && result ≠ nothing && render(display, result)
+        render′(Editor(), result)
+      end
     end
   end
 end
 
 handle("evalall") do data
-  @dynamic let Media.input = Editor()
-    @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    mod = Main
-    if setmod ≠ nothing
-      mod = getthing(setmod, Main)
-    elseif isabspath(path)
-      mod = getthing(CodeTools.filemodule(path), Main)
-    end
-    lock(evallock)
-    withpath(path) do
-      try
-        include_string(mod, code, path)
-      catch e
-        ee = EvalError(e, catch_stacktrace())
-        render(Console(), ee)
-        @msg error(d(:msg => "Error evaluating $(basename(path))",
-                     :detail => string(ee),
-                     :dismissable => true))
+  withREPLprompt("") do
+    @dynamic let Media.input = Editor()
+      @destruct [setmod = :module || nothing, path || "untitled", code] = data
+      mod = Main
+      if setmod ≠ nothing
+        mod = getthing(setmod, Main)
+      elseif isabspath(path)
+        mod = getthing(CodeTools.filemodule(path), Main)
       end
+      lock(evallock)
+      withpath(path) do
+        try
+          include_string(mod, code, path)
+        catch e
+          ee = EvalError(e, catch_stacktrace())
+          render(Console(), ee)
+          @msg error(d(:msg => "Error evaluating $(basename(path))",
+                       :detail => string(ee),
+                       :dismissable => true))
+        end
+      end
+      unlock(evallock)
     end
-    unlock(evallock)
   end
   return
 end
@@ -114,6 +118,8 @@ handle("evalrepl") do data
   return
 end
 
+current_prompt = "julia> "
+
 handle("changerepl") do data
   @destruct [prompt || ""] = data
   if !isempty(prompt)
@@ -125,18 +131,27 @@ end
 handle("changemodule") do data
   @destruct [mod || "", cols || 30] = data
   if !isempty(mod)
-    changeREPLprompt(mod, cols)
+    changeREPLprompt("$(mod)> ", cols)
     changeREPLmodule(mod)
   end
   nothing
 end
 
+function withREPLprompt(f, prompt, cols = 30)
+  old_prompt = current_prompt
+  changeREPLprompt("", cols)
+  r = f()
+  changeREPLprompt(old_prompt, cols)
+  return r
+end
+
 function changeREPLprompt(prompt, cols = 30)
+  global current_prompt = prompt
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  main_mode.prompt = "$(prompt)> "
-  print("\r"*" "^cols*"\r")
-  print_with_color(:green, "$(prompt)> ", bold = true)
+  main_mode.prompt = prompt
+  print("\r"*" "^min(cols - 10, 10)*"\r")
+  print_with_color(:green, prompt, bold = true)
   nothing
 end
 
