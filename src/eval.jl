@@ -155,7 +155,7 @@ function changeREPLprompt(prompt, cols = 30)
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = prompt
-  print("\r"*" "^min(cols - 10, 10)*"\r")
+  print("\r"*" "^max(cols - 10, 10)*"\r")
   print_with_color(:green, prompt, bold = true)
   nothing
 end
