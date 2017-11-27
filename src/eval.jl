@@ -134,7 +134,11 @@ end
 handle("changemodule") do data
   @destruct [mod || "", cols || 30] = data
   if !isempty(mod)
-    changeREPLprompt("$(mod)> ", cols)
+    parts = split(mod, '.')
+    if length(parts) > 1 && parts[1] == "Main"
+      shift!(parts)
+    end
+    changeREPLprompt("$(join(parts, '.'))> ", cols)
     changeREPLmodule(mod)
   end
   nothing
