@@ -139,8 +139,12 @@ handle("changemodule") do data
     if length(parts) > 1 && parts[1] == "Main"
       shift!(parts)
     end
-    changeREPLprompt("$(join(parts, '.'))> ", cols)
-    changeREPLmodule(mod)
+    if isdebugging()
+      changeREPLprompt("debug> ", cols)
+    else
+      changeREPLprompt("$(join(parts, '.'))> ", cols)
+      changeREPLmodule(mod)
+    end
   end
   nothing
 end
@@ -178,7 +182,15 @@ function changeREPLmodule(mod)
   main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
     if !isempty(line)
       ex = parse(line)
-      if ex isa Expr && ex.head == :module
+      if isdebugging()
+        ret = quote
+          Juno.progress(name = "Julia") do p
+            r = Atom.Debugger.interpret($line)
+            Atom.updateworkspace()
+            r
+          end
+        end
+      elseif ex isa Expr && ex.head == :module
         ret = quote
           Juno.progress(name = "Julia") do p
             r = eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
