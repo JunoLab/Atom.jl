@@ -163,9 +163,9 @@ function changeREPLprompt(prompt, cols = 30)
   global current_prompt = prompt
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  main_mode.prompt = prompt
+  main_mode.prompt = "\r"*prompt
   print("\r"*" "^max(cols - 10, 10)*"\r")
-  print_with_color(:green, prompt, bold = true)
+  print_with_color(:green, "\r"*prompt, bold = true)
   nothing
 end
 
@@ -178,7 +178,6 @@ function changeREPLmodule(mod)
 
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  old_on_enter = main_mode.on_enter
   main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
     if !isempty(line)
       ex = parse(line)
