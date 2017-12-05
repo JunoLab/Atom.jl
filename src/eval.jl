@@ -161,11 +161,12 @@ end
 
 function changeREPLprompt(prompt, cols = 30)
   global current_prompt = prompt
+  isdefined(Base, :active_repl) || return
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = "\r"*prompt
   print("\r"*" "^max(cols - 10, 10)*"\r")
-  print_with_color(:green, "\r"*prompt, bold = true)
+  print_with_color(:green, prompt, bold = true)
   nothing
 end
 
@@ -176,6 +177,7 @@ end
 function changeREPLmodule(mod)
   mod = getthing(mod)
 
+  isdefined(Base, :active_repl) || return
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
