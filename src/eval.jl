@@ -189,33 +189,33 @@ function changeREPLmodule(mod)
       ex = parse(line)
       if isdebugging()
         ret = quote
-          lock($evallock)
           Juno.progress(name = "Julia") do p
+            lock($evallock)
             r = Atom.Debugger.interpret($line)
             Atom.updateworkspace()
+            unlock($evallock)
             r
           end
-          unlock($evallock)
         end
       elseif ex isa Expr && ex.head == :module
         ret = quote
-          lock($evallock)
           Juno.progress(name = "Julia") do p
+            lock($evallock)
             r = eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
             Atom.updateworkspace()
+            unlock($evallock)
             r
           end
-          unlock($evallock)
         end
       else
         ret = quote
-          lock($evallock)
           Juno.progress(name = "Julia") do p
+            lock($evallock)
             r = eval($mod, Expr(:(=), :ans, parse($line)))
             Atom.updateworkspace()
+            unlock($evallock)
             r
           end
-          unlock($evallock)
         end
       end
     else
