@@ -160,6 +160,8 @@ function withREPLprompt(f, prompt, cols = 30)
 end
 
 function changeREPLprompt(prompt, cols = 30)
+  islocked(evallock) && return nothing
+
   global current_prompt = prompt
   isdefined(Base, :active_repl) || return
   repl = Base.active_repl
@@ -175,6 +177,8 @@ function updateworkspace()
 end
 
 function changeREPLmodule(mod)
+  islocked(evallock) && return nothing
+
   mod = getthing(mod)
 
   isdefined(Base, :active_repl) || return
@@ -185,27 +189,33 @@ function changeREPLmodule(mod)
       ex = parse(line)
       if isdebugging()
         ret = quote
+          lock($evallock)
           Juno.progress(name = "Julia") do p
             r = Atom.Debugger.interpret($line)
             Atom.updateworkspace()
             r
           end
+          unlock($evallock)
         end
       elseif ex isa Expr && ex.head == :module
         ret = quote
+          lock($evallock)
           Juno.progress(name = "Julia") do p
             r = eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
             Atom.updateworkspace()
             r
           end
+          unlock($evallock)
         end
       else
         ret = quote
+          lock($evallock)
           Juno.progress(name = "Julia") do p
             r = eval($mod, Expr(:(=), :ans, parse($line)))
             Atom.updateworkspace()
             r
           end
+          unlock($evallock)
         end
       end
     else
