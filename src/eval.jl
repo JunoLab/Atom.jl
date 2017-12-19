@@ -41,7 +41,7 @@ withpath(f, path) =
 const evallock = ReentrantLock()
 
 handle("eval") do data
-  withREPLprompt("") do
+  hideprompt() do
     @dynamic let Media.input = Editor()
       @destruct [text, line, path, mod] = data
       mod = getthing(mod)
@@ -63,7 +63,7 @@ handle("eval") do data
 end
 
 handle("evalall") do data
-  withREPLprompt("") do
+  hideprompt() do
     @dynamic let Media.input = Editor()
       @destruct [setmod = :module || nothing, path || "untitled", code] = data
       mod = Main

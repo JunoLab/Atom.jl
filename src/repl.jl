@@ -22,7 +22,7 @@ handle("changemodule") do data
     if isdebugging()
       changeREPLprompt("debug> ", cols)
     else
-      changeREPLprompt("$(join(parts, '.'))> ", cols)
+      current_prompt == "debug> " && changeREPLprompt("julia> ", cols)
       changeREPLmodule(mod)
     end
   end
@@ -31,12 +31,15 @@ end
 
 current_prompt = "julia> "
 
-function withREPLprompt(f, prompt, cols = 30)
-  old_prompt = current_prompt
-  changeREPLprompt("", cols)
-  r = f()
-  changeREPLprompt(old_prompt, cols)
-  return r
+function hideprompt(f, cols = 30)
+  local r
+  try
+    changeREPLprompt("", cols)
+    r = f()
+  finally
+    changeREPLprompt("julia> ", cols)
+  end
+  r
 end
 
 function changeREPLprompt(prompt, cols = 30)
@@ -81,6 +84,7 @@ function changeREPLmodule(mod)
         end
       elseif ex isa Expr && ex.head == :module
         ret = quote
+          # eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
@@ -93,6 +97,7 @@ function changeREPLmodule(mod)
         end
       else
         ret = quote
+          # eval($mod, Expr(:(=), :ans, parse($line)))
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
