@@ -32,27 +32,27 @@ end
 current_prompt = "julia> "
 
 function hideprompt(f)
-  local r
+  local r, hidden
   try
-    changeREPLprompt("")
+    hidden = changeREPLprompt("")
     r = f()
   finally
-    changeREPLprompt("julia> ")
+    hidden && changeREPLprompt("julia> ")
   end
   r
 end
 
 function changeREPLprompt(prompt)
-  islocked(evallock) && return nothing
+  islocked(evallock) && return false
 
   global current_prompt = prompt
   isdefined(Base, :active_repl) || return
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  main_mode.prompt = "\r"*prompt
+  main_mode.prompt = prompt
   print("\r       \r")
   print_with_color(:green, prompt, bold = true)
-  nothing
+  true
 end
 
 function updateworkspace()
