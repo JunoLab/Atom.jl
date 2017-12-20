@@ -20,9 +20,9 @@ handle("changemodule") do data
       shift!(parts)
     end
     if isdebugging()
-      changeREPLprompt("debug> ", cols)
+      changeREPLprompt("debug> ")
     else
-      current_prompt == "debug> " && changeREPLprompt("julia> ", cols)
+      current_prompt == "debug> " && changeREPLprompt("julia> ")
       changeREPLmodule(mod)
     end
   end
@@ -31,18 +31,18 @@ end
 
 current_prompt = "julia> "
 
-function hideprompt(f, cols = 30)
+function hideprompt(f)
   local r
   try
-    changeREPLprompt("", cols)
+    changeREPLprompt("")
     r = f()
   finally
-    changeREPLprompt("julia> ", cols)
+    changeREPLprompt("julia> ")
   end
   r
 end
 
-function changeREPLprompt(prompt, cols = 30)
+function changeREPLprompt(prompt)
   islocked(evallock) && return nothing
 
   global current_prompt = prompt
@@ -50,7 +50,7 @@ function changeREPLprompt(prompt, cols = 30)
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = "\r"*prompt
-  print("\r"*" "^max(cols - 10, 10)*"\r")
+  print("\r       \r")
   print_with_color(:green, prompt, bold = true)
   nothing
 end
