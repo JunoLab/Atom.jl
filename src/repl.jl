@@ -4,7 +4,11 @@
 # FIXME: Find a way to reprint what's currently entered in the REPL after changing
 #        the module (or delete it in the buffer).
 
+isREPL() = isdefined(Base, :active_repl)
+
 handle("changerepl") do data
+  isREPL() || return
+
   @destruct [prompt || ""] = data
   if !isempty(prompt)
     changeREPLprompt(prompt)
@@ -13,6 +17,8 @@ handle("changerepl") do data
 end
 
 handle("changemodule") do data
+  isREPL() || return
+
   @destruct [mod || "", cols || 30] = data
   if !isempty(mod)
     parts = split(mod, '.')
@@ -32,7 +38,10 @@ end
 current_prompt = "julia> "
 
 function hideprompt(f)
-  local r, hidden
+  isREPL() || return f()
+
+  local r
+  hidden = false
   try
     hidden = changeREPLprompt("")
     r = f()
@@ -46,7 +55,6 @@ function changeREPLprompt(prompt)
   islocked(evallock) && return false
 
   global current_prompt = prompt
-  isdefined(Base, :active_repl) || return
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = prompt
@@ -64,7 +72,6 @@ function changeREPLmodule(mod)
 
   mod = getthing(mod)
 
-  isdefined(Base, :active_repl) || return
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
