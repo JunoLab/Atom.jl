@@ -42,14 +42,62 @@ function hideprompt(f)
 
   local r
   hidden = false
+  didWrite = false
   try
     hidden = changeREPLprompt("")
-    r = f()
+    r, didWrite = didWriteToREPL(f)
   finally
-    hidden && changeREPLprompt("julia> ")
+    if hidden
+      didWrite && println()
+      changeREPLprompt("julia> ")
+    end
   end
   r
 end
+
+function didWriteToREPL(f)
+  islocked(evallock) && return f(), false
+
+  origout, origerr = STDOUT, STDERR
+
+  rout, wout = redirect_stdout()
+  rerr, werr = redirect_stderr()
+
+  outreader = @async begin
+    didWrite = false
+    while isopen(rout)
+      write(origout, readavailable(rout))
+      didWrite = true
+    end
+    didWrite
+  end
+
+  errreader = @async begin
+    didWrite = false
+    while isopen(rerr)
+      write(origerr, readavailable(rerr))
+      didWrite = true
+    end
+    didWrite
+  end
+
+  local res
+  didWriteOut, didWriteErr = false, false
+
+  try
+    res = f()
+  finally
+    redirect_stdout(origout)
+    redirect_stderr(origerr)
+    close(wout)
+    close(werr)
+    didWriteOut = wait(outreader)
+    didWriteErr = wait(errreader)
+  end
+
+  res, didWriteOut || didWriteErr
+end
+
 
 function changeREPLprompt(prompt)
   islocked(evallock) && return false
