@@ -28,7 +28,6 @@ handle("changemodule") do data
     if isdebugging()
       changeREPLprompt("debug> ")
     else
-      current_prompt == "debug> " && changeREPLprompt("julia> ")
       changeREPLmodule(mod)
     end
   end
