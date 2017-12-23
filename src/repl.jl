@@ -40,23 +40,18 @@ function hideprompt(f)
   isREPL() || return f()
 
   local r
-  hidden = false
   didWrite = false
   try
-    hidden = changeREPLprompt("")
+    changeREPLprompt("")
     r, didWrite = didWriteToREPL(f)
   finally
-    if hidden
-      didWrite && println()
-      changeREPLprompt("julia> ")
-    end
+    didWrite && println()
+    changeREPLprompt("julia> ")
   end
   r
 end
 
 function didWriteToREPL(f)
-  islocked(evallock) && return f(), false
-
   origout, origerr = STDOUT, STDERR
 
   rout, wout = redirect_stdout()
@@ -101,8 +96,6 @@ end
 
 
 function changeREPLprompt(prompt)
-  islocked(evallock) && return false
-
   global current_prompt = prompt
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
@@ -170,8 +163,4 @@ function changeREPLmodule(mod)
     end
     return ret
   end
-end
-
-function initREPL()
-
 end

@@ -41,38 +41,38 @@ withpath(f, path) =
 const evallock = ReentrantLock()
 
 handle("eval") do data
-  hideprompt() do
-    @dynamic let Media.input = Editor()
-      @destruct [text, line, path, mod] = data
-      mod = getthing(mod)
+  @dynamic let Media.input = Editor()
+    @destruct [text, line, path, mod] = data
+    mod = getthing(mod)
 
-      lock(evallock)
-      result = withpath(path) do
+    lock(evallock)
+    result = hideprompt() do
+      withpath(path) do
         @errs include_string(mod, text, path, line)
       end
-      unlock(evallock)
+    end
+    unlock(evallock)
 
-      Base.invokelatest() do
-        display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-        !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
-        display ≠ Editor() && result ≠ nothing && render(display, result)
-        render′(Editor(), result)
-      end
+    Base.invokelatest() do
+      display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+      !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
+      display ≠ Editor() && result ≠ nothing && render(display, result)
+      render′(Editor(), result)
     end
   end
 end
 
 handle("evalall") do data
-  hideprompt() do
-    @dynamic let Media.input = Editor()
-      @destruct [setmod = :module || nothing, path || "untitled", code] = data
-      mod = Main
-      if setmod ≠ nothing
-        mod = getthing(setmod, Main)
-      elseif isabspath(path)
-        mod = getthing(CodeTools.filemodule(path), Main)
-      end
-      lock(evallock)
+  @dynamic let Media.input = Editor()
+    @destruct [setmod = :module || nothing, path || "untitled", code] = data
+    mod = Main
+    if setmod ≠ nothing
+      mod = getthing(setmod, Main)
+    elseif isabspath(path)
+      mod = getthing(CodeTools.filemodule(path), Main)
+    end
+    lock(evallock)
+      hideprompt() do
       withpath(path) do
         try
           include_string(mod, code, path)
@@ -84,8 +84,8 @@ handle("evalall") do data
                        :dismissable => true))
         end
       end
-      unlock(evallock)
     end
+    unlock(evallock)
   end
   return
 end
