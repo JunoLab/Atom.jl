@@ -65,8 +65,9 @@ function didWriteToREPL(f)
   outreader = @async begin
     didWrite = false
     while isopen(rout)
-      write(origout, readavailable(rout))
-      didWrite = true
+      r = readavailable(rout)
+      didWrite |= length(r) > 0
+      write(origout, r)
     end
     didWrite
   end
@@ -74,8 +75,9 @@ function didWriteToREPL(f)
   errreader = @async begin
     didWrite = false
     while isopen(rerr)
-      write(origerr, readavailable(rerr))
-      didWrite = true
+      r = readavailable(rerr)
+      didWrite |= length(r) > 0
+      write(origerr, r)
     end
     didWrite
   end

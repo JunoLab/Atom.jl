@@ -1,7 +1,7 @@
 import JSON
 # mock a listener:
 eval(Atom, parse("sock = IOBuffer()"))
-readmsg() = JSON.parse(String(takebuf_array(Atom.sock)))
+readmsg() = JSON.parse(String(take!(Atom.sock)))
 
 # callback count
 cb = 0
