@@ -34,6 +34,19 @@ handle("changemodule") do data
   nothing
 end
 
+handle("fullpath") do uri
+  return Atom.fullpath(uri)
+end
+
+handle("validatepath") do uri
+  uri = Atom.fullpath(split(uri, ':')[1])
+  if isfile(uri) || isdir(uri)
+    return true
+  else
+    return false
+  end
+end
+
 current_prompt = "julia> "
 
 function hideprompt(f)
