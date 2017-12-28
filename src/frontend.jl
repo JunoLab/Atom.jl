@@ -6,17 +6,6 @@ info(s) = @msg info(string(s))
 
 sendnotify(s::AbstractString) = @msg notify(s)
 
-# Provide our own readline implementation when readline(STDIN) is called.
-# This is the same hack as the one used by IJulia.jl.
-import Base.readline
-function readline(io::Base.PipeEndpoint)
-    if Juno.isactive() && io == STDIN
-        Juno.input()
-    else
-        invoke(readline, Tuple{supertype(Base.PipeEndpoint)}, io)
-    end
-end
-
 macro !(ex)
   quote
     result = $(esc(ex))

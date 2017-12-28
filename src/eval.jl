@@ -40,19 +40,46 @@ withpath(f, path) =
 
 const evallock = ReentrantLock()
 
-handle("eval") do data
+handle("evalshow") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
     mod = getthing(mod)
 
     lock(evallock)
-    result = withpath(path) do
-      @errs include_string(mod, text, path, line)
+    hideprompt() do
+      withpath(path) do
+        try
+          res = include_string(mod, text, path, line)
+          show(STDOUT, res)
+        catch e
+          # should hide parts of the backtrace here
+          Base.display_error(STDERR, e, backtrace())
+        end
+      end
     end
     unlock(evallock)
+
+    nothing
+  end
+end
+
+handle("eval") do data
+  @dynamic let Media.input = Editor()
+    @destruct [text, line, path, mod, displaymode || "editor"] = data
+    mod = getthing(mod)
+
+
+    lock(evallock)
+    result = hideprompt() do
+      withpath(path) do
+        @errs include_string(mod, text, path, line)
+      end
+    end
+    unlock(evallock)
+
     Base.invokelatest() do
       display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-      !isa(result,EvalError) && ends_with_semicolon(text) && (result = nothing)
+      !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
       display ≠ Editor() && result ≠ nothing && render(display, result)
       render′(Editor(), result)
     end
@@ -69,21 +96,24 @@ handle("evalall") do data
       mod = getthing(CodeTools.filemodule(path), Main)
     end
     lock(evallock)
-    withpath(path) do
-      try
-        include_string(mod, code, path)
-      catch e
-        ee = EvalError(e, catch_stacktrace())
-        render(Console(), ee)
-        @msg error(d(:msg => "Error evaluating $(basename(path))",
-                     :detail => string(ee),
-                     :dismissable => true))
+      hideprompt() do
+      withpath(path) do
+        try
+          include_string(mod, code, path)
+        catch e
+          ee = EvalError(e, catch_stacktrace())
+          render(Console(), ee)
+          @msg error(d(:msg => "Error evaluating $(basename(path))",
+                       :detail => string(ee),
+                       :dismissable => true))
+        end
       end
     end
     unlock(evallock)
   end
   return
 end
+
 
 handle("evalrepl") do data
   @dynamic let Media.input = Console()

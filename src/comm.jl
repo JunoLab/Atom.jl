@@ -64,7 +64,7 @@ macro ierrs(ex)
       Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
                              :detail      => string(ee),
                              :dismissable => true))
-      render(Console(), ee)
+      nothing
     end)
 end
 
