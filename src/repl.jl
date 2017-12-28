@@ -47,6 +47,12 @@ handle("validatepath") do uri
   end
 end
 
+handle("resetprompt") do
+  isREPL() || return
+  changeREPLprompt("julia> ")
+  nothing
+end
+
 current_prompt = "julia> "
 
 function hideprompt(f)
