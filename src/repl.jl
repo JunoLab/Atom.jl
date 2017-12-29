@@ -39,7 +39,11 @@ handle("fullpath") do uri
 end
 
 handle("validatepath") do uri
-  uri = Atom.fullpath(split(uri, ':')[1])
+  uri = match(r"(.+)(:\d+)$", uri)
+  if uri == nothing
+    return false
+  end
+  uri = Atom.fullpath(uri[1])
   if isfile(uri) || isdir(uri)
     return true
   else
