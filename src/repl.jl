@@ -19,7 +19,7 @@ end
 handle("changemodule") do data
   isREPL() || return
 
-  @destruct [mod || "", cols || 30] = data
+  @destruct [mod || ""] = data
   if !isempty(mod)
     parts = split(mod, '.')
     if length(parts) > 1 && parts[1] == "Main"
@@ -132,6 +132,7 @@ function updateworkspace()
   msg("updateWorkspace")
 end
 
+# FIXME: this breaks horribly when `Juno.@enter` is called in the REPL.
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
 
@@ -144,7 +145,7 @@ function changeREPLmodule(mod)
       ex = parse(line)
       if isdebugging()
         ret = quote
-          Juno.progress(name = "Julia") do p
+          Juno.progress(name = "Debugging") do p
             try
               lock($evallock)
               Atom.Debugger.interpret($line)
@@ -156,7 +157,6 @@ function changeREPLmodule(mod)
         end
       elseif ex isa Expr && ex.head == :module
         ret = quote
-          # eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
@@ -169,7 +169,6 @@ function changeREPLmodule(mod)
         end
       else
         ret = quote
-          # eval($mod, Expr(:(=), :ans, parse($line)))
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
