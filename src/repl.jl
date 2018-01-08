@@ -64,12 +64,12 @@ function hideprompt(f)
 
   local r
   didWrite = false
+  didWriteLinebreak = false
   try
-    changeREPLprompt("")
-    r, didWrite = didWriteToREPL(f)
+    r, didWrite, didWriteLinebreak = didWriteToREPL(f)
   finally
-    didWrite && println()
-    changeREPLprompt("julia> ")
+    didWrite && !didWriteLinebreak && println()
+    didWrite && changeREPLprompt("julia> ")
   end
   r
 end
@@ -80,28 +80,48 @@ function didWriteToREPL(f)
   rout, wout = redirect_stdout()
   rerr, werr = redirect_stderr()
 
+  didWrite = false
+
   outreader = @async begin
-    didWrite = false
+    didWriteLinebreak = false
     while isopen(rout)
-      r = readavailable(rout)
-      didWrite |= length(r) > 0
-      write(origout, r)
+      if isopen(rout)
+        r = readavailable(rout)
+        didRead = length(r) > 0
+        if !didWrite && didRead
+          print(origout, "\r         \r")
+        end
+        didWrite |= didRead
+        write(origout, r)
+      end
+
+      if didRead
+        didWriteLinebreak = r[end] == 0x0a
+      end
     end
-    didWrite
+    didWriteLinebreak
   end
 
   errreader = @async begin
-    didWrite = false
+    didWriteLinebreak = false
     while isopen(rerr)
       r = readavailable(rerr)
-      didWrite |= length(r) > 0
+      didRead = length(r) > 0
+      if !didWrite && didRead
+        print(origout, "\r         \r")
+      end
+      didWrite |= didRead
       write(origerr, r)
+
+      if didRead
+        didWriteLinebreak = r[end] == 0x0a
+      end
     end
-    didWrite
+    didWriteLinebreak
   end
 
   local res
-  didWriteOut, didWriteErr = false, false
+  didWriteLinebreakOut, didWriteLinebreakErr = false, false
 
   try
     res = f()
@@ -110,11 +130,11 @@ function didWriteToREPL(f)
     redirect_stderr(origerr)
     close(wout)
     close(werr)
-    didWriteOut = wait(outreader)
-    didWriteErr = wait(errreader)
+    didWriteLinebreakOut = wait(outreader)
+    didWriteLinebreakErr = wait(errreader)
   end
 
-  res, didWriteOut || didWriteErr
+  res, didWrite, didWriteLinebreakOut || didWriteLinebreakErr
 end
 
 
