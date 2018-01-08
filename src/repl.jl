@@ -175,24 +175,12 @@ function changeREPLmodule(mod)
             end
           end
         end
-      elseif ex isa Expr && ex.head == :module
-        ret = quote
-          Juno.progress(name = "Julia") do p
-            try
-              lock($evallock)
-              eval($mod, Expr(:(=), :ans, Expr(:toplevel, parse($line))))
-            finally
-              Atom.updateworkspace()
-              unlock($evallock)
-            end
-          end
-        end
       else
         ret = quote
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
-              eval($mod, Expr(:(=), :ans, parse($line)))
+              eval($mod, :(ans = include_string($$line, "REPL")))
             finally
               Atom.updateworkspace()
               unlock($evallock)
@@ -200,8 +188,6 @@ function changeREPLmodule(mod)
           end
         end
       end
-    else
-      ret = :(  )
     end
     return ret
   end
