@@ -192,3 +192,30 @@ function changeREPLmodule(mod)
     return ret
   end
 end
+
+struct PlotPaneDisplay <: Base.Multimedia.Display end
+
+function Base.display(d::PlotPaneDisplay, m::Union{MIME"image/png",
+                                                   MIME"image/svg+xml",
+                                                   MIME"juno/plotpane"}, plt)
+  Juno.render(Juno.PlotPane(), HTML(stringmime(MIME("text/html"), plt)))
+end
+
+function Base.display(d::PlotPaneDisplay, x)
+  if mimewritable("image/svg+xml", x)
+    display(d, "image/svg+xml", x)
+  elseif mimewritable("image/png", x)
+    display(d, "image/png", x)
+  elseif mimewriteable("juno/plotpane", x)
+    display(d, "juno/plotpane", x)
+  else
+    throw(MethodError(display, (d, x)))
+  end
+end
+
+displayble(d::PlotPaneDisplay, ::MIME"image/png") = true
+displayble(d::PlotPaneDisplay, ::MIME"image/svg+xml") = true
+
+@init begin
+  atreplinit((i) -> pushdisplay(PlotPaneDisplay()))
+end
