@@ -47,7 +47,7 @@ function locationshading(file)
   f, p = expandpath(file)
 
   # error in base
-  ismatch(r"^base/.*", f) && return ".dark"
+  ismatch(r"^base(/|\\).*", f) && return ".dark"
   # error in package
   contains(p, Pkg.dir()) && return ".medium"
   # error in "user code"
