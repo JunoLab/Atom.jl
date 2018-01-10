@@ -180,7 +180,7 @@ function changeREPLmodule(mod)
           Juno.progress(name = "Julia") do p
             try
               lock($evallock)
-              eval($mod, :(ans = include_string($$line, "REPL")))
+              eval($mod, :(ans = eval(parse($$line))))
             finally
               Atom.updateworkspace()
               unlock($evallock)
