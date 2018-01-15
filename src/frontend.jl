@@ -41,3 +41,21 @@ function blinkplot()
   ploturl(Blink.localurl(p))
   return wait(p)
 end
+
+SELECTORS = Dict(
+  "number" => ["syntax--constant", "syntax--numeric", "syntax--julia"],
+  "symbol" => ["syntax--constant", "syntax--other", "syntax--symbol", "syntax--julia"],
+  "string" => ["syntax--string", "syntax--quoted", "syntax--double", "syntax--julia"],
+  "macro" => ["syntax--support", "syntax--function", "syntax--macro", "syntax--julia"],
+  "keyword" => ["syntax--keyword", "syntax--control", "syntax--julia"],
+  "funccall" => ["syntax--support", "syntax--function", "syntax--julia"],
+  "funcdef" => ["syntax--entity", "syntax--name", "syntax--function"],
+  "operator" => ["syntax--operator", "syntax--julia"],
+  "comment" => ["syntax--comment", "syntax--julia"],
+  "variable" => ["syntax--julia"],
+  "type" => ["syntax--support", "syntax--type", "syntax--julia"]
+)
+
+function syntaxcolors(selectors = SELECTORS)
+  @rpc syntaxcolors(selectors)
+end
