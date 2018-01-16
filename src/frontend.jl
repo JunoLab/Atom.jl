@@ -57,5 +57,10 @@ SELECTORS = Dict(
 )
 
 function syntaxcolors(selectors = SELECTORS)
-  @rpc syntaxcolors(selectors)
+  colorsstr = @rpc syntaxcolors(selectors)
+  colors = Dict{String, UInt32}()
+  for (k, v) in colorsstr
+    colors[k] = parse(UInt32, v, 16)
+  end
+  colors
 end
