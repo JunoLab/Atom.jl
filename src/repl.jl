@@ -165,7 +165,7 @@ function changeREPLmodule(mod)
       ex = parse(line)
       if isdebugging()
         ret = quote
-          Juno.progress(name = "Debugging") do p
+          Atom.Progress.progress(name = "Debugging") do p
             try
               lock($evallock)
               Atom.Debugger.interpret($line)
@@ -177,7 +177,7 @@ function changeREPLmodule(mod)
         end
       else
         ret = quote
-          Juno.progress(name = "Julia") do p
+          Atom.Progress.progress(name = "Julia") do p
             try
               lock($evallock)
               eval($mod, :(ans = eval(parse($$line))))

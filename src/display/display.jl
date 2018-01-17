@@ -11,6 +11,7 @@ Media.@defpool Console
 setdisplay(Editor(), Any, Console())
 setdisplay(Console(), Any, Console())
 
+include("base.jl")
 include("plots.jl")
 include("view.jl")
 include("lazy.jl")

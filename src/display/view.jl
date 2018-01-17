@@ -2,7 +2,7 @@ using Hiccup
 
 const AString = AbstractString
 
-import Juno: Model, view
+import Juno: Model
 
 render(::Inline, m::Model) = m.data
 

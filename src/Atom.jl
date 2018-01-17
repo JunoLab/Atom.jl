@@ -18,6 +18,7 @@ include("completions.jl")
 include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
+include("progress.jl")
 
 include("debugger/load.jl")
 
