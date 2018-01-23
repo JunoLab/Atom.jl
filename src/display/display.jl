@@ -28,10 +28,12 @@ render(::PlotPane, x) =
   span([render(Inline(), x) for x in l.xs])
 end
 
-include("utils.jl")
+link(a...) = Link(a...)
+
 include("base.jl")
-include("plots.jl")
+include("utils.jl")
 include("view.jl")
+include("plots.jl")
 include("lazy.jl")
 include("errors.jl")
 include("frontend.jl")

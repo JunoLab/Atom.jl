@@ -93,31 +93,24 @@ difference between registering a progress bar and the latest update.
 """
 right_text(p::ProgressBar, s) = @msg progress("rightText", p, s)
 
-function _progress(ex)
-  _progress("", ex)
-end
-
 function _progress(name, ex)
   @capture(ex, for x_ in range_ body_ end) ||
     error("@progress requires a for loop")
   @esc x range body
   quote
-    if isactive()
-      p = ProgressBar(name = $name)
-      progress(p, 0)
-      try
-        range = $range
-        n = length(range)
-        for (i, $x) in enumerate(range)
-          $body
-          progress(p, i/n)
-        end
-      finally
-        done(p)
+    @show name, ex, x, range, body
+    p = ProgressBar(name = $name)
+    progress(p, 0)
+    try
+      range = $range
+      n = length(range)
+      for (i, $x) in enumerate(range)
+        $body
+        progress(p, i/n)
       end
-    else
-      $(esc(ex))
+    finally
+      done(p)
     end
   end
 end
-end
+end # module
