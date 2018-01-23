@@ -45,20 +45,6 @@ showmethod(T) = which(show, (IO, T))
   end
 end
 
-"""
-    defaultrepr(x, lazy = false)
-
-`render` fallback for types without any specialized `show` methods.
-
-If `lazy` is true, then the type's fields will be loaded lazily when expanding the tree.
-This is useful when the fields contain big elements that might need to be inspectable.
-
-Can be used by packages to restore Juno's default printing if they have defined
-a `show` method that should *not* be used by Juno:
-```julia
-Juno.render(i::Juno.Inline, x::myType) = Juno.render(i, Juno.defaultrepr(x))
-```
-"""
 function defaultrepr(x, lazy = false)
   fields = fieldnames(typeof(x))
   if isempty(fields)
