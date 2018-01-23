@@ -3,7 +3,7 @@ using Media, Lazy, Hiccup
 import Media: render
 import Hiccup: div
 
-import Juno: Inline, Clipboard, Editor, Console
+import Juno: Inline, Clipboard, Editor, Console, undefs, fade, icon
 
 Media.@defpool Editor
 Media.@defpool Console
