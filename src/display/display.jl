@@ -4,7 +4,8 @@ import Media: render, @render
 import Hiccup: div
 
 import Juno: Inline, Clipboard, Editor, Console, PlotPane, Model, Tree, LazyTree,
-             SubTree, Copyable, Link, Row, Table
+             SubTree, Copyable, Link, Row, Table, fade, icon, interleave, dims,
+             undefs, errtrace, errmsg
 
 Media.@defpool Editor
 Media.@defpool Console

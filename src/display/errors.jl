@@ -17,10 +17,8 @@ macro errs(ex)
 end
 
 errtrace(e::EvalError) = errtrace(e.err, e.trace)
-errtrace(e, trace) = trace
 
 errmsg(e::EvalError) = errmsg(e.err)
-errmsg(e) = sprint(io -> showerror(IOContext(io, limit=true), e))
 
 function Base.show(io::IO, err::EvalError)
   print(io, errmsg(err))
