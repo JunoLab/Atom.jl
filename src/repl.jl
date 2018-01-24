@@ -213,9 +213,6 @@ function Base.display(d::PlotPaneDisplay, x)
   end
 end
 
-displayble(d::PlotPaneDisplay, ::MIME"image/png") = true
-displayble(d::PlotPaneDisplay, ::MIME"image/svg+xml") = true
-
 @init begin
   atreplinit((i) -> pushdisplay(PlotPaneDisplay()))
 end
