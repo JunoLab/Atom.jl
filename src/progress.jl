@@ -98,7 +98,6 @@ function _progress(name, ex)
     error("@progress requires a for loop")
   @esc x range body
   quote
-    @show name, ex, x, range, body
     p = ProgressBar(name = $name)
     progress(p, 0)
     try
