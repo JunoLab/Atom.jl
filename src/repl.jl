@@ -206,7 +206,7 @@ function Base.display(d::PlotPaneDisplay, x)
     display(d, "image/svg+xml", x)
   elseif mimewritable("image/png", x)
     display(d, "image/png", x)
-  elseif mimewriteable("juno/plotpane", x)
+  elseif mimewritable("juno/plotpane", x)
     display(d, "juno/plotpane", x)
   else
     throw(MethodError(display, (d, x)))
