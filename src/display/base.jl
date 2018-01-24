@@ -1,7 +1,6 @@
 using Hiccup
 
-render(e::Editor, ::Void) =
-  render(e, Atom.icon("check"))
+render(e::Editor, ::Void) = render(e, icon("check"))
 
 render(::Console, ::Void) = nothing
 
