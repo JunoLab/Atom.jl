@@ -193,26 +193,10 @@ function changeREPLmodule(mod)
   end
 end
 
-struct PlotPaneDisplay <: Base.Multimedia.Display end
-
-function Base.display(d::PlotPaneDisplay, m::Union{MIME"image/png",
-                                                   MIME"image/svg+xml",
-                                                   MIME"juno/plotpane"}, plt)
-  Juno.render(Juno.PlotPane(), plt)
-end
-
-function Base.display(d::PlotPaneDisplay, x)
-  if mimewritable("image/svg+xml", x)
-    display(d, "image/svg+xml", x)
-  elseif mimewritable("image/png", x)
-    display(d, "image/png", x)
-  elseif mimewritable("juno/plotpane", x)
-    display(d, "juno/plotpane", x)
-  else
-    throw(MethodError(display, (d, x)))
-  end
-end
-
+# make sure DisplayHook() is higher than REPLDisplay() in the display stack
 @init begin
-  atreplinit((i) -> pushdisplay(PlotPaneDisplay()))
+  atreplinit((i) -> begin
+    Base.Multimedia.popdisplay(Media.DisplayHook())
+    Base.Multimedia.pushdisplay(Media.DisplayHook())
+  end
 end
