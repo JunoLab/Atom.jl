@@ -1,4 +1,5 @@
 using DocSeeker
+
 handle("searchdocs") do data
   @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
   items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
@@ -10,7 +11,7 @@ end
 
 function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
-  r[:html] = Juno.view(Juno.renderMD(x.html))
+  r[:html] = view(renderMD(x.html))
   r
 end
 
@@ -18,7 +19,7 @@ handle("moduleinfo") do data
   @destruct [mod] = data
   d, items = getmoduleinfo(mod)
   items = [renderitem(i) for i in items]
-  Dict(:doc => Juno.view(d), :items => items)
+  Dict(:doc => view(d), :items => items)
 end
 
 handle("regenerateCache") do
@@ -39,7 +40,7 @@ end
 
 function packageinfo(mod)
   Hiccup.div(
-    Juno.renderMD(Markdown.parse(String(read(DocSeeker.readmepath(mod))))),
+    renderMD(Markdown.parse(String(read(DocSeeker.readmepath(mod))))),
     Hiccup.Node(:hr),
     Hiccup.h2("defined symbols:")
   ), modulesymbols(mod)
@@ -47,11 +48,11 @@ end
 
 function moduleinfo(mod)
   header = if mod == "Core"
-    Juno.renderMD("## Julia `Core`")
+    renderMD("## Julia `Core`")
   elseif first(split(mod, '.')) == "Base"
-    Juno.renderMD("## Julia Standard Library: `$mod`")
+    renderMD("## Julia Standard Library: `$mod`")
   else
-    Juno.renderMD("## Module `$mod`")
+    renderMD("## Module `$mod`")
   end
 
   header, modulesymbols(mod)

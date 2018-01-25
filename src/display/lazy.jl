@@ -1,7 +1,4 @@
 # TODO: only store last N trees
-
-import Juno: LazyTree
-
 _id = 0
 
 treeid() = (global _id += 1)

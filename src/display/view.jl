@@ -1,12 +1,6 @@
-using Hiccup
-
-const AString = AbstractString
-
-import Juno: Model, view
-
 render(::Inline, m::Model) = m.data
 
-view(x::AString) = x
+view(x::AbstractString) = x
 view(x::Associative) = x
 
 view(n::Node) =
@@ -34,8 +28,6 @@ render(::Console, x::Node) =
 
 render(::Editor, x::Node) = view(x)
 
-import Juno: Tree, SubTree
-
 render(i::Inline, t::Tree) =
   isempty(t.children) ?
     render(i, t.head) :
@@ -49,21 +41,15 @@ render(i::Inline, t::SubTree) =
     :label => render(i, t.label),
     :child => render(i, t.child))
 
-import Juno: Table
-
 @render i::Inline t::Table begin
   xs = map(x -> render(i, x), t.xs)
   table("", vec(mapslices(xs -> tr("", map(x->td("", [x]), xs)), xs, 2)))
 end
 
-import Juno: Copyable
-
 render(i::Inline, x::Copyable) =
   d(:type => :copy,
     :view => render(i, x.view),
     :text => x.text)
-
-import Juno: Link, link
 
 render(i::Inline, l::Link) =
   d(:type => :link,
@@ -73,5 +59,3 @@ render(i::Inline, l::Link) =
 
 render(::Clipboard, l::Link) =
   "$(l.file):$(l.line)"
-
-import Juno: icon, fade

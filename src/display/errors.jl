@@ -1,5 +1,3 @@
-import Juno: errtrace, errmsg
-
 type EvalError{T}
   err::T
   trace::StackTrace
@@ -19,6 +17,7 @@ macro errs(ex)
 end
 
 errtrace(e::EvalError) = errtrace(e.err, e.trace)
+
 errmsg(e::EvalError) = errmsg(e.err)
 
 function Base.show(io::IO, err::EvalError)
