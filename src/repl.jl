@@ -192,3 +192,11 @@ function changeREPLmodule(mod)
     return ret
   end
 end
+
+# make sure DisplayHook() is higher than REPLDisplay() in the display stack
+@init begin
+  atreplinit((i) -> begin
+    Base.Multimedia.popdisplay(Media.DisplayHook())
+    Base.Multimedia.pushdisplay(Media.DisplayHook())
+  end
+end
