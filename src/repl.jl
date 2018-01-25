@@ -198,7 +198,7 @@ struct PlotPaneDisplay <: Base.Multimedia.Display end
 function Base.display(d::PlotPaneDisplay, m::Union{MIME"image/png",
                                                    MIME"image/svg+xml",
                                                    MIME"juno/plotpane"}, plt)
-  Juno.render(Juno.PlotPane(), HTML(stringmime(MIME("text/html"), plt)))
+  Juno.render(Juno.PlotPane(), plt)
 end
 
 function Base.display(d::PlotPaneDisplay, x)
