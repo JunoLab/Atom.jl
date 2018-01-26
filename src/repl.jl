@@ -80,12 +80,14 @@ function didWriteToREPL(f)
   rout, wout = redirect_stdout()
   rerr, werr = redirect_stderr()
 
+  ct = current_task()
+
   didWrite = false
 
   outreader = @async begin
     didWriteLinebreak = false
-    while isopen(rout)
-      if isopen(rout)
+    try
+      while isopen(rout)
         r = readavailable(rout)
         didRead = length(r) > 0
         if !didWrite && didRead
@@ -93,43 +95,51 @@ function didWriteToREPL(f)
         end
         didWrite |= didRead
         write(origout, r)
-      end
 
-      if didRead
-        didWriteLinebreak = r[end] == 0x0a
+        if didRead
+          didWriteLinebreak = r[end] == 0x0a
+        end
       end
+    catch e
+      Base.throwto(ct, e)
+      rethrow(e)
     end
     didWriteLinebreak
   end
 
   errreader = @async begin
     didWriteLinebreak = false
-    while isopen(rerr)
-      r = readavailable(rerr)
-      didRead = length(r) > 0
-      if !didWrite && didRead
-        print(origout, "\r         \r")
-      end
-      didWrite |= didRead
-      write(origerr, r)
+    try
+      while isopen(rerr)
+        r = readavailable(rerr)
+        didRead = length(r) > 0
+        if !didWrite && didRead
+          print(origout, "\r         \r")
+        end
+        didWrite |= didRead
+        write(origerr, r)
 
-      if didRead
-        didWriteLinebreak = r[end] == 0x0a
+        if didRead
+          didWriteLinebreak = r[end] == 0x0a
+        end
       end
+    catch e
+      Base.throwto(ct, e)
+      rethrow(e)
     end
     didWriteLinebreak
   end
 
-  local res
   didWriteLinebreakOut, didWriteLinebreakErr = false, false
 
-  try
-    res = f()
-  finally
-    redirect_stdout(origout)
-    redirect_stderr(origerr)
-    close(wout)
-    close(werr)
+  res = f()
+  redirect_stdout(origout)
+  redirect_stderr(origerr)
+  close(wout)
+  close(werr)
+  
+  # FIXME: This probably leaks unterminated Tasks everywhere...
+  if !(res isa EvalError)
     didWriteLinebreakOut = wait(outreader)
     didWriteLinebreakErr = wait(errreader)
   end
