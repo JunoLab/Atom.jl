@@ -4,8 +4,8 @@ import Media: render, @render
 import Hiccup: div
 
 import Juno: Inline, Clipboard, Editor, Console, PlotPane, Model, Tree, LazyTree,
-             SubTree, Copyable, Link, Row, Table, fade, icon, interleave, dims,
-             undefs, errtrace, errmsg, view
+             SubTree, Copyable, Link, link, Row, Table, fade, icon, interleave, dims,
+             undefs, errtrace, errmsg, view, UNDEF, limit
 
 Media.@defpool Editor
 Media.@defpool Console
@@ -28,8 +28,6 @@ render(::PlotPane, x) =
 @render Inline l::Row begin
   span([render(Inline(), x) for x in l.xs])
 end
-
-link(a...) = Link(a...)
 
 include("base.jl")
 include("utils.jl")
