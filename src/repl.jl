@@ -135,14 +135,12 @@ function didWriteToREPL(f)
   res = f()
   redirect_stdout(origout)
   redirect_stderr(origerr)
-  close(wout)
-  close(werr)
   
-  # FIXME: This probably leaks unterminated Tasks everywhere...
-  if !(res isa EvalError)
-    didWriteLinebreakOut = wait(outreader)
-    didWriteLinebreakErr = wait(errreader)
-  end
+  close(wout); close(rout)
+  close(werr); close(rerr)
+
+  didWriteLinebreakOut = wait(outreader)
+  didWriteLinebreakErr = wait(errreader)
 
   res, didWrite, didWriteLinebreakOut || didWriteLinebreakErr
 end
