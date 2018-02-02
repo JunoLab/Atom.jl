@@ -102,7 +102,6 @@ function didWriteToREPL(f)
       end
     catch e
       Base.throwto(ct, e)
-      rethrow(e)
     end
     didWriteLinebreak
   end
@@ -125,7 +124,6 @@ function didWriteToREPL(f)
       end
     catch e
       Base.throwto(ct, e)
-      rethrow(e)
     end
     didWriteLinebreak
   end
@@ -135,12 +133,14 @@ function didWriteToREPL(f)
   res = f()
   redirect_stdout(origout)
   redirect_stderr(origerr)
-  
+
   close(wout); close(rout)
   close(werr); close(rerr)
 
-  didWriteLinebreakOut = wait(outreader)
-  didWriteLinebreakErr = wait(errreader)
+  if !(res isa EvalError)
+    didWriteLinebreakOut = wait(outreader)
+    didWriteLinebreakErr = wait(errreader)
+  end
 
   res, didWrite, didWriteLinebreakOut || didWriteLinebreakErr
 end
