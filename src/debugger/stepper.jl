@@ -62,7 +62,12 @@ function startdebugging(stack)
   debugmode(true)
 
   if Atom.isREPL()
-     t = @async debugprompt()
+    # FIXME: Should get rid of the second code path (see comment in repl.jl).
+    if Atom.repleval
+      t = @async debugprompt()
+    else
+      Atom.changeREPLprompt("debug> ", color=:magenta)
+    end
   end
 
   stepto(state)
@@ -108,8 +113,12 @@ function startdebugging(stack)
     debugmode(false)
 
     if Atom.isREPL()
-       istaskdone(t) || schedule(t, InterruptException(); error=true)
-       print("\r                        \r")
+      if Atom.repleval
+        istaskdone(t) || schedule(t, InterruptException(); error=true)
+        print("\r                        \r")
+      else
+        Atom.changeREPLprompt("julia> ", color = :green)
+      end
     end
   end
   res
@@ -124,13 +133,12 @@ function debugprompt()
 
     panel.on_done = (s, buf, ok) -> begin
       Atom.msg("working")
-      lock(Atom.evallock)
 
       line = String(take!(buf))
 
       isempty(line) && return true
 
-      if !ok# || strip(line) == "exit()"
+      if !ok
         Base.LineEdit.transition(s, :abort)
         Base.LineEdit.reset_state(s)
         return false
@@ -139,6 +147,7 @@ function debugprompt()
       try
         r = Atom.Debugger.interpret(line)
         r ≠ nothing && display(r)
+        println()
       catch e
         print_with_color(:red, STDERR, "ERROR: ")
         Base.showerror(STDERR, e, backtrace())
@@ -146,7 +155,6 @@ function debugprompt()
       end
 
       Atom.msg("doneWorking")
-      unlock(Atom.evallock)
       Atom.msg("updateworkspace")
 
       return true
