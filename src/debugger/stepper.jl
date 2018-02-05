@@ -155,7 +155,7 @@ function debugprompt()
       end
 
       Atom.msg("doneWorking")
-      Atom.msg("updateworkspace")
+      Atom.msg("updateWorkspace")
 
       return true
     end

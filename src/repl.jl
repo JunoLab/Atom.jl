@@ -173,7 +173,7 @@ function changeREPLmodule(mod)
             Atom.msg("working")
             Atom.Debugger.interpret($line)
           finally
-            Atom.msg("updateworkspace")
+            Atom.msg("updateWorkspace")
             Atom.msg("doneWorking")
           end
         end
@@ -185,7 +185,7 @@ function changeREPLmodule(mod)
             eval(Atom, :(repleval = true))
             eval($mod, :(ans = eval(parse($$line))))
           finally
-            Atom.msg("updateworkspace")
+            Atom.msg("updateWorkspace")
             unlock($evallock)
             Atom.msg("doneWorking")
             eval(Atom, :(repleval = false))
