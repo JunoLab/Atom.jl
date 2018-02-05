@@ -20,16 +20,12 @@ handle("changemodule") do data
   isREPL() || return
 
   @destruct [mod || ""] = data
-  if !isempty(mod)
+  if !isempty(mod) && !isdebugging()
     parts = split(mod, '.')
     if length(parts) > 1 && parts[1] == "Main"
       shift!(parts)
     end
-    if isdebugging()
-      changeREPLprompt("debug> ")
-    else
-      changeREPLmodule(mod)
-    end
+    changeREPLmodule(mod)
   end
   nothing
 end
@@ -156,10 +152,6 @@ function changeREPLprompt(prompt)
   true
 end
 
-function updateworkspace()
-  msg("updateWorkspace")
-end
-
 # FIXME: this breaks horribly when `Juno.@enter` is called in the REPL.
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
@@ -170,34 +162,18 @@ function changeREPLmodule(mod)
   main_mode = repl.interface.modes[1]
   main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
     if !isempty(line)
-      ex = parse(line)
-      if isdebugging()
-        ret = quote
-          Atom.Progress.progress(name = "Debugging") do p
-            try
-              lock($evallock)
-              Atom.Debugger.interpret($line)
-            finally
-              Atom.updateworkspace()
-              unlock($evallock)
-            end
-          end
-        end
-      else
-        ret = quote
-          Atom.Progress.progress(name = "Julia") do p
-            try
-              lock($evallock)
-              eval($mod, :(ans = eval(parse($$line))))
-            finally
-              Atom.updateworkspace()
-              unlock($evallock)
-            end
-          end
+      quote
+        try
+          Atom.msg("working")
+          lock($evallock)
+          eval($mod, :(ans = eval(parse($$line))))
+        finally
+          Atom.msg("updateworkspace")
+          Atom.msg("doneWorking")
+          unlock($evallock)
         end
       end
     end
-    return ret
   end
 end
 

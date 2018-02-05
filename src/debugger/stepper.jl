@@ -56,11 +56,14 @@ end
 
 # setup interpreter
 function startdebugging(stack)
-  # println(stack)
   global state = dummy_state(stack)
   global chan = Channel(0)
 
   debugmode(true)
+
+  if Atom.isREPL()
+     t = @async debugprompt()
+  end
 
   stepto(state)
   res = nothing
@@ -90,14 +93,68 @@ function startdebugging(stack)
     end
   catch e
     ee = EvalError(e, catch_stacktrace())
-    render(Console(), ee)
+    if Atom.isREPL()
+      print("\r                        \r")
+      print_with_color(:red, STDERR, "ERROR: ")
+      Base.showerror(STDERR, e, backtrace())
+      println(STDERR)
+    else
+      render(Console(), ee)
+    end
   finally
     res = state.overall_result
     chan = nothing
     state = nothing
     debugmode(false)
+
+    if Atom.isREPL()
+       istaskdone(t) || schedule(t, InterruptException(); error=true)
+       print("\r                        \r")
+    end
   end
   res
+end
+
+function debugprompt()
+  try
+    panel = Base.LineEdit.Prompt("debug> ";
+              prompt_prefix="\e[35m",
+              prompt_suffix=Base.text_colors[:white],
+              on_enter = s -> true)
+
+    panel.on_done = (s, buf, ok) -> begin
+      Atom.msg("working")
+      lock(Atom.evallock)
+
+      line = String(take!(buf))
+
+      isempty(line) && return true
+
+      if !ok# || strip(line) == "exit()"
+        Base.LineEdit.transition(s, :abort)
+        Base.LineEdit.reset_state(s)
+        return false
+      end
+
+      try
+        r = Atom.Debugger.interpret(line)
+        r ≠ nothing && display(r)
+      catch e
+        print_with_color(:red, STDERR, "ERROR: ")
+        Base.showerror(STDERR, e, backtrace())
+        println(STDERR)
+      end
+
+      Atom.msg("doneWorking")
+      unlock(Atom.evallock)
+      Atom.msg("updateworkspace")
+
+      return true
+    end
+
+    Base.REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
+  catch e
+    e isa InterruptException || rethrow(e) end
 end
 
 # setup handlers for stepper commands

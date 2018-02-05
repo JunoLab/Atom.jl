@@ -96,13 +96,20 @@ handle("evalall") do data
       mod = getthing(CodeTools.filemodule(path), Main)
     end
     lock(evallock)
-      hideprompt() do
+    hideprompt() do
       withpath(path) do
         try
           include_string(mod, code, path)
         catch e
-          ee = EvalError(e, catch_stacktrace())
-          render(Console(), ee)
+          bt = backtrace()
+          ee = EvalError(e, stacktrace(bt))
+          if isREPL()
+            print_with_color(:red, STDERR, "ERROR: ")
+            Base.showerror(STDERR, e, bt)
+            println(STDERR)
+          else
+            render(Console(), ee)
+          end
           @msg error(d(:msg => "Error evaluating $(basename(path))",
                        :detail => string(ee),
                        :dismissable => true))
