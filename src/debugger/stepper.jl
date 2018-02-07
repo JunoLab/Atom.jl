@@ -247,16 +247,18 @@ function localvars(frame::ASTInterpreter2.JuliaStackFrame)
   items = []
   for i = 1:length(frame.locals)
     if !isnull(frame.locals[i])
-      if frame.code.slotnames[i] == Symbol("#self#") && sizeof(get(frame.locals[i])) == 0
+      # #self# is only interesting if it has values inside of it. We already know
+      # which function we're in otherwise.
+      val = get(frame.locals[i])
+      if frame.code.slotnames[i] == Symbol("#self#") && (isa(val, Type) || sizeof(val) == 0)
         continue
       end
-      push!(items, wsitem(frame.code.slotnames[i], get(frame.locals[i], Undefined())))
+      push!(items, wsitem(frame.code.slotnames[i], val))
     end
   end
   for i = 1:length(frame.sparams)
     push!(items, wsitem(frame.meth.sparam_syms[i], get(Nullable{Any}(frame.sparams[i]), Undefined())))
   end
-
   return items
 end
 
