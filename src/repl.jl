@@ -70,10 +70,12 @@ function hideprompt(f)
   r
 end
 
-listener = Ref{Function}((data) -> ())
 ORIGSTDOUT = nothing
 ORIGSTDERR = nothing
 CURRENT_EVAL_TASK = nothing
+
+didWrite = Ref{Bool}(false)
+didWriteLinebreak = Ref{Bool}(false)
 
 function initREPLlistener()
   global ORIGSTDOUT = STDOUT
@@ -82,14 +84,25 @@ function initREPLlistener()
   rout, wout = redirect_stdout()
   rerr, werr = redirect_stderr()
 
+  global didWrite
+  global didWriteLinebreak
+
+  listener = (data) -> begin
+    didWrite[] || print(ORIGSTDOUT, "\e[1K\r")
+    didWrite[] = true
+    didWriteLinebreak[] = data[end] == 0x0a
+  end
+
   errreader = @async begin
     while true
       try
         while isopen(rerr)
           try
+            yield()
             r = readavailable(rerr)
-            length(r) > 0 && listener[](r)
+            length(r) > 0 && listener(r)
             write(ORIGSTDERR, r)
+            yield()
           catch e
             schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
           end
@@ -103,9 +116,11 @@ function initREPLlistener()
       try
         while isopen(rout)
           try
+            yield()
             r = readavailable(rout)
-            length(r) > 0 && listener[](r)
+            length(r) > 0 && listener(r)
             write(ORIGSTDOUT, r)
+            yield()
           catch e
             schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
           end
@@ -118,20 +133,13 @@ end
 function didWriteToREPL(f)
   global CURRENT_EVAL_TASK
   CURRENT_EVAL_TASK = current_task()
-
-  didWrite = Ref{Bool}(false)
-  didWriteLinebreak = Ref{Bool}(false)
-  listener[] = (data) -> begin
-    didWrite[] || print(ORIGSTDOUT, "\e[1K\r")
-    didWrite[] = true
-    didWriteLinebreak[] = data[end] == 0x0a
-  end
+  didWrite[] = false
+  didWriteLinebreak[] = false
 
   res = f()
+
   yield()
   sleep(0.01) # should be unnessecary, but yield() alone isn't enough
-
-  listener[] = (data) -> ()
 
   res, didWrite[], didWriteLinebreak[]
 end
