@@ -70,38 +70,33 @@ function hideprompt(f)
   r
 end
 
-ORIGSTDOUT = nothing
-ORIGSTDERR = nothing
 CURRENT_EVAL_TASK = nothing
-
-didWrite = Ref{Bool}(false)
-didWriteLinebreak = Ref{Bool}(false)
+LAST_WRITTEN_BYTE = 0x00
+NEW_STDOUT_R, NEW_STDERR_R = nothing, nothing
 
 function initREPLlistener()
   global ORIGSTDOUT = STDOUT
   global ORIGSTDERR = STDERR
 
-  rout, wout = redirect_stdout()
-  rerr, werr = redirect_stderr()
+  global NEW_STDOUT_R
+  global NEW_STDERR_R
 
-  global didWrite
-  global didWriteLinebreak
+  NEW_STDOUT_R, wout = redirect_stdout()
+  NEW_STDERR_R, werr = redirect_stderr()
 
-  listener = (data) -> begin
-    didWrite[] || print(ORIGSTDOUT, "\e[1K\r")
-    didWrite[] = true
-    didWriteLinebreak[] = data[end] == 0x0a
-  end
-
-  errreader = @async begin
+  listen_in = (instream, outstream) -> begin
     while true
       try
-        while isopen(rerr)
+        while isopen(instream)
           try
             yield()
-            r = readavailable(rerr)
-            length(r) > 0 && listener(r)
-            write(ORIGSTDERR, r)
+            data = readavailable(instream)
+            if length(data) > 0
+              global LAST_WRITTEN_BYTE
+              LAST_WRITTEN_BYTE == 0x00 && print(outstream, "\e[1K\r")
+              LAST_WRITTEN_BYTE = data[end]
+            end
+            write(outstream, data)
             yield()
           catch e
             schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
@@ -111,37 +106,30 @@ function initREPLlistener()
     end
   end
 
-  outreader = @async begin
-    while true
-      try
-        while isopen(rout)
-          try
-            yield()
-            r = readavailable(rout)
-            length(r) > 0 && listener(r)
-            write(ORIGSTDOUT, r)
-            yield()
-          catch e
-            schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
-          end
-        end
-      end
-    end
-  end
+  global ERR_READER = @async listen_in(NEW_STDERR_R, ORIGSTDERR)
+  global OUT_READER = @async listen_in(NEW_STDOUT_R, ORIGSTDOUT)
 end
 
 function didWriteToREPL(f)
   global CURRENT_EVAL_TASK
+  global LAST_WRITTEN_BYTE
+
   CURRENT_EVAL_TASK = current_task()
-  didWrite[] = false
-  didWriteLinebreak[] = false
+  LAST_WRITTEN_BYTE = 0x00
 
   res = f()
 
   yield()
-  sleep(0.01) # should be unnessecary, but yield() alone isn't enough
+  flush(NEW_STDERR_R)
+  flush(NEW_STDOUT_R)
+  yield()
+  flush(STDOUT)
+  flush(STDERR)
+  # FIXME: should be unnessecary, but flush() and yield() aren't always enough;
+  # downside of inherently racy code I suppose :)
+  sleep(0.01)
 
-  res, didWrite[], didWriteLinebreak[]
+  res, LAST_WRITTEN_BYTE != 0x00, LAST_WRITTEN_BYTE == 0x0a
 end
 
 function changeREPLprompt(prompt; color = :green)
