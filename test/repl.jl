@@ -1,5 +1,8 @@
 using Atom: didWriteToREPL
 
+Atom.initREPLlistener()
+sleep(1)
+
 @test didWriteToREPL(() -> print(STDERR, "Atom REPL STDERR test")) == (nothing, true, false)
 @test didWriteToREPL(() -> println("Atom REPL STDOUT test")) == (nothing, true, true)
 @test didWriteToREPL(() -> print("Atom REPL STDOUT \n test")) == (nothing, true, false)

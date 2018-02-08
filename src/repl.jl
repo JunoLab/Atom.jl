@@ -70,77 +70,71 @@ function hideprompt(f)
   r
 end
 
-function didWriteToREPL(f)
-  origout, origerr = STDOUT, STDERR
+listener = Ref{Function}((data) -> ())
+ORIGSTDOUT = nothing
+ORIGSTDERR = nothing
+CURRENT_EVAL_TASK = nothing
+
+function initREPLlistener()
+  global ORIGSTDOUT = STDOUT
+  global ORIGSTDERR = STDERR
 
   rout, wout = redirect_stdout()
   rerr, werr = redirect_stderr()
 
-  ct = current_task()
-
-  didWrite = false
+  errreader = @async begin
+    while true
+      try
+        while isopen(rerr)
+          try
+            r = readavailable(rerr)
+            length(r) > 0 && listener[](r)
+            write(ORIGSTDERR, r)
+          catch e
+            schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
+          end
+        end
+      end
+    end
+  end
 
   outreader = @async begin
-    didWriteLinebreak = false
-    try
-      while isopen(rout)
-        r = readavailable(rout)
-        didRead = length(r) > 0
-        if !didWrite && didRead
-          print(origout, "\r         \r")
-        end
-        didWrite |= didRead
-        write(origout, r)
-
-        if didRead
-          didWriteLinebreak = r[end] == 0x0a
+    while true
+      try
+        while isopen(rout)
+          try
+            r = readavailable(rout)
+            length(r) > 0 && listener[](r)
+            write(ORIGSTDOUT, r)
+          catch e
+            schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
+          end
         end
       end
-    catch e
-      Base.throwto(ct, e)
     end
-    didWriteLinebreak
   end
-
-  errreader = @async begin
-    didWriteLinebreak = false
-    try
-      while isopen(rerr)
-        r = readavailable(rerr)
-        didRead = length(r) > 0
-        if !didWrite && didRead
-          print(origout, "\r         \r")
-        end
-        didWrite |= didRead
-        write(origerr, r)
-
-        if didRead
-          didWriteLinebreak = r[end] == 0x0a
-        end
-      end
-    catch e
-      Base.throwto(ct, e)
-    end
-    didWriteLinebreak
-  end
-
-  didWriteLinebreakOut, didWriteLinebreakErr = false, false
-
-  res = f()
-  redirect_stdout(origout)
-  redirect_stderr(origerr)
-
-  close(wout); close(rout)
-  close(werr); close(rerr)
-
-  if !(res isa EvalError)
-    didWriteLinebreakOut = wait(outreader)
-    didWriteLinebreakErr = wait(errreader)
-  end
-
-  res, didWrite, didWriteLinebreakOut || didWriteLinebreakErr
 end
 
+function didWriteToREPL(f)
+  global CURRENT_EVAL_TASK
+  CURRENT_EVAL_TASK = current_task()
+
+  didWrite = Ref{Bool}(false)
+  didWriteLinebreak = Ref{Bool}(false)
+  listener[] = (data) -> begin
+    didWrite[] || print(ORIGSTDOUT, "\e[1K\r")
+    didWrite[] = true
+    didWriteLinebreak[] = data[end] == 0x0a
+  end
+
+  res = f()
+  yield()
+  sleep(0.01) # should be unnessecary, but yield() alone isn't enough
+
+  listener[] = (data) -> ()
+
+  res, didWrite[], didWriteLinebreak[]
+end
 
 function changeREPLprompt(prompt; color = :green)
   global current_prompt = prompt
@@ -201,5 +195,6 @@ end
   atreplinit((i) -> begin
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
+    initREPLlistener()
   end)
 end
