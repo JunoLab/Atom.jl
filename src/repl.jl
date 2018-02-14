@@ -191,6 +191,7 @@ end
   atreplinit((i) -> begin
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
+    Media.unsetdisplay(Editor(), Any)
     initREPLlistener()
   end)
 end
