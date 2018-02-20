@@ -47,8 +47,9 @@ handle("validatepath") do uri
   end
 end
 
-handle("resetprompt") do
+handle("resetprompt") do linebreak
   isREPL() || return
+  linebreak && println()
   changeREPLprompt("julia> ")
   nothing
 end
@@ -58,78 +59,18 @@ current_prompt = "julia> "
 function hideprompt(f)
   isREPL() || return f()
 
-  local r
-  didWrite = false
-  didWriteLinebreak = false
-  try
-    r, didWrite, didWriteLinebreak = didWriteToREPL(f)
-  finally
-    didWrite && !didWriteLinebreak && println()
-    didWrite && changeREPLprompt("julia> ")
-  end
-  r
-end
-
-CURRENT_EVAL_TASK = nothing
-LAST_WRITTEN_BYTE = 0x00
-NEW_STDOUT_R, NEW_STDERR_R = nothing, nothing
-
-function initREPLlistener()
-  global ORIGSTDOUT = STDOUT
-  global ORIGSTDERR = STDERR
-
-  global NEW_STDOUT_R
-  global NEW_STDERR_R
-
-  NEW_STDOUT_R, wout = redirect_stdout()
-  NEW_STDERR_R, werr = redirect_stderr()
-
-  listen_in = (instream, outstream) -> begin
-    while true
-      try
-        while isopen(instream)
-          try
-            yield()
-            data = readavailable(instream)
-            if length(data) > 0
-              global LAST_WRITTEN_BYTE
-              LAST_WRITTEN_BYTE == 0x00 && print(outstream, "\e[1K\r")
-              LAST_WRITTEN_BYTE = data[end]
-            end
-            write(outstream, data)
-            yield()
-          catch e
-            schedule(CURRENT_EVAL_TASK, InterruptException(); error=true)
-          end
-        end
-      end
-    end
-  end
-
-  global ERR_READER = @async listen_in(NEW_STDERR_R, ORIGSTDERR)
-  global OUT_READER = @async listen_in(NEW_STDOUT_R, ORIGSTDOUT)
-end
-
-function didWriteToREPL(f)
-  global CURRENT_EVAL_TASK
-  global LAST_WRITTEN_BYTE
-
-  CURRENT_EVAL_TASK = current_task()
-  LAST_WRITTEN_BYTE = 0x00
-
-  res = f()
-
-  yield()
-  flush(NEW_STDERR_R)
-  flush(NEW_STDOUT_R)
-  yield()
+  print("\e[1K\r")
   flush(STDOUT)
   flush(STDERR)
-  # FIXME: should be unnessecary, but flush() and yield() aren't always enough;
-  # downside of inherently racy code I suppose :)
-  sleep(0.01)
+  r = f()
+  flush(STDOUT)
+  flush(STDERR)
+  sleep(0.03)
 
-  res, LAST_WRITTEN_BYTE != 0x00, LAST_WRITTEN_BYTE == 0x0a
+  pos = @rpc cursorpos()
+  pos[1] != 0 && println()
+  changeREPLprompt("julia> ")
+  r
 end
 
 function changeREPLprompt(prompt; color = :green)
@@ -192,6 +133,5 @@ end
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
     Media.unsetdisplay(Editor(), Any)
-    initREPLlistener()
   end)
 end
