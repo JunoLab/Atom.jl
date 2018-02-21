@@ -1,7 +1,7 @@
 module Profiler
 
 using Lazy, Juno, Hiccup
-import Juno: Row, LazyTree, SubTree
+import Juno: Row, LazyTree, SubTree, icon
 import ..Atom: baselink, cliptrace, expandpath, @msg
 
 include("tree.jl")
