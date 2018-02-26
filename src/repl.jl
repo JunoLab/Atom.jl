@@ -65,7 +65,7 @@ function hideprompt(f)
   r = f()
   flush(STDOUT)
   flush(STDERR)
-  sleep(0.03)
+  sleep(0.05)
 
   pos = @rpc cursorpos()
   pos[1] != 0 && println()
