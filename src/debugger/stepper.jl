@@ -63,7 +63,7 @@ function startdebugging(stack)
 
   if Atom.isREPL()
     # FIXME: Should get rid of the second code path (see comment in repl.jl).
-    if Atom.repleval[]
+    if Atom.repleval
       t = @async debugprompt()
     else
       Atom.changeREPLprompt("debug> ", color=:magenta)
@@ -113,7 +113,7 @@ function startdebugging(stack)
     debugmode(false)
 
     if Atom.isREPL()
-      if Atom.repleval[]
+      if Atom.repleval
         istaskdone(t) || schedule(t, InterruptException(); error=true)
         print("\r                        \r")
       else

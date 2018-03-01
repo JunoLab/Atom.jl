@@ -6,10 +6,9 @@
 
 isREPL() = isdefined(Base, :active_repl)
 
-handle("changerepl") do data
+handle("changeprompt") do prompt
   isREPL() || return
 
-  @destruct [prompt || ""] = data
   if !isempty(prompt)
     changeREPLprompt(prompt)
   end
@@ -89,7 +88,7 @@ end
 # FIXME: This is ugly and bad, but lets us work around the fact that REPL.run_interface
 #        doesn't seem to stop the currently active repl from running. This global
 #        switches between two interpreter codepaths when debugging over in ./debugger/stepper.jl.
-repleval = Ref{Bool}(false)
+repleval = false
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
@@ -115,13 +114,13 @@ function changeREPLmodule(mod)
           try
             lock($evallock)
             Atom.msg("working")
-            Atom.repleval[] = true
+            eval(Atom, :(repleval = true))
             eval($mod, :(ans = eval(parse($$line))))
           finally
             Atom.msg("updateWorkspace")
             unlock($evallock)
             Atom.msg("doneWorking")
-            Atom.repleval[] = false
+             eval(Atom, :(repleval = false))
           end
         end
       end
