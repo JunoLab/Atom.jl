@@ -47,19 +47,21 @@ handle("validatepath") do uri
   end
 end
 
+juliaprompt = "julia> "
+
 handle("resetprompt") do linebreak
   isREPL() || return
   linebreak && println()
-  changeREPLprompt("julia> ")
+  changeREPLprompt(juliaprompt)
   nothing
 end
 
-current_prompt = "julia> "
+current_prompt = juliaprompt
 
 function hideprompt(f)
   isREPL() || return f()
 
-  print("\e[1K\r")
+  print(STDOUT, "\e[1K\r")
   flush(STDOUT)
   flush(STDERR)
   r = f()
@@ -69,7 +71,7 @@ function hideprompt(f)
 
   pos = @rpc cursorpos()
   pos[1] != 0 && println()
-  changeREPLprompt("julia> ")
+  changeREPLprompt(current_prompt)
   r
 end
 
@@ -79,15 +81,15 @@ function changeREPLprompt(prompt; color = :green)
   main_mode = repl.interface.modes[1]
   main_mode.prompt = prompt
   main_mode.prompt_prefix = Base.text_colors[:bold] * Base.text_colors[color]
-  print("\r       \r")
+  print(STDOUT, "\e[1K\r")
   print_with_color(color, prompt, bold = true)
-  true
+  nothing
 end
 
 # FIXME: This is ugly and bad, but lets us work around the fact that REPL.run_interface
 #        doesn't seem to stop the currently active repl from running. This global
 #        switches between two interpreter codepaths when debugging over in ./debugger/stepper.jl.
-repleval = false
+repleval = Ref{Bool}(false)
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
@@ -113,13 +115,13 @@ function changeREPLmodule(mod)
           try
             lock($evallock)
             Atom.msg("working")
-            eval(Atom, :(repleval = true))
+            Atom.repleval[] = true
             eval($mod, :(ans = eval(parse($$line))))
           finally
             Atom.msg("updateWorkspace")
             unlock($evallock)
             Atom.msg("doneWorking")
-            eval(Atom, :(repleval = false))
+            Atom.repleval[] = false
           end
         end
       end
