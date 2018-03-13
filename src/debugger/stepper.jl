@@ -117,7 +117,7 @@ function startdebugging(stack)
         istaskdone(t) || schedule(t, InterruptException(); error=true)
         print("\r                        \r")
       else
-        Atom.changeREPLprompt(Atom.currentprompt, color = :green)
+        Atom.changeREPLprompt(Atom.current_prompt, color = :green)
       end
     end
   end

@@ -8,7 +8,8 @@ isREPL() = isdefined(Base, :active_repl)
 
 handle("changeprompt") do prompt
   isREPL() || return
-
+  global current_prompt = prompt
+  
   if !isempty(prompt)
     changeREPLprompt(prompt)
   end
@@ -75,7 +76,6 @@ function hideprompt(f)
 end
 
 function changeREPLprompt(prompt; color = :green)
-  global current_prompt = prompt
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
   main_mode.prompt = prompt
