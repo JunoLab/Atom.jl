@@ -9,7 +9,7 @@ isREPL() = isdefined(Base, :active_repl)
 handle("changeprompt") do prompt
   isREPL() || return
   global current_prompt = prompt
-  
+
   if !isempty(prompt)
     changeREPLprompt(prompt)
   end
@@ -92,7 +92,7 @@ repleval = false
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
-
+  
   mod = getthing(mod)
 
   repl = Base.active_repl
@@ -115,12 +115,12 @@ function changeREPLmodule(mod)
             lock($evallock)
             Atom.msg("working")
             eval(Atom, :(repleval = true))
-            eval($mod, :(ans = eval(parse($$line))))
+            ans = eval($mod, parse($line))
           finally
-            Atom.msg("updateWorkspace")
             unlock($evallock)
             Atom.msg("doneWorking")
-             eval(Atom, :(repleval = false))
+            eval(Atom, :(repleval = false))
+            @async Atom.msg("updateWorkspace")
           end
         end
       end
