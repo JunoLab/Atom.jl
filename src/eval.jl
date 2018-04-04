@@ -54,7 +54,7 @@ handle("evalshow") do data
           res
         catch e
           # should hide parts of the backtrace here
-          Base.display_error(STDERR, e, backtrace())
+          Base.display_error(STDERR, e, catch_backtrace())
         end
       end
     end
@@ -108,7 +108,7 @@ handle("evalall") do data
         try
           include_string(mod, code, path)
         catch e
-          bt = backtrace()
+          bt = catch_backtrace()
           ee = EvalError(e, stacktrace(bt))
           if isREPL()
             print_with_color(:red, STDERR, "ERROR: ")
