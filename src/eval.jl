@@ -46,11 +46,12 @@ handle("evalshow") do data
     mod = getthing(mod)
 
     lock(evallock)
-    hideprompt() do
+    result = hideprompt() do
       withpath(path) do
         try
           res = include_string(mod, text, path, line)
           show(STDOUT, res)
+          res
         catch e
           # should hide parts of the backtrace here
           Base.display_error(STDERR, e, backtrace())
@@ -58,6 +59,12 @@ handle("evalshow") do data
       end
     end
     unlock(evallock)
+
+    Base.invokelatest() do
+      display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+      !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
+      display ≠ Editor() && result ≠ nothing && render(display, result)
+    end
 
     nothing
   end
