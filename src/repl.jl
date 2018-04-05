@@ -92,7 +92,7 @@ repleval = false
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
-  
+
   mod = getthing(mod)
 
   repl = Base.active_repl
@@ -102,25 +102,25 @@ function changeREPLmodule(mod)
       if isdebugging()
         quote
           try
-            Atom.msg("working")
-            Atom.Debugger.interpret($line)
+            $msg("working")
+            $Atom.Debugger.interpret($line)
           finally
-            Atom.msg("updateWorkspace")
-            Atom.msg("doneWorking")
+            $msg("updateWorkspace")
+            $msg("doneWorking")
           end
         end
       else
         quote
           try
             lock($evallock)
-            Atom.msg("working")
-            eval(Atom, :(repleval = true))
+            $msg("working")
+            eval($Atom, :(repleval = true))
             ans = eval($mod, parse($line))
           finally
             unlock($evallock)
-            Atom.msg("doneWorking")
-            eval(Atom, :(repleval = false))
-            @async Atom.msg("updateWorkspace")
+            $msg("doneWorking")
+            eval($Atom, :(repleval = false))
+            @async $msg("updateWorkspace")
           end
         end
       end
