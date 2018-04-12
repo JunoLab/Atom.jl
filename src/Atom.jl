@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, Blink, MacroTools, Reexport, Media
+using Juno, Lazy, JSON, MacroTools, Reexport, Media, Base.StackTraces
 
 import Media: @dynamic
 
@@ -23,7 +23,7 @@ include("debugger/load.jl")
 
 include("profiler/profiler.jl")
 
-include("blink/BlinkDisplay.jl")
-@reexport using .BlinkDisplay
+# include("blink/BlinkDisplay.jl")
+# @reexport using .BlinkDisplay
 
 end # module

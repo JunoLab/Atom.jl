@@ -78,7 +78,7 @@ function initialise(; welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
   exit_on_sigint(false)
-  eval(AtomShell, :(_shell = $(Shell())))
+  # eval(AtomShell, :(_shell = $(Shell())))
   welcome && @msg welcome()
 end
 

@@ -4,6 +4,7 @@ using JSON
 using Lazy, Juno, Hiccup
 import Juno: Row, LazyTree, SubTree, icon
 import ..Atom: baselink, cliptrace, expandpath, @msg, handle
+using Base.StackTraces
 
 include("tree.jl")
 
