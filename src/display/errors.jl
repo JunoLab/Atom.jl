@@ -57,9 +57,9 @@ function renderbt(trace::StackTrace)
   span(".error-trace",
        [div(".trace-entry $(locationshading(string(frame.file)))",
             [fade("in "),
-             isnull(frame.linfo) ?
+             frame.linfo == nothing || frame.linfo isa Core.CodeInfo ?
                string(frame.func) :
-               replace(sprint(Base.show_tuple_as_call, get(frame.linfo).def.name, get(frame.linfo).specTypes),
+               replace(sprint(Base.show_tuple_as_call, frame.linfo.def.name, frame.linfo.specTypes),
                        r"\(.*\)$", ""),
              fade(" at "),
              render(Inline(), Copyable(baselink(string(frame.file), frame.line))),
