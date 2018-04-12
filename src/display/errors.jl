@@ -1,4 +1,4 @@
-type EvalError{T}
+mutable struct EvalError{T}
   err::T
   trace::StackTrace
 end

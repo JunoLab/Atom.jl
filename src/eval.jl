@@ -3,7 +3,7 @@ import CodeTools: getthing
 
 ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
 
-LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
+LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
 
 exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
 
@@ -164,7 +164,11 @@ handle("docs") do data
 
   docstring isa EvalError && return Dict(:error => true)
 
-  mtable = try getmethods(mod, word) catch [] end
+  mtable = try getmethods(mod, word)
+    catch e
+      []
+    end
+
   Dict(:error    => false,
        :type     => :dom,
        :tag      => :div,

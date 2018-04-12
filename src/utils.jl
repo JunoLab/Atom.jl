@@ -3,7 +3,7 @@ edit(pkg) =
     run(`atom $(Pkg.dir(pkg))`) :
     error("$pkg not installed")
 
-isuntitled(p) = occursin(p, r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$")
+isuntitled(p) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
 
 appendline(path, line) = line > 0 ? "$path:$line" : path
 

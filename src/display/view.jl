@@ -1,7 +1,7 @@
 render(::Inline, m::Model) = m.data
 
 view(x::AbstractString) = x
-view(x::Associative) = x
+view(x::AbstractDict) = x
 
 view(n::Node) =
   d(:type     => :dom,
