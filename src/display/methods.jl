@@ -1,6 +1,6 @@
 import Base: MethodList
 
-stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}", "")
+stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}" => "")
 
 function methodarray(mt::MethodList)
   defs = collect(mt)

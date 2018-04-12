@@ -75,7 +75,7 @@ end
 
 import Base.Docs: doc
 
-isanon(f) = contains(string(f), "#")
+isanon(f) = occursin("#", string(f))
 
 @render Inline f::Function begin
   isanon(f) ? span(".syntax--support.syntax--function", "λ") :
@@ -97,7 +97,7 @@ end
 end
 
 @render Inline xs::AbstractArray begin
-  Text(sprint(io -> show(IOContext(io, limit=true), MIME"text/plain"(), xs)))
+  Text(sprint(io -> show(IOContext(io, :limit=>true), MIME"text/plain"(), xs)))
 end
 
 @render i::Inline d::Dict begin

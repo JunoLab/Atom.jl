@@ -115,7 +115,7 @@ function changeREPLmodule(mod)
             lock($evallock)
             $msg("working")
             eval($Atom, :(repleval = true))
-            ans = eval($mod, parse($line))
+            global ans = eval($mod, Meta.parse($line))
           finally
             unlock($evallock)
             $msg("doneWorking")
