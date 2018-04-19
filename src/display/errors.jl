@@ -12,7 +12,7 @@ macro errs(ex)
   :(try
       $(esc(ex))
     catch e
-      EvalError(isa(e, LoadError) ? e.error : e, stacktrace(catch_backtrace())())
+      EvalError(isa(e, LoadError) ? e.error : e, stacktrace(catch_backtrace()))
     end)
 end
 
