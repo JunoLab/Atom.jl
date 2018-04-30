@@ -1,4 +1,4 @@
-type Tree{T}
+mutable struct Tree{T}
   head::T
   children::Vector{Tree{T}}
   Tree{T}(x::T, children = Tree{T}[]) where T =

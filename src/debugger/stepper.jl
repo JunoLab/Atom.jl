@@ -189,7 +189,7 @@ function stepto(state::DebuggerState)
   stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
 end
 stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(::Void) = debugmode(false)
+stepto(::Nothing) = debugmode(false)
 
 # return expression that will be evaluated next
 function nextstate(state)

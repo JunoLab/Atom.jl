@@ -1,4 +1,5 @@
 using DocSeeker
+import Markdown
 
 handle("searchdocs") do data
   @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data

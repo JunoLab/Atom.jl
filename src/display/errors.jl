@@ -6,7 +6,7 @@ end
 EvalError(err) = EvalError(err, StackTrace())
 
 # Stacktrace fails on empty traces
-EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
+EvalError(err, bt::Vector{Ptr{Nothing}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
 
 macro errs(ex)
   :(try
@@ -92,7 +92,7 @@ end
 render(::Console, e::EvalError) =
   @msg result(render(Editor(), e))
 
-type DisplayError
+mutable struct DisplayError
   obj
   err
 end

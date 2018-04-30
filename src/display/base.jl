@@ -1,8 +1,9 @@
 using Hiccup
+# using Base64
 
-render(e::Editor, ::Void) = render(e, icon("check"))
+render(e::Editor, ::Nothing) = render(e, icon("check"))
 
-render(::Console, ::Void) = nothing
+render(::Console, ::Nothing) = nothing
 
 render(::Inline, x::Union{Float16, Float32, Float64}) =
   isnan(x) || isinf(x) ?
@@ -58,7 +59,7 @@ for A in :[Vector, Matrix, AbstractVector, AbstractMatrix].args
   @eval begin
     render(i::Inline, ::Type{$A}) =
       render(i, typ($(string(A))))
-    render{T}(i::Inline, ::Type{$A{T}}) =
+    (render(i::Inline, ::Type{$A{T}}) where T) =
       render(i, typ(string($(string(A)), "{$T}")))
   end
 end
@@ -71,7 +72,7 @@ end
 
 @render Inline x::VersionNumber span(".syntax--string.syntax--quoted.syntax--other", sprint(show, x))
 
-@render Inline _::Void span(".syntax--constant", "nothing")
+@render Inline _::Nothing span(".syntax--constant", "nothing")
 
 import Base.Docs: doc
 
@@ -141,7 +142,7 @@ end
   end
 end
 
-render{sym}(i::Inline, x::Irrational{sym}) =
+(render(i::Inline, x::Irrational{sym}) where sym) =
   render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 @render i::Inline xs::Tuple begin

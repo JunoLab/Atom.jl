@@ -1,4 +1,4 @@
-
+import REPL
 # FIXME: Should refactor all REPL related functions into a struct that keeps track
 #        of global state (terminal size, current prompt, current module etc).
 # FIXME: Find a way to reprint what's currently entered in the REPL after changing
@@ -61,12 +61,12 @@ current_prompt = juliaprompt
 function hideprompt(f)
   isREPL() || return f()
 
-  print(STDOUT, "\e[1K\r")
-  flush(STDOUT)
-  flush(STDERR)
+  print(stdout, "\e[1K\r")
+  flush(stdout)
+  flush(stderr)
   r = f()
-  flush(STDOUT)
-  flush(STDERR)
+  flush(stdout)
+  flush(stderr)
   sleep(0.05)
 
   pos = @rpc cursorpos()
@@ -80,8 +80,8 @@ function changeREPLprompt(prompt; color = :green)
   main_mode = repl.interface.modes[1]
   main_mode.prompt = prompt
   main_mode.prompt_prefix = Base.text_colors[:bold] * Base.text_colors[color]
-  print(STDOUT, "\e[1K\r")
-  print_with_color(color, prompt, bold = true)
+  print(stdout, "\e[1K\r")
+  printstyled(prompt, bold = true, color = color)
   nothing
 end
 
@@ -97,7 +97,7 @@ function changeREPLmodule(mod)
 
   repl = Base.active_repl
   main_mode = repl.interface.modes[1]
-  main_mode.on_done = Base.REPL.respond(repl, main_mode; pass_empty = false) do line
+  main_mode.on_done = REPL.respond(repl, main_mode; pass_empty = false) do line
     if !isempty(line)
       if isdebugging()
         quote

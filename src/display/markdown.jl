@@ -1,3 +1,5 @@
+import Markdown
+
 render(i::Inline, md::Markdown.MD) = render(i, renderMD(md))
 
 function render(e::Editor, md::Markdown.MD)
@@ -13,8 +15,8 @@ renderMD(md::AbstractString) = renderMD(Markdown.parse(md))
 
 renderMD(md::Vector) = Hiccup.div([renderMD(x) for x in md], class = "markdown")
 
-function renderMD{l}(header::Markdown.Header{l})
-  Hiccup.Node(Symbol(:h, l), renderMDinline(header.text)) end
+function renderMD(header::Markdown.Header{T}) where T
+  Hiccup.Node(Symbol(:h, T), renderMDinline(header.text)) end
 
 function renderMD(code::Markdown.Code)
   Hiccup.pre(

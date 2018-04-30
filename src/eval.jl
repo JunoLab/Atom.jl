@@ -5,7 +5,7 @@ ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false
 
 LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
 
-exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
+exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Nothing, (Cint,), on)
 
 function modulenames(data, pos)
   main = haskey(data, "module") ? data["module"] :
@@ -145,7 +145,7 @@ handle("evalrepl") do data
       try
         lock(evallock)
         withpath(nothing) do
-          result = @errs eval(mod, :(ans = include_string($code, "console")))
+          result = @errs eval(mod, :(ans = include_string($mod, $code, "console")))
           !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
           Base.invokelatest(render′, result)
         end

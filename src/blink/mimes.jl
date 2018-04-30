@@ -1,3 +1,5 @@
+# using Base64
+
 function tohtml(io::IO, m::MIME"text/html", x)
   writemime(io, m, x)
 end

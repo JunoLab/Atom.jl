@@ -18,7 +18,7 @@ end
 
 const NULLFRAME = StackFrame(Symbol(""), Symbol(""), -1)
 
-immutable ProfileFrame
+struct ProfileFrame
   frame::StackFrame
   count::Int
 end

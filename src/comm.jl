@@ -1,3 +1,5 @@
+import Sockets
+
 """
     @msg(expression)
 
@@ -42,7 +44,7 @@ by `serve`.
 """
 global sock = nothing
 
-isactive(sock::Void) = false
+isactive(sock::Nothing) = false
 
 """
     isactive(sock)
@@ -60,7 +62,7 @@ macro ierrs(ex)
   :(try
       $(esc(ex))
     catch e
-      ee = EvalError(e, catch_stacktrace())
+      ee = EvalError(e, stacktrace(catch_backtrace()))
       Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
                              :detail      => string(ee),
                              :dismissable => true))
@@ -102,7 +104,7 @@ function serve(port; kws...)
 end
 
 function connect(host, port; kws...)
-  global sock = Base.connect(host, port)
+  global sock = Sockets.connect(host, port)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
@@ -157,7 +159,7 @@ Tries to call the message handler corresponding to `typ` (which can be set with
 """
 function handlemsg(t, args...)
   callback = nothing
-  isa(t, Associative) && ((t, callback) = (t["type"], t["callback"]))
+  isa(t, AbstractDict) && ((t, callback) = (t["type"], t["callback"]))
   if haskey(handlers, t)
     try
       result = handlers[t](args...)
