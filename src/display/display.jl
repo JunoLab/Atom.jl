@@ -14,7 +14,7 @@ setdisplay(Editor(), Any, Console())
 setdisplay(Console(), Any, Console())
 
 render(::Clipboard, x) =
-  sprint(io -> show(IOContext(io, limit=true), MIME"text/plain"(), x))
+  sprint(io -> show(IOContext(io, :limit => true), MIME"text/plain"(), x))
 
 render(::Editor, x) =
   render(Inline(), Copyable(x))

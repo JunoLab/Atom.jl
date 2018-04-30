@@ -48,7 +48,8 @@ function locationshading(file)
   # error in base
   ismatch(r"^base(/|\\).*", f) && return ".dark"
   # error in package
-  contains(p, Pkg.dir()) && return ".medium"
+  # should probably be a bit smarter with figuring out if thats the actually package code
+  contains(p, joinpath(homedir(), ".julia")) && return ".medium"
   # error in "user code"
   return ".bright"
 end

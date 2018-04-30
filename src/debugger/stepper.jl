@@ -2,6 +2,7 @@ import ASTInterpreter2
 import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row, ProgressBar, Tree
+import REPL
 using Media
 using MacroTools
 
@@ -160,7 +161,7 @@ function debugprompt()
       return true
     end
 
-    Base.REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
+    REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
   catch e
     e isa InterruptException || rethrow(e) end
 end

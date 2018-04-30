@@ -10,7 +10,7 @@ include("tree.jl")
 
 function traces()
   traces, stacks = Profile.flatten(Profile.retrieve()...)
-  @>>(split(traces, 0, keep = false),
+  @>>(split(traces, 0, keepempty = false),
       map(trace -> @>> trace map(x->stacks[x]) cliptrace reverse),
       map(trace -> filter(x->!x.from_c, trace)),
       filter(x->!isempty(x)))

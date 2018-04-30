@@ -1,7 +1,8 @@
 using CodeTools, LNR, Media
 import CodeTools: getthing
+import REPL
 
-ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
+ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
 
 LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
 

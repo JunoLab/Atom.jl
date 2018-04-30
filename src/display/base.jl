@@ -1,5 +1,5 @@
 using Hiccup
-# using Base64
+using Base64
 
 render(e::Editor, ::Nothing) = render(e, icon("check"))
 
@@ -35,7 +35,7 @@ showmethod(T) = which(show, (IO, T))
 @render Inline x begin
   fields = fieldnames(typeof(x))
   if showmethod(typeof(x)) ≠ showmethod(Any)
-    Text(io -> show(IOContext(io, limit = true), MIME"text/plain"(), x))
+    Text(io -> show(IOContext(io, :limit => true), MIME"text/plain"(), x))
   else
     defaultrepr(x, true)
   end
