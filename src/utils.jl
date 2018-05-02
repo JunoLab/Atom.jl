@@ -9,7 +9,13 @@ jlhome() = ccall(:jl_get_julia_home, Any, ())
 
 appendline(path, line) = line > 0 ? "$path:$line" : path
 
-realpath′(p) = ispath(p) ? realpath(p) : p
+function realpath′(p)
+  try
+    ispath(p) ? realpath(p) : p
+  catch e
+    p
+  end
+end
 
 function basepath(file)
   srcdir = joinpath(jlhome(),"..","..","base")
