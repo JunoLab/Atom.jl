@@ -23,7 +23,7 @@ handle("changemodule") do data
   if !isempty(mod) && !isdebugging()
     parts = split(mod, '.')
     if length(parts) > 1 && parts[1] == "Main"
-      shift!(parts)
+      popfirst!(parts)
     end
     changeREPLmodule(mod)
   end

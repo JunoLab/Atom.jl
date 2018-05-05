@@ -3,7 +3,7 @@ module Progress
 import Base: done
 import Atom: @msg
 
-type ProgressBar
+mutable struct ProgressBar
   id::String
 end
 
