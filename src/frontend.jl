@@ -16,7 +16,7 @@ macro !(ex)
   end
 end
 
-clearconsole() = @msg clearconsole()
+clearconsole() = @rpc clearconsole()
 
 # Blink stuff
 
