@@ -1,7 +1,6 @@
 module Progress
 
 import Base: done
-import MacroTools: @capture, @esc
 import Atom: @msg
 
 type ProgressBar
@@ -92,29 +91,4 @@ Defaults to the linearly extrpolated remaining time based upon the time
 difference between registering a progress bar and the latest update.
 """
 right_text(p::ProgressBar, s) = @msg progress("rightText", p, s)
-
-function _progress(name, thresh, ex)
-  @capture(ex, for x_ in range_ body_ end) ||
-    error("@progress requires a for loop")
-  @esc x range body
-  quote
-    p = ProgressBar(name = $name)
-    progress(p, 0)
-    lastfrac = 0.0
-    try
-      range = $range
-      n = length(range)
-      for (i, $x) in enumerate(range)
-        $body
-        frac = i/n
-        if frac - lastfrac > $thresh
-          progress(p, i/n)
-          lastfrac = frac
-        end
-      end
-    finally
-      done(p)
-    end
-  end
-end
 end # module
