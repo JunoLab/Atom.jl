@@ -50,7 +50,7 @@ handle("evalshow") do data
       withpath(path) do
         try
           res = include_string(mod, text, path, line)
-          display(res)
+          res ≠ nothing && display(res)
           res
         catch e
           # should hide parts of the backtrace here
