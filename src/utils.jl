@@ -43,3 +43,7 @@ function baselink(path, line)
   name == "<unkown file>" ? span(".fade", "<unknown file>") :
                             link(path, line, Text(appendline(name, line)))
 end
+
+function removeansi(str)
+  replace(str, r"[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]", "")
+end

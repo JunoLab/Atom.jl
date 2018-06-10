@@ -117,9 +117,10 @@ handle("evalall") do data
           else
             render(Console(), ee)
           end
-          @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => string(ee),
-                       :dismissable => true))
+          @msg error(Dict(:msg => "Error evaluating $(basename(path))",
+                          :detail => removeansi(string(ee)),
+                          :dismissable => true,
+                          :highlights => highlights(cliptrace(errtrace(ee)))))
         end
       end
     end
