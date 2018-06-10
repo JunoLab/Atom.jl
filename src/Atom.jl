@@ -23,7 +23,7 @@ include("debugger/load.jl")
 
 include("profiler/profiler.jl")
 
-include("linting/traceur.jl")
+include("linting/linting.jl")
 
 include("blink/BlinkDisplay.jl")
 @reexport using .BlinkDisplay
