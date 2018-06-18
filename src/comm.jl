@@ -97,7 +97,7 @@ function serve(port; kws...)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
-      @schedule @ierrs handlemsg(msg...)
+      @async @ierrs handlemsg(msg...)
     end
   end
   initialise(; kws...)
@@ -108,7 +108,7 @@ function connect(host, port; kws...)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
-      @schedule @ierrs handlemsg(msg...)
+      @async @ierrs handlemsg(msg...)
     end
   end
   initialise(; kws...)
@@ -169,7 +169,7 @@ function handlemsg(t, args...)
       rethrow()
     end
   else
-    warn("Atom.jl: unrecognised message $t.")
+    @warn("Atom.jl: unrecognised message $t.")
     callback ≠ nothing && msg("cancelCallback", callback)
   end
 end

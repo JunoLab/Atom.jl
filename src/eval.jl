@@ -55,7 +55,7 @@ handle("evalshow") do data
           res
         catch e
           # should hide parts of the backtrace here
-          Base.display_error(STDERR, e, catch_backtrace())
+          Base.display_error(stderr, e, catch_backtrace())
         end
       end
     end
@@ -112,9 +112,9 @@ handle("evalall") do data
           bt = catch_backtrace()
           ee = EvalError(e, stacktrace(bt))
           if isREPL()
-            print_with_color(:red, STDERR, "ERROR: ")
-            Base.showerror(STDERR, e, bt)
-            println(STDERR)
+            print_with_color(:red, stderr, "ERROR: ")
+            Base.showerror(stderr, e, bt)
+            println(stderr)
           else
             render(Console(), ee)
           end
@@ -152,7 +152,7 @@ handle("evalrepl") do data
         end
         unlock(evallock)
       catch e
-        showerror(STDERR, e, catch_stacktrace())
+        showerror(stderr, e, catch_stacktrace())
       end
     end
   end
