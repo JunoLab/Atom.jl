@@ -46,10 +46,10 @@ function locationshading(file)
   f, p = expandpath(file)
 
   # error in base
-  ismatch(r"^base(/|\\).*", f) && return ".dark"
+  occursin(r"^base(/|\\).*", f) && return ".dark"
   # error in package
   # should probably be a bit smarter with figuring out if thats the actually package code
-  contains(p, joinpath(homedir(), ".julia")) && return ".medium"
+  occursin(joinpath(homedir(), ".julia"), p) && return ".medium"
   # error in "user code"
   return ".bright"
 end
@@ -61,7 +61,7 @@ function renderbt(trace::StackTrace)
              frame.linfo == nothing || frame.linfo isa Core.CodeInfo ?
                string(frame.func) :
                replace(sprint(Base.show_tuple_as_call, frame.linfo.def.name, frame.linfo.specTypes),
-                       r"\(.*\)$", ""),
+                       r"\(.*\)$" => ""),
              fade(" at "),
              render(Inline(), Copyable(baselink(string(frame.file), frame.line))),
              fade(frame.inlined ? " <inlined>" : "")])

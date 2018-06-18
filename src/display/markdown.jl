@@ -124,8 +124,8 @@ end
 # katex doesn't support certain latex expressions. Need to transform those to something
 # that *is* supported or get rid of them altogether.
 function latex2katex(code)
-  code = replace(code, "\\operatorname", "\\mathrm")
-  code = replace(code, "\\latex", "\\katex")
+  code = replace(code, "\\operatorname" => "\\mathrm")
+  code = replace(code, "\\latex" => "\\katex")
   # TODO: Unicode -> LaTeX sequences.
   # KaTeX unfortunately doesn't handle Unicode very well, so something like π errors. Should
   # be possible to transform that to \pi in many simple cases.
