@@ -114,12 +114,12 @@ function changeREPLmodule(mod)
           try
             lock($evallock)
             $msg("working")
-            eval($Atom, :(repleval = true))
-            global ans = eval($mod, Meta.parse($line))
+            Core.eval($Atom, :(repleval = true))
+            global ans = Core.eval($mod, Meta.parse($line))
           finally
             unlock($evallock)
             $msg("doneWorking")
-            eval($Atom, :(repleval = false))
+            Core.eval($Atom, :(repleval = false))
             @async $msg("updateWorkspace")
           end
         end

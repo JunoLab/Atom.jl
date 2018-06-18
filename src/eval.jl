@@ -199,7 +199,7 @@ end
 function gotoitem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
-  sig = sig[1:rsearch(sig, ')')]
+  sig = sig[1:something(findlast(isequal(')'), sig), 0)]
   Dict(:text => sig,
        :file => link.file,
        :line => link.line - 1,
