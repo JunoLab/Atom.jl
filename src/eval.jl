@@ -2,6 +2,9 @@ using CodeTools, LNR, Media
 import CodeTools: getthing
 import REPL
 
+using Logging: with_logger, current_logger
+using .Progress: JunoProgressLogger
+
 ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
 
 LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
@@ -49,13 +52,15 @@ handle("evalshow") do data
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        try
-          res = include_string(mod, text, path, line)
-          res ≠ nothing && display(res)
-          res
-        catch e
-          # should hide parts of the backtrace here
-          Base.display_error(stderr, e, catch_backtrace())
+        with_logger(JunoProgressLogger(current_logger())) do
+          try
+            res = include_string(mod, text, path, line)
+            res ≠ nothing && display(res)
+            res
+          catch e
+            # should hide parts of the backtrace here
+            Base.display_error(stderr, e, catch_backtrace())
+          end
         end
       end
     end
@@ -80,7 +85,9 @@ handle("eval") do data
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        @errs include_string(mod, text, path, line)
+        with_logger(JunoProgressLogger(current_logger())) do
+          @errs include_string(mod, text, path, line)
+        end
       end
     end
     unlock(evallock)
@@ -106,21 +113,23 @@ handle("evalall") do data
     lock(evallock)
     hideprompt() do
       withpath(path) do
-        try
-          include_string(mod, code, path)
-        catch e
-          bt = catch_backtrace()
-          ee = EvalError(e, stacktrace(bt))
-          if isREPL()
-            print_with_color(:red, stderr, "ERROR: ")
-            Base.showerror(stderr, e, bt)
-            println(stderr)
-          else
-            render(Console(), ee)
+        with_logger(JunoProgressLogger(current_logger())) do
+          try
+            include_string(mod, code, path)
+          catch e
+            bt = catch_backtrace()
+            ee = EvalError(e, stacktrace(bt))
+            if isREPL()
+              printstyled(stderr, "ERROR: ", color=:red)
+              Base.showerror(stderr, e, bt)
+              println(stderr)
+            else
+              render(Console(), ee)
+            end
+            @msg error(d(:msg => "Error evaluating $(basename(path))",
+                         :detail => string(ee),
+                         :dismissable => true))
           end
-          @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => string(ee),
-                       :dismissable => true))
         end
       end
     end
@@ -146,9 +155,11 @@ handle("evalrepl") do data
       try
         lock(evallock)
         withpath(nothing) do
-          result = @errs eval(mod, :(ans = include_string($mod, $code, "console")))
-          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
-          Base.invokelatest(render′, result)
+          with_logger(JunoProgressLogger(current_logger())) do
+            result = @errs eval(mod, :(ans = include_string($mod, $code, "console")))
+            !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
+            Base.invokelatest(render′, result)
+          end
         end
         unlock(evallock)
       catch e

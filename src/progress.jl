@@ -1,94 +1,72 @@
 module Progress
+using Logging
 
-import Base: done
-import Atom: @msg
+using Atom: msg
 
-mutable struct ProgressBar
-  id::String
+const progs = Set()
+
+"""
+    JunoProgressLogger(previous_logger<:AbstractLogger)
+
+Logger that only handles messages with `progress` argument set and passes all
+others throught to the previously defined logger.
+
+If the `progress` argument is set then a corresponding progress bar will be shown
+in the Juno frontend with it's name set to the logging message.
+
+Possible keyword arguments to logging messages consumed by this logger are:
+  - `progress`:
+    - `0 <= progress < 1`: create or update progress bar
+    - `progress == nothing || progress = NaN`: set progress bar to indeterminate progress
+    - `progress > 1 || progress == "done"`: destroy progress bar
+  - `right_text`: Shown instead of a approximation of remaining time.
+  - `_id`: Should be set to a symbol for updates to a progress bar if they are
+    not occuring on the same line.
+"""
+struct JunoProgressLogger <: AbstractLogger
+  previous_logger
 end
 
-"""
-    ProgressBar(;name = "", msg = "")
+function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
+                                group, id, file, line; kwargs...)
+  if haskey(kwargs, :progress)
+    if !(id in progs)
+      push!(progs, id)
+      msg("progress", "add", id)
+    end
+    msg("progress", "leftText", id, message)
 
-Create a new progress bar and register it with Juno, if possible.
+    prog = kwargs[:progress]
+    if prog isa Real
+      if 0 <= prog < 1
+        msg("progress", "progress", id, prog)
+      elseif prog >= 1
+        msg("progress", "delete", id)
+        delete!(progs, id)
+      end
+    elseif prog isa Nothing
+      msg("progress", "progress", id, NaN)
+    elseif prog isa AbstractString && prog == "done"
+      msg("progress", "delete", id)
+      delete!(progs, id)
+    else
+      msg("progress", "progress", id, NaN)
+    end
 
-Take care to unregister the progress bar by calling `done` on it, or use the
-`progress(f::Function)` syntax, which will handle that automatically.
-"""
-function ProgressBar(;name = "", msg = "")
-  p = ProgressBar(string(Base.Random.uuid1()))
-  register(p)
-  Progress.name(p, name)
-  Progress.msg(p, msg)
-  p
-end
-
-"""
-    register(p::ProgressBar)
-
-Register `p` with the Juno frontend.
-"""
-register(p::ProgressBar) = @msg progress("add", p.id)
-
-"""
-    done(p::ProgressBar)
-
-Remove `p` from the frontend.
-"""
-done(p::ProgressBar) = @msg progress("delete", p.id)
-
-"""
-    progress(p::ProgressBar, prog::Number)
-
-Update `p`'s progress to `prog`.
-"""
-progress(p::ProgressBar, prog::Real) = @msg progress("progress", p.id, clamp(prog, 0, 1))
-
-"""
-    progress(p::ProgressBar)
-
-Set `p` to an indeterminate progress bar.
-"""
-progress(p::ProgressBar) = @msg progress("progress")
-
-"""
-    progress(f::Function; name = "", msg = "")
-
-Evaluates `f` with `p = ProgressBar(name = name, msg = msg)` as the argument and
-calls `done(p)` afterwards. This is guaranteed to clean up the progress bar,
-even if `f` errors.
-"""
-function progress(f::Function; name = "", msg = "")
-  p = ProgressBar(name = name, msg = msg)
-  try
-    f(p)
-  finally
-    done(p)
+    if haskey(kwargs, :right_text)
+      msg("progress", "rightText", id, kwargs[:right_text])
+    end
+  else
+    if Logging.shouldlog(j.previous_logger, level, _module, group, id)
+      Logging.handle_message(j.previous_logger, level, message, _module,
+                             group, id, file, line; kwargs...)
+    end
   end
 end
 
-"""
-    msg(p::ProgressBar, m)
+Logging.shouldlog(::JunoProgressLogger, level, _module, group, id) = true
 
-Update the message that will be displayed in the frontend when hovering over the
-corrseponding progress bar.
-"""
-msg(p::ProgressBar, m) = @msg progress("message", p.id, m)
+Logging.catch_exceptions(::JunoProgressLogger) = true
 
-"""
-    name(p::ProgressBar, m)
-
-Update `p`s name.
-"""
-name(p::ProgressBar, s) = @msg progress("leftText", p.id, s)
-
-"""
-    right_text(p::ProgressBar, m)
-
-Update the string that will be displayed to the right of the progress bar.
-
-Defaults to the linearly extrpolated remaining time based upon the time
-difference between registering a progress bar and the latest update.
-"""
-right_text(p::ProgressBar, s) = @msg progress("rightText", p.id, s)
-end # module
+Logging.min_enabled_level(::JunoProgressLogger) = Logging.BelowMinLevel
+end

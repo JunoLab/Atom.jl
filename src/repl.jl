@@ -115,7 +115,10 @@ function changeREPLmodule(mod)
             lock($evallock)
             $msg("working")
             Core.eval($Atom, :(repleval = true))
-            global ans = Core.eval($mod, Meta.parse($line))
+            Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
+              global ans = Core.eval($mod, Meta.parse($line))
+            end
+            ans
           finally
             unlock($evallock)
             $msg("doneWorking")

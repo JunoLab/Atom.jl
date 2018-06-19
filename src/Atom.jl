@@ -10,6 +10,7 @@ import Media: @dynamic
 
 include("comm.jl")
 include("display/display.jl")
+include("progress.jl")
 include("eval.jl")
 include("repl.jl")
 include("docs.jl")
@@ -17,7 +18,6 @@ include("completions.jl")
 include("misc.jl")
 include("frontend.jl")
 include("utils.jl")
-include("progress.jl")
 
 include("debugger/load.jl")
 
