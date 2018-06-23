@@ -201,10 +201,7 @@ handle("methods") do data
   end
 end
 
-function getmethods(mod, word)
-  mod = getmodule(mod)
-  Core.eval(mod, :(Base.methods($(Symbol(word)))))
-end
+getmethods(mod, word) = include_string(getmodule(mod), "methods($word)")
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
