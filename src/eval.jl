@@ -25,7 +25,7 @@ function getmodule(data, pos)
   getthing("$main.$sub", getthing(main, Main))
 end
 
-getmodule(mod::String) = get(Base.loaded_modules, first(filter(x->x.name==mod, collect(keys(Base.loaded_modules)))), Main)
+getmodule(mod::String) = CodeTools.getmodule(mod)
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
