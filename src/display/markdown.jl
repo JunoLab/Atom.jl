@@ -121,6 +121,14 @@ function renderMDinline(br::Markdown.LineBreak)
   Hiccup.Node(:br)
 end
 
+function renderMDinline(x::Expr)
+  Hiccup.code(x,
+              class = "julia",
+              block = false) # htmlesc?
+end
+
+renderMDinline(x) = x
+
 # katex doesn't support certain latex expressions. Need to transform those to something
 # that *is* supported or get rid of them altogether.
 function latex2katex(code)
