@@ -105,7 +105,7 @@ function render′(display, obj)
   try
     render(display, obj)
   catch e
-    render(display, EvalError(DisplayError(obj, e), catch_stacktrace()))
+    render(display, EvalError(DisplayError(obj, e), stacktrace(catch_backtrace())))
   end
 end
 

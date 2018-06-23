@@ -25,11 +25,16 @@ function getmodule(data, pos)
   getthing("$main.$sub", getthing(main, Main))
 end
 
+getmodule(mod::String) = get(Base.loaded_modules, first(filter(x->x.name==mod, collect(keys(Base.loaded_modules)))), Main)
+
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
+
+  inactive_k = filter(x -> x.name == main, keys(Base.loaded_modules))
+
   return d(:main => main,
            :sub  => sub,
-           :inactive => (getthing(main) == nothing),
+           :inactive => isempty(inactive_k),
            :subInactive => (getthing("$main.$sub") == nothing))
 end
 
@@ -47,7 +52,7 @@ const evallock = ReentrantLock()
 handle("evalshow") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
-    mod = getthing(mod)
+    mod = getmodule(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -79,8 +84,7 @@ end
 handle("eval") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod, displaymode || "editor"] = data
-    mod = getthing(mod)
-
+    mod = getmodule(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -104,12 +108,12 @@ end
 handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    mod = Main
     if setmod ≠ nothing
-      mod = getthing(setmod, Main)
+      mod = getmodule(setmod)
     elseif isabspath(path)
-      mod = getthing(CodeTools.filemodule(path), Main)
+      mod = getmodule(CodeTools.filemodule(path))
     end
+
     lock(evallock)
     hideprompt() do
       withpath(path) do
@@ -148,7 +152,7 @@ handle("evalrepl") do data
       render′(@errs getdocs(mod, code))
       return
     end
-    mod = getthing(mod)
+    mod = getmodule(mod)
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
     else
@@ -190,20 +194,23 @@ end
 handle("methods") do data
   @destruct [mod || "Main", word] = data
   mtable = @errs getmethods(mod, word)
-  if isa(mtable, EvalError)
+  if mtable isa EvalError
     Dict(:error => true, :items => sprint(showerror, mtable.err))
   else
     Dict(:items => [gotoitem(m) for m in mtable])
   end
 end
 
-getmethods(mod, word) = methods(getthing("$mod.$word"))
+function getmethods(mod, word)
+  mod = getmodule(mod)
+  Core.eval(mod, :(Base.methods($(Symbol(word)))))
+end
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
-    eval(:(@doc($(Symbol(word)))))
+    Core.eval(:(@doc($(Symbol(word)))))
   else
-    include_string(getthing(mod), "@doc $word")
+    include_string(getmodule(mod), "@doc $word")
   end
 end
 
@@ -254,7 +261,7 @@ end
 wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 
 handle("workspace") do mod
-  mod = getthing(mod)
+  mod = getmodule(mod)
   ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, true))))
   filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
