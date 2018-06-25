@@ -31,10 +31,15 @@ end
 
 expandpath(path) =
   isempty(path) ? (path, path) :
-  path == "./missing" ? ("<unknown file>", path) :
-  isuntitled(path) ? ("untitled", path) :
-  !isabspath(path) ? (normpath(joinpath("base", path)), basepath(path)) :
-  (pkgpath(path), path)
+    path == "./missing" ? ("<unknown file>", path) :
+      isuntitled(path) ? ("untitled", path) :
+        !isabspath(path) ? (normpath(joinpath("base", path)), basepath(path)) :
+          occursin(joinpath("julia", "stdlib"), path) ?
+            begin
+              p = last(split(path, joinpath("julia", "stdlib", "")))
+              return (normpath(joinpath("stdlib", p)), normpath(joinpath(basepath(joinpath("..", "stdlib")), p)))
+            end :
+            (pkgpath(path), path)
 
 function baselink(path, line)
   name, path = expandpath(path)

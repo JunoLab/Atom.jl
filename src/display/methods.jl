@@ -22,7 +22,7 @@ function view(m::Method)
   params = interpose(params, ", ")
   span(c(string(m.name),
          "(", params..., ")")),
-  file == :null ? "not found" : Atom.baselink(string(file), line)
+         file == :null ? "not found" : Atom.baselink(string(file), line)
 end
 
 @render i::Inline m::Method begin
