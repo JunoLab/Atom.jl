@@ -26,6 +26,8 @@ cd(dirname(@__FILE__))
 @test Atom.appendline("test.jl", 0) == "test.jl"
 @test Atom.appendline("test.jl", 10) == "test.jl:10"
 
+@test isfile(Atom.expandpath(Atom.view(first(methods(rand)))[2].file)[2])
+
 #TODO: baselink, edit
 
 cd(old_pwd)
