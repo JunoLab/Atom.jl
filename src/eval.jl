@@ -1,5 +1,5 @@
 using CodeTools, LNR, Media
-import CodeTools: getthing
+using CodeTools: getthing, getmodule
 import REPL
 
 using Logging: with_logger, current_logger
@@ -20,22 +20,26 @@ function modulenames(data, pos)
   main, sub
 end
 
-function getmodule(data, pos)
-  main, sub = modulenames(data, pos)
-  getthing("$main.$sub", getthing(main, Main))
-end
+# function getmodule(data, pos)
+#   main, sub = modulenames(data, pos)
+#   getmodule("$main.$sub")
+# end
 
-getmodule(mod::String) = CodeTools.getmodule(mod)
+function getmodule′(args...)
+  m = getmodule(args...)
+  return m == nothing ? Main : m
+end
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
 
-  inactive_k = filter(x -> x.name == main, keys(Base.loaded_modules))
+  mod = getmodule(main)
+  smod = getmodule(mod, sub)
 
   return d(:main => main,
            :sub  => sub,
-           :inactive => isempty(inactive_k),
-           :subInactive => (getthing("$main.$sub") == nothing))
+           :inactive => (mod==nothing),
+           :subInactive => smod==nothing)
 end
 
 handle("allmodules") do
@@ -52,7 +56,7 @@ const evallock = ReentrantLock()
 handle("evalshow") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
-    mod = getmodule(mod)
+    mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -84,7 +88,7 @@ end
 handle("eval") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod, displaymode || "editor"] = data
-    mod = getmodule(mod)
+    mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -109,9 +113,9 @@ handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
     if setmod ≠ nothing
-      mod = getmodule(setmod)
+      mod = getmodule′(setmod)
     elseif isabspath(path)
-      mod = getmodule(CodeTools.filemodule(path))
+      mod = getmodule′(CodeTools.filemodule(path))
     end
 
     lock(evallock)
@@ -152,7 +156,7 @@ handle("evalrepl") do data
       render′(@errs getdocs(mod, code))
       return
     end
-    mod = getmodule(mod)
+    mod = getmodule′(mod)
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
     else
@@ -201,13 +205,13 @@ handle("methods") do data
   end
 end
 
-getmethods(mod, word) = include_string(getmodule(mod), "methods($word)")
+getmethods(mod, word) = include_string(getmodule′(mod), "methods($word)")
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
     Core.eval(:(@doc($(Symbol(word)))))
   else
-    include_string(getmodule(mod), "@doc $word")
+    include_string(getmodule′(mod), "@doc $word")
   end
 end
 
@@ -258,7 +262,7 @@ end
 wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 
 handle("workspace") do mod
-  mod = getmodule(mod)
+  mod = getmodule′(mod)
   ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, true))))
   filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
