@@ -31,17 +31,40 @@ handle("changemodule") do data
 end
 
 handle("fullpath") do uri
-  return Atom.fullpath(uri)
+  uri1 = match(r"(.+)\:(\d+)$", uri)
+  uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
+  if uri2 !== nothing
+    return Atom.package_file_path(String(uri2[1]), String(uri2[2])), parse(Int, uri2[3])
+  elseif uri1 !== nothing
+    return Atom.fullpath(uri1[1]), parse(Int, uri1[2])
+  end
+  return "", 0
+end
+
+function package_file_path(pkg, sfile)
+  pkg = Base.identify_package(pkg)
+  path = Base.locate_package(pkg)
+
+  path == nothing && return false
+
+  for (root, _, files) in walkdir(dirname(path), )
+
+    for file in files
+      basename(file) == sfile && (return joinpath(root, file))
+    end
+  end
+  return nothing
 end
 
 handle("validatepath") do uri
-  uri = match(r"(.+)(:\d+)$", uri)
-  if uri == nothing
-    return false
-  end
-  uri = Atom.fullpath(uri[1])
-  if isfile(uri) || isdir(uri)
-    return true
+  uri1 = match(r"(.+)(:\d+)$", uri)
+  uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
+  if uri2 ≠ nothing
+    path = package_file_path(String(uri2[1]), String(uri2[2]))
+    return path ≠ nothing
+  elseif uri1 ≠ nothing
+    path = Atom.fullpath(uri1[1])
+    return isfile(uri)
   else
     return false
   end

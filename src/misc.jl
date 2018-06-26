@@ -15,7 +15,7 @@ handle("cd") do path
 end
 
 handle("evalsimple") do code
-  eval(parse(code))
+  Core.eval(Meta.parse(code))
 end
 
 handle("exit") do
@@ -33,9 +33,4 @@ handle("cancelCallback") do args...
   # TODO: Do something sensible here.
   # Until then it's better to silently fail than spam the REPL with "unrecognised
   # message" warnings.
-end
-
-handle("clear-workspace") do
-  # has to be run by Main otherwise it throws an error
-  eval(Main, :(workspace()))
 end
