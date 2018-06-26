@@ -160,5 +160,6 @@ end
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
     Media.unsetdisplay(Editor(), Any)
+    Base.Multimedia.pushdisplay(JunoDisplay())
   end)
 end

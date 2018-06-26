@@ -1,1 +1,1 @@
-@init setdisplay(Media.Graphical, PlotPane())
+# @init setdisplay(Media.Graphical, PlotPane())

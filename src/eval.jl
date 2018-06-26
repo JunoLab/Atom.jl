@@ -101,10 +101,11 @@ handle("eval") do data
     unlock(evallock)
 
     Base.invokelatest() do
-      display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-      !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display ≠ Editor() && result ≠ nothing && render(display, result)
-      render′(Editor(), result)
+      # display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
+      # !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
+      # display ≠ Editor() && result ≠ nothing && render(display, result)
+      # render′(Editor(), result)
+      display(JunoEditorInput(result))
     end
   end
 end
@@ -263,7 +264,7 @@ wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
 
 handle("workspace") do mod
   mod = getmodule′(mod)
-  ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, true))))
+  ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, all=true))))
   filter!(n -> isdefined(mod, n), ns)
   # TODO: only filter out imported modules
   filter!(n -> !isa(getfield(mod, n), Module), ns)

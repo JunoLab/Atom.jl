@@ -29,6 +29,7 @@ render(::PlotPane, x) =
   span([render(Inline(), x) for x in l.xs])
 end
 
+include("showdisplay.jl")
 include("base.jl")
 include("utils.jl")
 include("view.jl")
