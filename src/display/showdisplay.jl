@@ -4,7 +4,7 @@ struct JunoEditorInput
   x::Any
 end
 
-plotpaneioctxt(io::IO) = IOContext(io, juno_plotsize = Juno.plotsize(), juno_colors = Juno.syntaxcolors())
+plotpaneioctxt(io::IO) = IOContext(io, :juno_plotsize => plotsize(), :juno_colors => syntaxcolors())
 
 function displayinplotpane(x)
   didDisplay = true

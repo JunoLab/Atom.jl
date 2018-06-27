@@ -230,7 +230,7 @@ ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
 
 wstype(x) = ""
 wstype(::Module) = "module"
-wstype(f::Function) = ismacro(f) ? "mixin" : "function"
+wstype(f::Function) = "function"
 wstype(::Type) = "type"
 wstype(::Expr) = "mixin"
 wstype(::Symbol) = "tag"

@@ -18,6 +18,11 @@ end
 
 clearconsole() = @rpc clearconsole()
 
+plotsize() = @rpc plotsize()
+
+ploturl(url::String) = @msg ploturl(url)
+
+
 SELECTORS = Dict(
   "number" => ["syntax--constant", "syntax--numeric", "syntax--julia"],
   "symbol" => ["syntax--constant", "syntax--other", "syntax--symbol", "syntax--julia"],

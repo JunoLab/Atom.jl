@@ -60,6 +60,7 @@ handle("validatepath") do uri
   uri1 = match(r"(.+)(:\d+)$", uri)
   uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
   if uri2 ≠ nothing
+    # TODO: doesn't handle Base/Core properly
     path = package_file_path(String(uri2[1]), String(uri2[2]))
     return path ≠ nothing
   elseif uri1 ≠ nothing
