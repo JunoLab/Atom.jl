@@ -44,7 +44,7 @@ end
 function package_file_path(pkg, sfile)
   occursin(".", pkg) && (pkg = String(first(split(pkg, '.'))))
 
-  pkg == "Main" && return false
+  pkg == "Main" && return nothing
 
   path = if pkg in ("Base", "Core")
     Atom.basepath("")
@@ -52,7 +52,7 @@ function package_file_path(pkg, sfile)
     Base.locate_package(Base.identify_package(pkg))
   end
 
-  path == nothing && return false
+  path == nothing && return nothing
 
   for (root, _, files) in walkdir(dirname(path))
     for file in files
