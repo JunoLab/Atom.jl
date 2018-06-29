@@ -42,13 +42,19 @@ handle("fullpath") do uri
 end
 
 function package_file_path(pkg, sfile)
-  pkg = Base.identify_package(pkg)
-  path = Base.locate_package(pkg)
+  occursin(".", pkg) && (pkg = String(first(split(pkg, '.'))))
+
+  pkg == "Main" && return false
+
+  path = if pkg in ("Base", "Core")
+    Atom.basepath("")
+  else
+    Base.locate_package(Base.identify_package(pkg))
+  end
 
   path == nothing && return false
 
-  for (root, _, files) in walkdir(dirname(path), )
-
+  for (root, _, files) in walkdir(dirname(path))
     for file in files
       basename(file) == sfile && (return joinpath(root, file))
     end
@@ -57,15 +63,15 @@ function package_file_path(pkg, sfile)
 end
 
 handle("validatepath") do uri
-  uri1 = match(r"(.+)(:\d+)$", uri)
+  uri1 = match(r"(.+?)(:\d+)?$", uri)
   uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
   if uri2 ≠ nothing
-    # TODO: doesn't handle Base/Core properly
+    # FIXME: always returns the first found file
     path = package_file_path(String(uri2[1]), String(uri2[2]))
     return path ≠ nothing
   elseif uri1 ≠ nothing
     path = Atom.fullpath(uri1[1])
-    return isfile(uri)
+    return isfile(path)
   else
     return false
   end
