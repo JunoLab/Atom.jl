@@ -1,6 +1,7 @@
 module Profiler
 
-using JSON
+using Profile, JSON
+
 using Lazy, Juno, Hiccup
 import Juno: Row, LazyTree, SubTree, icon
 import ..Atom: baselink, cliptrace, expandpath, @msg, handle
@@ -10,8 +11,8 @@ include("tree.jl")
 
 function traces()
   traces, stacks = Profile.flatten(Profile.retrieve()...)
-  @>>(split(traces, 0, keepempty = false),
-      map(trace -> @>> trace map(x->stacks[x]) cliptrace reverse),
+  @>>(split(traces, 0, keep = false),
+      map(trace -> @>> trace map(x->stacks[x]) reverse),
       map(trace -> filter(x->!x.from_c, trace)),
       filter(x->!isempty(x)))
 end

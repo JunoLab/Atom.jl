@@ -165,7 +165,7 @@ handle("evalrepl") do data
         lock(evallock)
         withpath(nothing) do
           with_logger(JunoProgressLogger(current_logger())) do
-            result = @errs eval(mod, :(ans = include_string($mod, $code, "console")))
+            result = @errs Core.eval(mod, :(ans = include_string($mod, $code, "console")))
             !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
             Base.invokelatest(render′, result)
           end
