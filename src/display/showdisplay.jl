@@ -1,3 +1,5 @@
+using REPL
+
 struct JunoDisplay <: AbstractDisplay end
 
 struct JunoEditorInput
@@ -28,8 +30,7 @@ end
 
 function Base.display(d::JunoDisplay, x)
   displayinplotpane(x)
-  # need to be a bit more intelligent about finding the REPL display
-  display(Base.Multimedia.displays[2], x)
+  display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
 end
 
 # input from in-editor eval
