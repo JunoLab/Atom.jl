@@ -61,15 +61,13 @@ handle("evalshow") do data
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        with_logger(JunoProgressLogger(current_logger())) do
-          try
-            res = include_string(mod, text, path, line)
-            res ≠ nothing && display(res)
-            res
-          catch e
-            # should hide parts of the backtrace here
-            Base.display_error(stderr, e, catch_backtrace())
-          end
+        try
+          res = include_string(mod, text, path, line)
+          res ≠ nothing && display(res)
+          res
+        catch e
+          # should hide parts of the backtrace here
+          Base.display_error(stderr, e, catch_backtrace())
         end
       end
     end
@@ -93,9 +91,7 @@ handle("eval") do data
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        with_logger(JunoProgressLogger(current_logger())) do
-          @errs include_string(mod, text, path, line)
-        end
+        @errs include_string(mod, text, path, line)
       end
     end
     unlock(evallock)
@@ -122,23 +118,21 @@ handle("evalall") do data
     lock(evallock)
     hideprompt() do
       withpath(path) do
-        with_logger(JunoProgressLogger(current_logger())) do
-          try
-            include_string(mod, code, path)
-          catch e
-            bt = catch_backtrace()
-            ee = EvalError(e, stacktrace(bt))
-            if isREPL()
-              printstyled(stderr, "ERROR: ", color=:red)
-              Base.showerror(stderr, e, bt)
-              println(stderr)
-            else
-              render(Console(), ee)
-            end
-            @msg error(d(:msg => "Error evaluating $(basename(path))",
-                         :detail => string(ee),
-                         :dismissable => true))
+        try
+          include_string(mod, code, path)
+        catch e
+          bt = catch_backtrace()
+          ee = EvalError(e, stacktrace(bt))
+          if isREPL()
+            printstyled(stderr, "ERROR: ", color=:red)
+            Base.showerror(stderr, e, bt)
+            println(stderr)
+          else
+            render(Console(), ee)
           end
+          @msg error(d(:msg => "Error evaluating $(basename(path))",
+                       :detail => string(ee),
+                       :dismissable => true))
         end
       end
     end
@@ -164,11 +158,9 @@ handle("evalrepl") do data
       try
         lock(evallock)
         withpath(nothing) do
-          with_logger(JunoProgressLogger(current_logger())) do
-            result = @errs Core.eval(mod, :(ans = include_string($mod, $code, "console")))
-            !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
-            Base.invokelatest(render′, result)
-          end
+          result = @errs Core.eval(mod, :(ans = include_string($mod, $code, "console")))
+          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
+          Base.invokelatest(render′, result)
         end
         unlock(evallock)
       catch e
