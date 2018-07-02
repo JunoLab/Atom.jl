@@ -10,7 +10,7 @@ handle("changeprompt") do prompt
   isREPL() || return
   global current_prompt = prompt
 
-  if !isempty(prompt)
+  if !(isempty(prompt)) && strip(prompt) ≠ strip(juliaprompt)
     changeREPLprompt(prompt)
   end
   nothing
