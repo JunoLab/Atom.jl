@@ -103,7 +103,7 @@ end
 
 @render i::Inline d::Dict begin
   j = 0
-  st = Array{Atom.SubTree}(0)
+  st = Array{Atom.SubTree}(undef, 0)
   for (key, val) in d
     push!(st, SubTree(span(c(render(i, key), " → ")), val))
     j += 1
@@ -122,7 +122,7 @@ end
 
 @render Inline p::Ptr begin
   Row(Atom.fade(string(typeof(p))), Text(" @"),
-       span(".syntax--constant.syntax--numeric", c("0x$(hex(UInt(p), Sys.WORD_SIZE>>2))")))
+       span(".syntax--constant.syntax--numeric", c("0x$(string(UInt(p), base=16, pad=Sys.WORD_SIZE>>2))")))
 end
 
 # TODO: lazy load the rest of the string

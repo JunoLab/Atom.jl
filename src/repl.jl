@@ -118,7 +118,7 @@ end
 # FIXME: This is ugly and bad, but lets us work around the fact that REPL.run_interface
 #        doesn't seem to stop the currently active repl from running. This global
 #        switches between two interpreter codepaths when debugging over in ./debugger/stepper.jl.
-repleval = false
+repleval = Ref(false)
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
@@ -144,7 +144,8 @@ function changeREPLmodule(mod)
           try
             lock($evallock)
             $msg("working")
-            Core.eval($Atom, :(repleval = true))
+            $repleval[] = true
+            # this is slow:
             Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
               global ans = Core.eval($mod, Meta.parse($line))
             end
@@ -152,7 +153,7 @@ function changeREPLmodule(mod)
           finally
             unlock($evallock)
             $msg("doneWorking")
-            Core.eval($Atom, :(repleval = false))
+            $repleval[] = false
             @async $msg("updateWorkspace")
           end
         end
@@ -164,9 +165,9 @@ end
 # make sure DisplayHook() is higher than REPLDisplay() in the display stack
 @init begin
   atreplinit((i) -> begin
+    Media.unsetdisplay(Editor(), Any)
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
-    Media.unsetdisplay(Editor(), Any)
     Base.Multimedia.pushdisplay(JunoDisplay())
   end)
 end
