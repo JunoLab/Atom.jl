@@ -20,11 +20,6 @@ function modulenames(data, pos)
   main, sub
 end
 
-# function getmodule(data, pos)
-#   main, sub = modulenames(data, pos)
-#   getmodule("$main.$sub")
-# end
-
 function getmodule′(args...)
   m = getmodule(args...)
   return m == nothing ? Main : m
@@ -97,10 +92,7 @@ handle("eval") do data
     unlock(evallock)
 
     Base.invokelatest() do
-      # display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
-      # !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      # display ≠ Editor() && result ≠ nothing && render(display, result)
-      # render′(Editor(), result)
+      !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
       display(JunoEditorInput(result))
     end
   end
@@ -118,8 +110,9 @@ handle("evalall") do data
     lock(evallock)
     hideprompt() do
       withpath(path) do
+        local result
         try
-          include_string(mod, code, path)
+          result = include_string(mod, code, path)
         catch e
           bt = catch_backtrace()
           ee = EvalError(e, stacktrace(bt))
@@ -134,6 +127,7 @@ handle("evalall") do data
                        :detail => string(ee),
                        :dismissable => true))
         end
+        display(JunoEditorInput(result))
       end
     end
     unlock(evallock)
@@ -202,7 +196,7 @@ getmethods(mod, word) = include_string(getmodule′(mod), "methods($word)")
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
-    Core.eval(:(@doc($(Symbol(word)))))
+    Core.eval(Main, :(@doc($(Symbol(word)))))
   else
     include_string(getmodule′(mod), "@doc $word")
   end

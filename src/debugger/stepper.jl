@@ -101,9 +101,9 @@ function startdebugging(stack)
     ee = EvalError(e, catch_stacktrace())
     if Atom.isREPL()
       print("\r                        \r")
-      print_with_color(:red, STDERR, "ERROR: ")
-      Base.showerror(STDERR, e, backtrace())
-      println(STDERR)
+      print_with_color(:red, stderr, "ERROR: ")
+      Base.showerror(stderr, e, backtrace())
+      println(stderr)
     else
       render(Console(), ee)
     end
@@ -150,9 +150,9 @@ function debugprompt()
         r ≠ nothing && display(r)
         println()
       catch e
-        print_with_color(:red, STDERR, "ERROR: ")
-        Base.showerror(STDERR, e, backtrace())
-        println(STDERR)
+        print_with_color(:red, stderr, "ERROR: ")
+        Base.showerror(stderr, e, backtrace())
+        println(stderr)
       end
 
       Atom.msg("doneWorking")

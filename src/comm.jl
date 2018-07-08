@@ -92,7 +92,7 @@ the messages sent over that socket. The `kws...` are passed through to `initiali
 """
 function serve(port; kws...)
   server = listen(ip"127.0.0.1", port)
-  print(STDERR, "juno-msg-ready")
+  print(stderr, "juno-msg-ready")
   global sock = accept(server)
   Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
     @async while isopen(sock)
