@@ -20,7 +20,6 @@ function displayinplotpane(x)
     show(plotpaneioctxt(io), "application/juno+plotpane", x)
     str = String(take!(io))
     @msg ploturl(str)
-    # Juno.render(Juno.PlotPane(), )
   else
     didDisplay = false
   end
@@ -33,13 +32,49 @@ function Base.display(d::JunoDisplay, x)
   display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
 end
 
+using TreeViews: hastreeview, numberofnodes, treelabel, treenode
+
 # input from in-editor eval
 function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)
   x = wrapper.x
   displayinplotpane(x)
 
+  # TreeViews.jl compat
+  if hastreeview(x)
+    x = generateTreeView(x)
+  end
+
   Juno.render(Juno.Editor(), x)
-  # TreeViews.hastreeview(x) ?
-  #                 treeview(d, x) :
-  #                 sprint(io -> show(IOContext(io, limit = true), MIME"text/plain"(), x))
+end
+
+# TreeViews.jl -> Juno.LazyTree
+function generateTreeView(x)
+  buf = IOBuffer()
+
+  header = applicable(treelabel, buf, x, MIME"text/html"()) ?
+            HTML(sprint(treelabel, x, MIME"text/html"())) :
+            Text(sprint(treelabel, x, MIME"text/plain"()))
+
+  numberofnodes(x) == 0 &&  return Tree(header, [])
+
+  genchildren = function ()
+    children = Any[]
+    for i in 1:numberofnodes(x)
+      node = treenode(x, i)
+
+      cheader = applicable(treelabel, buf, x, i, MIME"text/html"()) ?
+                HTML(sprint(treelabel, x, i, MIME"text/html"())) :
+                Text(sprint(treelabel, x, i, MIME"text/plain"()))
+      if isempty(cheader.content)
+        push!(children, hastreeview(node) ? generateTreeView(node) : node)
+      elseif node === nothing
+        push!(children, cheader)
+      else
+        push!(children, SubTree(Row(cheader, text" → "), hastreeview(node) ? generateTreeView(node) : node))
+      end
+    end
+    children
+  end
+
+  return LazyTree(header, genchildren)
 end
