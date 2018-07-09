@@ -12,13 +12,19 @@ function displayinplotpane(x)
   didDisplay = true
 
   io = IOBuffer()
+  # TODO: support more image mimetypes
   if showable("image/png", x)
     show(plotpaneioctxt(io), "image/png", x)
     str = String(take!(io))
     Juno.render(Juno.PlotPane(), HTML("<img src=\"data:image/png;base64,$(str)\">"))
+  elseif showable("image/svg", x)
+    show(plotpaneioctxt(io), "image/svg", x)
+    str = String(take!(io))
+    Juno.render(Juno.PlotPane(), HTML("<img>$str</img>"))
   elseif showable("application/juno+plotpane", x)
     show(plotpaneioctxt(io), "application/juno+plotpane", x)
     str = String(take!(io))
+    startswith(str, "data:") || (str = string("data:text/html,", str))
     @msg ploturl(str)
   else
     didDisplay = false
@@ -49,9 +55,7 @@ end
 
 # TreeViews.jl -> Juno.LazyTree
 function generateTreeView(x)
-  buf = IOBuffer()
-
-  header = applicable(treelabel, buf, x, MIME"text/html"()) ?
+  header = applicable(treelabel, IOBuffer(), x, MIME"text/html"()) ?
             HTML(sprint(treelabel, x, MIME"text/html"())) :
             Text(sprint(treelabel, x, MIME"text/plain"()))
 
@@ -62,7 +66,7 @@ function generateTreeView(x)
     for i in 1:numberofnodes(x)
       node = treenode(x, i)
 
-      cheader = applicable(treelabel, buf, x, i, MIME"text/html"()) ?
+      cheader = applicable(treelabel, IOBuffer(), x, i, MIME"text/html"()) ?
                 HTML(sprint(treelabel, x, i, MIME"text/html"())) :
                 Text(sprint(treelabel, x, i, MIME"text/plain"()))
       if isempty(cheader.content)

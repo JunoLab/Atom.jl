@@ -18,7 +18,7 @@ end
 
 clearconsole() = @rpc clearconsole()
 
-plotsize() = @rpc plotsize()
+plotsize() = (@rpc plotsize()) .- 1
 
 ploturl(url::String) = @msg ploturl(url)
 
