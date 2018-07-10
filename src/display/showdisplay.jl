@@ -1,4 +1,4 @@
-using REPL
+using REPL, Base64
 
 struct JunoDisplay <: AbstractDisplay end
 
@@ -6,30 +6,42 @@ struct JunoEditorInput
   x::Any
 end
 
-plotpaneioctxt(io::IO) = IOContext(io, :juno_plotsize => plotsize(), :juno_colors => syntaxcolors())
+plotpane_io_ctx(io::IO) = IOContext(io, :juno_plotsize => plotsize(), :juno_colors => syntaxcolors())
+
+const plain_mimes = [
+  "image/png",
+  "image/jpeg",
+  "image/tiff",
+  "image/bmp",
+  "image/gif"
+]
 
 function displayinplotpane(x)
-  didDisplay = true
-
   io = IOBuffer()
-  # TODO: support more image mimetypes
-  if showable("image/png", x)
-    show(plotpaneioctxt(io), "image/png", x)
-    str = String(take!(io))
-    Juno.render(Juno.PlotPane(), HTML("<img src=\"data:image/png;base64,$(str)\">"))
-  elseif showable("image/svg", x)
-    show(plotpaneioctxt(io), "image/svg", x)
-    str = String(take!(io))
-    Juno.render(Juno.PlotPane(), HTML("<img>$str</img>"))
-  elseif showable("application/juno+plotpane", x)
-    show(plotpaneioctxt(io), "application/juno+plotpane", x)
+
+  # Juno-specific display always takes precedence
+  if showable("application/juno+plotpane", x)
+    show(plotpane_io_ctx(io), "application/juno+plotpane", x)
     str = String(take!(io))
     startswith(str, "data:") || (str = string("data:text/html,", str))
     @msg ploturl(str)
-  else
-    didDisplay = false
+    return true
   end
-  didDisplay
+  # xml should be in a webview as well because of the possibility of embedded JS
+  if showable("image/svg+xml", x)
+    @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
+    return true
+  end
+
+  # images
+  for mime in plain_mimes
+    if showable(mime, x)
+      suffix = istextmime(mime) ? "," : ";base64,"
+      str = string("<img src=\"data:", mime, suffix, stringmime(mime, x, context=plotpane_io_ctx(io)), "\">")
+      render(PlotPane(), HTML(str))
+      return true
+    end
+  end
 end
 
 
