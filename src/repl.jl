@@ -101,13 +101,16 @@ function hideprompt(f)
 
   pos = @rpc cursorpos()
   pos[1] != 0 && println()
-  changeREPLprompt(current_prompt)
 
+  # restore prompt
+  mistate = Base.active_repl.mistate
+  if applicable(REPL.LineEdit.write_prompt, stdout, mistate.current_mode)
+    REPL.LineEdit.write_prompt(stdout, mistate.current_mode)
+  else # for history prompts
+    changeREPLprompt(current_prompt)
+  end
   # Restore input buffer:
-  buf = Base.LineEdit.buffer(Base.active_repl.mistate)
-  str = String(take!(buf))
-  write(buf, str)
-  print(str)
+  print(String(take!(copy(REPL.LineEdit.buffer(Base.active_repl.mistate)))))
   r
 end
 
