@@ -102,6 +102,12 @@ function hideprompt(f)
   pos = @rpc cursorpos()
   pos[1] != 0 && println()
   changeREPLprompt(current_prompt)
+
+  # Restore input buffer:
+  buf = Base.LineEdit.buffer(Base.active_repl.mistate)
+  str = String(take!(buf))
+  write(buf, str)
+  print(str)
   r
 end
 
