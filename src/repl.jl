@@ -1,16 +1,27 @@
-import REPL
+using REPL
+using REPL: LineEdit
 # FIXME: Should refactor all REPL related functions into a struct that keeps track
 #        of global state (terminal size, current prompt, current module etc).
 # FIXME: Find a way to reprint what's currently entered in the REPL after changing
 #        the module (or delete it in the buffer).
 
+function get_main_mode()
+  for mode in Base.active_repl.interface.modes
+    if mode isa LineEdit.Prompt
+      if mode.prompt == current_prompt
+        return mode
+      end
+    end
+  end
+  error("no julia repl mode found")
+end
+
 isREPL() = isdefined(Base, :active_repl)
 
 handle("changeprompt") do prompt
   isREPL() || return
-  global current_prompt = prompt
 
-  if !(isempty(prompt)) && strip(prompt) ≠ strip(juliaprompt)
+  if !(isempty(prompt))
     changeREPLprompt(prompt)
   end
   nothing
@@ -110,61 +121,46 @@ function hideprompt(f)
     changeREPLprompt(current_prompt)
   end
   # Restore input buffer:
-  print(String(take!(copy(REPL.LineEdit.buffer(Base.active_repl.mistate)))))
+  print(String(take!(copy(LineEdit.buffer(mistate)))))
   r
 end
 
 function changeREPLprompt(prompt; color = :green)
-  repl = Base.active_repl
-  main_mode = repl.interface.modes[1]
+  if strip(prompt) == strip(current_prompt)
+    return nothing
+  end
+
+  main_mode = get_main_mode()
   main_mode.prompt = prompt
-  main_mode.prompt_prefix = Base.text_colors[:bold] * Base.text_colors[color]
-  print(stdout, "\e[1K\r")
-  printstyled(prompt, bold = true, color = color)
+  if Base.active_repl.mistate.current_mode == main_mode
+    print(stdout, "\e[1K\r")
+    REPL.LineEdit.write_prompt(stdout, main_mode)
+  end
+  global current_prompt = prompt
   nothing
 end
-
-# FIXME: This is ugly and bad, but lets us work around the fact that REPL.run_interface
-#        doesn't seem to stop the currently active repl from running. This global
-#        switches between two interpreter codepaths when debugging over in ./debugger/stepper.jl.
-repleval = Ref(false)
 
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
 
   mod = getthing(mod)
 
-  repl = Base.active_repl
-  main_mode = repl.interface.modes[1]
-  main_mode.on_done = REPL.respond(repl, main_mode; pass_empty = false) do line
+  main_mode = get_main_mode()
+  main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
     if !isempty(line)
-      if isdebugging()
-        quote
-          try
-            $msg("working")
-            $Atom.Debugger.interpret($line)
-          finally
-            $msg("updateWorkspace")
-            $msg("doneWorking")
+      quote
+        try
+          lock($evallock)
+          $msg("working")
+          # this is slow:
+          Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
+            global ans = Core.eval($mod, Meta.parse($line))
           end
-        end
-      else
-        quote
-          try
-            lock($evallock)
-            $msg("working")
-            $repleval[] = true
-            # this is slow:
-            Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
-              global ans = Core.eval($mod, Meta.parse($line))
-            end
-            ans
-          finally
-            unlock($evallock)
-            $msg("doneWorking")
-            $repleval[] = false
-            @async $msg("updateWorkspace")
-          end
+          ans
+        finally
+          unlock($evallock)
+          $msg("doneWorking")
+          @async $msg("updateWorkspace")
         end
       end
     end
