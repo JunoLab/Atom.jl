@@ -101,16 +101,18 @@ end
 handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    if setmod ≠ nothing
-      mod = getmodule′(setmod)
+    mod = if setmod ≠ nothing
+       getmodule′(setmod)
     elseif isabspath(path)
-      mod = getmodule′(CodeTools.filemodule(path))
+      getmodule′(CodeTools.filemodule(path))
+    else
+      Main
     end
 
     lock(evallock)
     hideprompt() do
       withpath(path) do
-        local result
+        result = nothing
         try
           result = include_string(mod, code, path)
         catch e
