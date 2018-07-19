@@ -70,6 +70,10 @@ end
 profiler() = @msg profile(tojson(tree()))
 
 handle("loadProfileTrace") do path
+  if path === nothing
+    return
+  end
+
   json = try
     JSON.parse(String(open(read, first(path))))
   catch e
@@ -80,6 +84,10 @@ handle("loadProfileTrace") do path
 end
 
 handle("saveProfileTrace") do path, data
+  if path === nothing
+    return
+  end
+
   try
     write(path, JSON.json(data))
   catch e
