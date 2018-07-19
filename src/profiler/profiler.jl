@@ -1,8 +1,9 @@
 module Profiler
 
+using JSON
 using Lazy, Juno, Hiccup
 import Juno: Row, LazyTree, SubTree, icon
-import ..Atom: baselink, cliptrace, expandpath, @msg
+import ..Atom: baselink, cliptrace, expandpath, @msg, handle
 
 include("tree.jl")
 
@@ -64,5 +65,32 @@ function tojson(prof::ProfileTree)
 end
 
 profiler() = @msg profile(tojson(tree()))
+
+
+handle("loadProfileTrace") do path
+  if path === nothing
+    return
+  end
+
+  json = try
+    JSON.parse(String(open(read, first(path))))
+  catch e
+    error("Error reading profile trace file at $path.")
+    nothing
+  end
+  json !== nothing && @msg profile(json)
+end
+
+handle("saveProfileTrace") do path, data
+  if path === nothing
+    return
+  end
+
+  try
+    write(path, JSON.json(data))
+  catch e
+    error("Error writing profile trace file at $path.")
+  end
+end
 
 end
