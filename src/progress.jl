@@ -28,21 +28,21 @@ end
 
 Register `p` with the Juno frontend.
 """
-register(p::ProgressBar) = @msg progress("add", p)
+register(p::ProgressBar) = @msg progress("add", p.id)
 
 """
     done(p::ProgressBar)
 
 Remove `p` from the frontend.
 """
-done(p::ProgressBar) = @msg progress("delete", p)
+done(p::ProgressBar) = @msg progress("delete", p.id)
 
 """
     progress(p::ProgressBar, prog::Number)
 
 Update `p`'s progress to `prog`.
 """
-progress(p::ProgressBar, prog::Real) = @msg progress("progress", p, clamp(prog, 0, 1))
+progress(p::ProgressBar, prog::Real) = @msg progress("progress", p.id, clamp(prog, 0, 1))
 
 """
     progress(p::ProgressBar)
@@ -73,14 +73,14 @@ end
 Update the message that will be displayed in the frontend when hovering over the
 corrseponding progress bar.
 """
-msg(p::ProgressBar, m) = @msg progress("message", p, m)
+msg(p::ProgressBar, m) = @msg progress("message", p.id, m)
 
 """
     name(p::ProgressBar, m)
 
 Update `p`s name.
 """
-name(p::ProgressBar, s) = @msg progress("leftText", p, s)
+name(p::ProgressBar, s) = @msg progress("leftText", p.id, s)
 
 """
     right_text(p::ProgressBar, m)
@@ -90,5 +90,5 @@ Update the string that will be displayed to the right of the progress bar.
 Defaults to the linearly extrpolated remaining time based upon the time
 difference between registering a progress bar and the latest update.
 """
-right_text(p::ProgressBar, s) = @msg progress("rightText", p, s)
+right_text(p::ProgressBar, s) = @msg progress("rightText", p.id, s)
 end # module
