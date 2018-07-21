@@ -15,7 +15,7 @@ handle("cd") do path
 end
 
 handle("evalsimple") do code
-  Core.eval(Meta.parse(code))
+  Core.eval(Main, Meta.parse(code))
 end
 
 handle("exit") do
