@@ -18,29 +18,10 @@ end
 
 clearconsole() = @rpc clearconsole()
 
-# Blink stuff
-
-type Shell <: AtomShell.Shell end
-
-AtomShell.active(::Shell) = true
-
-AtomShell.raw_window(::Shell, opts) =
-  @rpc createWindow(merge(AtomShell.window_defaults, opts))
-
-AtomShell.dot(::Shell, win::Integer, code; callback = true) =
-  (callback ? rpc : msg)(:withWin, win, Blink.jsstring(code))
-
-AtomShell.active(::Shell, win::Integer) = @rpc winActive(win)
-
-plotsize() = @rpc plotsize()
+plotsize() = (@rpc plotsize()) .- 1
 
 ploturl(url::String) = @msg ploturl(url)
 
-function blinkplot()
-  p = Page()
-  ploturl(Blink.localurl(p))
-  return wait(p)
-end
 
 SELECTORS = Dict(
   "number" => ["syntax--constant", "syntax--numeric", "syntax--julia"],
@@ -60,7 +41,7 @@ function syntaxcolors(selectors = SELECTORS)
   colorsstr = @rpc syntaxcolors(selectors)
   colors = Dict{String, UInt32}()
   for (k, v) in colorsstr
-    colors[k] = parse(UInt32, v, 16)
+    colors[k] = parse(UInt32, v, base=16)
   end
   colors
 end

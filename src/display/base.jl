@@ -1,8 +1,9 @@
 using Hiccup
+using Base64
 
-render(e::Editor, ::Void) = render(e, icon("check"))
+render(e::Editor, ::Nothing) = render(e, icon("check"))
 
-render(::Console, ::Void) = nothing
+render(::Console, ::Nothing) = nothing
 
 render(::Inline, x::Union{Float16, Float32, Float64}) =
   isnan(x) || isinf(x) ?
@@ -34,7 +35,7 @@ showmethod(T) = which(show, (IO, T))
 @render Inline x begin
   fields = fieldnames(typeof(x))
   if showmethod(typeof(x)) ≠ showmethod(Any)
-    Text(io -> show(IOContext(io, limit = true), MIME"text/plain"(), x))
+    Text(io -> show(IOContext(io, :limit => true), MIME"text/plain"(), x))
   else
     defaultrepr(x, true)
   end
@@ -58,7 +59,7 @@ for A in :[Vector, Matrix, AbstractVector, AbstractMatrix].args
   @eval begin
     render(i::Inline, ::Type{$A}) =
       render(i, typ($(string(A))))
-    render{T}(i::Inline, ::Type{$A{T}}) =
+    (render(i::Inline, ::Type{$A{T}}) where T) =
       render(i, typ(string($(string(A)), "{$T}")))
   end
 end
@@ -71,11 +72,11 @@ end
 
 @render Inline x::VersionNumber span(".syntax--string.syntax--quoted.syntax--other", sprint(show, x))
 
-@render Inline _::Void span(".syntax--constant", "nothing")
+@render Inline _::Nothing span(".syntax--constant", "nothing")
 
 import Base.Docs: doc
 
-isanon(f) = contains(string(f), "#")
+isanon(f) = occursin("#", string(f))
 
 @render Inline f::Function begin
   isanon(f) ? span(".syntax--support.syntax--function", "λ") :
@@ -97,12 +98,12 @@ end
 end
 
 @render Inline xs::AbstractArray begin
-  Text(sprint(io -> show(IOContext(io, limit=true), MIME"text/plain"(), xs)))
+  Text(sprint(io -> show(IOContext(io, :limit=>true), MIME"text/plain"(), xs)))
 end
 
 @render i::Inline d::Dict begin
   j = 0
-  st = Array{Atom.SubTree}(0)
+  st = Array{Atom.SubTree}(undef, 0)
   for (key, val) in d
     push!(st, SubTree(span(c(render(i, key), " → ")), val))
     j += 1
@@ -121,7 +122,7 @@ end
 
 @render Inline p::Ptr begin
   Row(Atom.fade(string(typeof(p))), Text(" @"),
-       span(".syntax--constant.syntax--numeric", c("0x$(hex(UInt(p), Sys.WORD_SIZE>>2))")))
+       span(".syntax--constant.syntax--numeric", c("0x$(string(UInt(p), base=16, pad=Sys.WORD_SIZE>>2))")))
 end
 
 # TODO: lazy load the rest of the string
@@ -133,15 +134,7 @@ end
         Text("..."))
 end
 
-@static if VERSION.minor == 5
-  @render Inline li::LambdaInfo begin
-    out = split(sprint(show, MIME"text/plain"(), li), '\n', limit=2)
-    Tree(Text(out[1]),
-         [Model(Dict(:type => :code, :text => out[2]))])
-  end
-end
-
-render{sym}(i::Inline, x::Irrational{sym}) =
+(render(i::Inline, x::Irrational{sym}) where sym) =
   render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 @render i::Inline xs::Tuple begin

@@ -1,3 +1,5 @@
+using Sockets
+
 """
     @msg(expression)
 
@@ -42,7 +44,7 @@ by `serve`.
 """
 global sock = nothing
 
-isactive(sock::Void) = false
+isactive(sock::Nothing) = false
 
 """
     isactive(sock)
@@ -60,7 +62,7 @@ macro ierrs(ex)
   :(try
       $(esc(ex))
     catch e
-      ee = EvalError(e, catch_stacktrace())
+      ee = EvalError(e, stacktrace(catch_backtrace()))
       Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
                              :detail      => string(ee),
                              :dismissable => true))
@@ -78,7 +80,6 @@ function initialise(; welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
   exit_on_sigint(false)
-  eval(AtomShell, :(_shell = $(Shell())))
   welcome && @msg welcome()
 end
 
@@ -90,23 +91,27 @@ the messages sent over that socket. The `kws...` are passed through to `initiali
 """
 function serve(port; kws...)
   server = listen(ip"127.0.0.1", port)
-  print(STDERR, "juno-msg-ready")
+  print(stderr, "juno-msg-ready")
   global sock = accept(server)
-  @async while isopen(sock)
-    @ierrs let
-      msg = JSON.parse(sock)
-      @schedule @ierrs handlemsg(msg...)
+  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+    @async while isopen(sock)
+      @ierrs let
+        msg = JSON.parse(sock)
+        @async @ierrs handlemsg(msg...)
+      end
     end
   end
   initialise(; kws...)
 end
 
 function connect(host, port; kws...)
-  global sock = Base.connect(host, port)
-  @async while isopen(sock)
-    @ierrs let
-      msg = JSON.parse(sock)
-      @schedule @ierrs handlemsg(msg...)
+  global sock = Sockets.connect(host, port)
+  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+    @async while isopen(sock)
+      @ierrs let
+        msg = JSON.parse(sock)
+        @async @ierrs handlemsg(msg...)
+      end
     end
   end
   initialise(; kws...)
@@ -157,7 +162,7 @@ Tries to call the message handler corresponding to `typ` (which can be set with
 """
 function handlemsg(t, args...)
   callback = nothing
-  isa(t, Associative) && ((t, callback) = (t["type"], t["callback"]))
+  isa(t, AbstractDict) && ((t, callback) = (t["type"], t["callback"]))
   if haskey(handlers, t)
     try
       result = handlers[t](args...)
@@ -167,7 +172,7 @@ function handlemsg(t, args...)
       rethrow()
     end
   else
-    warn("Atom.jl: unrecognised message $t.")
+    @warn("Atom.jl: unrecognised message $t.")
     callback ≠ nothing && msg("cancelCallback", callback)
   end
 end

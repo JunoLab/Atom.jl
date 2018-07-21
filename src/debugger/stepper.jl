@@ -2,6 +2,7 @@ import ASTInterpreter2
 import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
 import Juno: Row, ProgressBar, Tree
+import REPL
 using Media
 using MacroTools
 
@@ -63,7 +64,7 @@ function startdebugging(stack)
 
   if Atom.isREPL()
     # FIXME: Should get rid of the second code path (see comment in repl.jl).
-    if Atom.repleval
+    if Atom.repleval[]
       t = @async debugprompt()
     else
       Atom.changeREPLprompt("debug> ", color=:magenta)
@@ -100,9 +101,9 @@ function startdebugging(stack)
     ee = EvalError(e, catch_stacktrace())
     if Atom.isREPL()
       print("\r                        \r")
-      print_with_color(:red, STDERR, "ERROR: ")
-      Base.showerror(STDERR, e, backtrace())
-      println(STDERR)
+      print_with_color(:red, stderr, "ERROR: ")
+      Base.showerror(stderr, e, backtrace())
+      println(stderr)
     else
       render(Console(), ee)
     end
@@ -113,7 +114,7 @@ function startdebugging(stack)
     debugmode(false)
 
     if Atom.isREPL()
-      if Atom.repleval
+      if Atom.repleval[]
         istaskdone(t) || schedule(t, InterruptException(); error=true)
         print("\r                        \r")
       else
@@ -149,9 +150,9 @@ function debugprompt()
         r ≠ nothing && display(r)
         println()
       catch e
-        print_with_color(:red, STDERR, "ERROR: ")
-        Base.showerror(STDERR, e, backtrace())
-        println(STDERR)
+        print_with_color(:red, stderr, "ERROR: ")
+        Base.showerror(stderr, e, backtrace())
+        println(stderr)
       end
 
       Atom.msg("doneWorking")
@@ -160,7 +161,7 @@ function debugprompt()
       return true
     end
 
-    Base.REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
+    REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
   catch e
     e isa InterruptException || rethrow(e) end
 end
@@ -189,7 +190,7 @@ function stepto(state::DebuggerState)
   stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
 end
 stepto(file, line, text) = @msg stepto(file, line, text)
-stepto(::Void) = debugmode(false)
+stepto(::Nothing) = debugmode(false)
 
 # return expression that will be evaluated next
 function nextstate(state)

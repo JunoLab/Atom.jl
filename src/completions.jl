@@ -1,15 +1,15 @@
 matchesprefix(c::AbstractString, pre::AbstractString) = isempty(pre) || lowercase(c[1]) == lowercase(pre[1])
 matchesprefix(c::Dict, pre::AbstractString) = matchesprefix(c[:text], pre)
-matchesprefix(c, ::Void) = true
+matchesprefix(c, ::Nothing) = true
 
 handle("completions") do data
-  @destruct [path || nothing, mod || "Main", line, column, force] = data
+  @destruct [path || nothing, mod || "Main", line, force] = data
   withpath(path) do
-    pre = CodeTools.prefix(line[1:column-1])
+    pre = CodeTools.prefix(line)
     pre = isempty(pre) ? nothing : pre[end]
     m = getthing(mod)
     m = isa(m, Module) ? m : Main
-    cs = CodeTools.completions(line[1:column-1], m, default = false)
+    cs = CodeTools.completions(line, m, default = false)
     cs == nothing && pre == nothing && !force && (cs = [])
     d(:completions => cs,
       :prefix      => pre,

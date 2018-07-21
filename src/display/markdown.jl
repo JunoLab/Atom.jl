@@ -1,3 +1,5 @@
+import Markdown
+
 render(i::Inline, md::Markdown.MD) = render(i, renderMD(md))
 
 function render(e::Editor, md::Markdown.MD)
@@ -13,8 +15,8 @@ renderMD(md::AbstractString) = renderMD(Markdown.parse(md))
 
 renderMD(md::Vector) = Hiccup.div([renderMD(x) for x in md], class = "markdown")
 
-function renderMD{l}(header::Markdown.Header{l})
-  Hiccup.Node(Symbol(:h, l), renderMDinline(header.text)) end
+function renderMD(header::Markdown.Header{T}) where T
+  Hiccup.Node(Symbol(:h, T), renderMDinline(header.text)) end
 
 function renderMD(code::Markdown.Code)
   Hiccup.pre(
@@ -119,11 +121,19 @@ function renderMDinline(br::Markdown.LineBreak)
   Hiccup.Node(:br)
 end
 
+function renderMDinline(x::Expr)
+  Hiccup.code(x,
+              class = "julia",
+              block = false) # htmlesc?
+end
+
+renderMDinline(x) = x
+
 # katex doesn't support certain latex expressions. Need to transform those to something
 # that *is* supported or get rid of them altogether.
 function latex2katex(code)
-  code = replace(code, "\\operatorname", "\\mathrm")
-  code = replace(code, "\\latex", "\\katex")
+  code = replace(code, "\\operatorname" => "\\mathrm")
+  code = replace(code, "\\latex" => "\\katex")
   # TODO: Unicode -> LaTeX sequences.
   # KaTeX unfortunately doesn't handle Unicode very well, so something like π errors. Should
   # be possible to transform that to \pi in many simple cases.

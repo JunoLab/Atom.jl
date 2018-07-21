@@ -1,11 +1,15 @@
 using CodeTools, LNR, Media
-import CodeTools: getthing
+using CodeTools: getthing, getmodule
+import REPL
 
-ends_with_semicolon(x) = Base.REPL.ends_with_semicolon(split(x,'\n',keep = false)[end])
+using Logging: with_logger, current_logger
+using .Progress: JunoProgressLogger
 
-LNR.cursor(data::Associative) = cursor(data["row"], data["column"])
+ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
 
-exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Void, (Cint,), on)
+LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
+
+exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Nothing, (Cint,), on)
 
 function modulenames(data, pos)
   main = haskey(data, "module") ? data["module"] :
@@ -16,17 +20,21 @@ function modulenames(data, pos)
   main, sub
 end
 
-function getmodule(data, pos)
-  main, sub = modulenames(data, pos)
-  getthing("$main.$sub", getthing(main, Main))
+function getmodule′(args...)
+  m = getmodule(args...)
+  return m == nothing ? Main : m
 end
 
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
+
+  mod = getmodule(main)
+  smod = getmodule(mod, sub)
+
   return d(:main => main,
            :sub  => sub,
-           :inactive => (getthing(main) == nothing),
-           :subInactive => (getthing("$main.$sub") == nothing))
+           :inactive => (mod==nothing),
+           :subInactive => smod==nothing)
 end
 
 handle("allmodules") do
@@ -43,7 +51,7 @@ const evallock = ReentrantLock()
 handle("evalshow") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
-    mod = getthing(mod)
+    mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -54,7 +62,7 @@ handle("evalshow") do data
           res
         catch e
           # should hide parts of the backtrace here
-          Base.display_error(STDERR, e, catch_backtrace())
+          Base.display_error(stderr, e, catch_backtrace())
         end
       end
     end
@@ -73,8 +81,7 @@ end
 handle("eval") do data
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod, displaymode || "editor"] = data
-    mod = getthing(mod)
-
+    mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -85,10 +92,8 @@ handle("eval") do data
     unlock(evallock)
 
     Base.invokelatest() do
-      display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display ≠ Editor() && result ≠ nothing && render(display, result)
-      render′(Editor(), result)
+      display(JunoEditorInput(result))
     end
   end
 end
@@ -96,24 +101,27 @@ end
 handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    mod = Main
-    if setmod ≠ nothing
-      mod = getthing(setmod, Main)
+    mod = if setmod ≠ nothing
+       getmodule′(setmod)
     elseif isabspath(path)
-      mod = getthing(CodeTools.filemodule(path), Main)
+      getmodule′(CodeTools.filemodule(path))
+    else
+      Main
     end
+
     lock(evallock)
     hideprompt() do
       withpath(path) do
+        result = nothing
         try
-          include_string(mod, code, path)
+          result = include_string(mod, code, path)
         catch e
           bt = catch_backtrace()
           ee = EvalError(e, stacktrace(bt))
           if isREPL()
-            print_with_color(:red, STDERR, "ERROR: ")
-            Base.showerror(STDERR, e, bt)
-            println(STDERR)
+            printstyled(stderr, "ERROR: ", color=:red)
+            Base.showerror(stderr, e, bt)
+            println(stderr)
           else
             render(Console(), ee)
           end
@@ -121,6 +129,7 @@ handle("evalall") do data
                        :detail => string(ee),
                        :dismissable => true))
         end
+        display(JunoEditorInput(result))
       end
     end
     unlock(evallock)
@@ -138,20 +147,20 @@ handle("evalrepl") do data
       render′(@errs getdocs(mod, code))
       return
     end
-    mod = getthing(mod)
+    mod = getmodule′(mod)
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
     else
       try
         lock(evallock)
         withpath(nothing) do
-          result = @errs eval(mod, :(ans = include_string($code, "console")))
+          result = @errs Core.eval(mod, :(ans = include_string($mod, $code, "console")))
           !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
           Base.invokelatest(render′, result)
         end
         unlock(evallock)
       catch e
-        showerror(STDERR, e, catch_stacktrace())
+        showerror(stderr, e, catch_stacktrace())
       end
     end
   end
@@ -164,7 +173,11 @@ handle("docs") do data
 
   docstring isa EvalError && return Dict(:error => true)
 
-  mtable = try getmethods(mod, word) catch [] end
+  mtable = try getmethods(mod, word)
+    catch e
+      []
+    end
+
   Dict(:error    => false,
        :type     => :dom,
        :tag      => :div,
@@ -174,78 +187,29 @@ end
 handle("methods") do data
   @destruct [mod || "Main", word] = data
   mtable = @errs getmethods(mod, word)
-  if isa(mtable, EvalError)
+  if mtable isa EvalError
     Dict(:error => true, :items => sprint(showerror, mtable.err))
   else
     Dict(:items => [gotoitem(m) for m in mtable])
   end
 end
 
-getmethods(mod, word) = methods(getthing("$mod.$word"))
+getmethods(mod, word) = include_string(getmodule′(mod), "methods($word)")
 
 function getdocs(mod, word)
   if Symbol(word) in keys(Docs.keywords)
-    eval(:(@doc($(Symbol(word)))))
+    Core.eval(Main, :(@doc($(Symbol(word)))))
   else
-    include_string(getthing(mod), "@doc $word")
+    include_string(getmodule′(mod), "@doc $word")
   end
 end
 
 function gotoitem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
-  sig = sig[1:rsearch(sig, ')')]
+  sig = sig[1:something(findlast(isequal(')'), sig), 0)]
   Dict(:text => sig,
        :file => link.file,
        :line => link.line - 1,
        :secondary => join(link.contents))
-end
-
-ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
-
-wstype(x) = ""
-wstype(::Module) = "module"
-wstype(f::Function) = ismacro(f) ? "mixin" : "function"
-wstype(::Type) = "type"
-wstype(::Expr) = "mixin"
-wstype(::Symbol) = "tag"
-wstype(::AbstractString) = "property"
-wstype(::Number) = "constant"
-wstype(::Exception) = "tag"
-
-wsicon(x) = ""
-wsicon(f::Function) = ismacro(f) ? "icon-mention" : ""
-wsicon(::AbstractArray) = "icon-file-binary"
-wsicon(::AbstractVector) = "icon-list-ordered"
-wsicon(::AbstractString) = "icon-quote"
-wsicon(::Expr) = "icon-code"
-wsicon(::Symbol) = "icon-code"
-wsicon(::Exception) = "icon-bug"
-wsicon(::Number) = "n"
-
-wsnamed(name, val) = false
-wsnamed(name, f::Function) = name == methods(f).mt.name
-wsnamed(name, m::Module) = name == module_name(m)
-wsnamed(name, T::DataType) = name == Symbol(T.name)
-
-function wsitem(name, val)
-  d(:name  => name,
-    :value => render′(Inline(), val),
-    :type  => wstype(val),
-    :icon  => wsicon(val))
-end
-
-wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
-
-handle("workspace") do mod
-  mod = getthing(mod)
-  ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, true))))
-  filter!(n -> isdefined(mod, n), ns)
-  # TODO: only filter out imported modules
-  filter!(n -> !isa(getfield(mod, n), Module), ns)
-  contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
-  if isdebugging()
-    prepend!(contexts, Debugger.contexts())
-  end
-  return contexts
 end

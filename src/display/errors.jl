@@ -1,4 +1,4 @@
-type EvalError{T}
+mutable struct EvalError{T}
   err::T
   trace::StackTrace
 end
@@ -6,13 +6,13 @@ end
 EvalError(err) = EvalError(err, StackTrace())
 
 # Stacktrace fails on empty traces
-EvalError(err, bt::Vector{Ptr{Void}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
+EvalError(err, bt::Vector{Ptr{Nothing}}) = EvalError(err, isempty(bt) ? [] : stacktrace(bt))
 
 macro errs(ex)
   :(try
       $(esc(ex))
     catch e
-      EvalError(isa(e, LoadError) ? e.error : e, catch_stacktrace())
+      EvalError(isa(e, LoadError) ? e.error : e, stacktrace(catch_backtrace()))
     end)
 end
 
@@ -46,9 +46,10 @@ function locationshading(file)
   f, p = expandpath(file)
 
   # error in base
-  ismatch(r"^base(/|\\).*", f) && return ".dark"
+  occursin(r"^base(/|\\).*", f) && return ".dark"
   # error in package
-  contains(p, Pkg.dir()) && return ".medium"
+  # should probably be a bit smarter with figuring out if thats the actually package code
+  occursin(joinpath(homedir(), ".julia"), p) && return ".medium"
   # error in "user code"
   return ".bright"
 end
@@ -57,10 +58,10 @@ function renderbt(trace::StackTrace)
   span(".error-trace",
        [div(".trace-entry $(locationshading(string(frame.file)))",
             [fade("in "),
-             isnull(frame.linfo) ?
+             frame.linfo == nothing || frame.linfo isa Core.CodeInfo ?
                string(frame.func) :
-               replace(sprint(Base.show_tuple_as_call, get(frame.linfo).def.name, get(frame.linfo).specTypes),
-                       r"\(.*\)$", ""),
+               replace(sprint(Base.show_tuple_as_call, frame.linfo.def.name, frame.linfo.specTypes),
+                       r"\(.*\)$" => ""),
              fade(" at "),
              render(Inline(), Copyable(baselink(string(frame.file), frame.line))),
              fade(frame.inlined ? " <inlined>" : "")])
@@ -92,7 +93,7 @@ end
 render(::Console, e::EvalError) =
   @msg result(render(Editor(), e))
 
-type DisplayError
+mutable struct DisplayError
   obj
   err
 end
@@ -104,7 +105,7 @@ function render′(display, obj)
   try
     render(display, obj)
   catch e
-    render(display, EvalError(DisplayError(obj, e), catch_stacktrace()))
+    render(display, EvalError(DisplayError(obj, e), stacktrace(catch_backtrace())))
   end
 end
 

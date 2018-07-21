@@ -3,9 +3,7 @@ edit(pkg) =
     run(`atom $(Pkg.dir(pkg))`) :
     error("$pkg not installed")
 
-isuntitled(p) = ismatch(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
-
-jlhome() = ccall(:jl_get_julia_home, Any, ())
+isuntitled(p) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
 
 appendline(path, line) = line > 0 ? "$path:$line" : path
 
@@ -18,8 +16,8 @@ function realpath′(p)
 end
 
 function basepath(file)
-  srcdir = joinpath(jlhome(),"..","..","base")
-  releasedir = joinpath(jlhome(),"..","share","julia","base")
+  srcdir = joinpath(Sys.BINDIR,"..","..","base")
+  releasedir = joinpath(Sys.BINDIR,"..","share","julia","base")
   normpath(joinpath(isdir(srcdir) ? srcdir : releasedir, file))
 end
 
@@ -33,10 +31,15 @@ end
 
 expandpath(path) =
   isempty(path) ? (path, path) :
-  path == "./missing" ? ("<unknown file>", path) :
-  isuntitled(path) ? ("untitled", path) :
-  !isabspath(path) ? (normpath(joinpath("base", path)), basepath(path)) :
-  (pkgpath(path), path)
+    path == "./missing" ? ("<unknown file>", path) :
+      isuntitled(path) ? ("untitled", path) :
+        !isabspath(path) ? (normpath(joinpath("base", path)), basepath(path)) :
+          occursin(joinpath("julia", "stdlib"), path) ?
+            begin
+              p = last(split(path, joinpath("julia", "stdlib", "")))
+              return (normpath(joinpath("stdlib", p)), normpath(joinpath(basepath(joinpath("..", "stdlib")), p)))
+            end :
+            (pkgpath(path), path)
 
 function baselink(path, line)
   name, path = expandpath(path)

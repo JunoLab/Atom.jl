@@ -14,7 +14,7 @@ setdisplay(Editor(), Any, Console())
 setdisplay(Console(), Any, Console())
 
 render(::Clipboard, x) =
-  sprint(io -> show(IOContext(io, limit=true), MIME"text/plain"(), x))
+  sprint(io -> show(IOContext(io, :limit => true), MIME"text/plain"(), x))
 
 render(::Editor, x) =
   render(Inline(), Copyable(x))
@@ -29,10 +29,10 @@ render(::PlotPane, x) =
   span([render(Inline(), x) for x in l.xs])
 end
 
+include("showdisplay.jl")
 include("base.jl")
 include("utils.jl")
 include("view.jl")
-include("plots.jl")
 include("lazy.jl")
 include("errors.jl")
 include("frontend.jl")

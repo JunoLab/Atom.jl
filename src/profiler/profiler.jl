@@ -1,23 +1,26 @@
 module Profiler
 
+using Profile, JSON
+
 using JSON
 using Lazy, Juno, Hiccup
 import Juno: Row, LazyTree, SubTree, icon
 import ..Atom: baselink, cliptrace, expandpath, @msg, handle
+using Base.StackTraces
 
 include("tree.jl")
 
 function traces()
   traces, stacks = Profile.flatten(Profile.retrieve()...)
   @>>(split(traces, 0, keep = false),
-      map(trace -> @>> trace map(x->stacks[x]) cliptrace reverse),
+      map(trace -> @>> trace map(x->stacks[x]) reverse),
       map(trace -> filter(x->!x.from_c, trace)),
       filter(x->!isempty(x)))
 end
 
 const NULLFRAME = StackFrame(Symbol(""), Symbol(""), -1)
 
-immutable ProfileFrame
+struct ProfileFrame
   frame::StackFrame
   count::Int
 end
@@ -66,7 +69,6 @@ end
 
 profiler() = @msg profile(tojson(tree()))
 
-
 handle("loadProfileTrace") do path
   if path === nothing
     return
@@ -75,7 +77,7 @@ handle("loadProfileTrace") do path
   json = try
     JSON.parse(String(open(read, first(path))))
   catch e
-    error("Error reading profile trace file at $path.")
+    @error "Error reading profile trace file at $path."
     nothing
   end
   json !== nothing && @msg profile(json)
@@ -89,7 +91,7 @@ handle("saveProfileTrace") do path, data
   try
     write(path, JSON.json(data))
   catch e
-    error("Error writing profile trace file at $path.")
+    @error "Error writing profile trace file at $path."
   end
 end
 

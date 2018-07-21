@@ -1,4 +1,5 @@
 using DocSeeker
+import Markdown
 
 handle("searchdocs") do data
   @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
@@ -26,12 +27,7 @@ handle("regenerateCache") do
   DocSeeker.createdocsdb()
 end
 
-function ispackage(mod)
-  for f in readdir(Pkg.dir())
-    f == mod && return true
-  end
-  return false
-end
+ispackage(mod) = Base.find_package(mod) ≠ nothing
 
 function modulesymbols(mod)
   syms = filter(x -> x.mod == mod, DocSeeker.alldocs())
@@ -39,11 +35,14 @@ function modulesymbols(mod)
 end
 
 function packageinfo(mod)
-  Hiccup.div(
-    renderMD(Markdown.parse(String(read(DocSeeker.readmepath(mod))))),
-    Hiccup.Node(:hr),
-    Hiccup.h2("defined symbols:")
-  ), modulesymbols(mod)
+  path = DocSeeker.readmepath(mod)
+  readme = ispath(path) ? String(read(path)) : ""
+
+  return  Hiccup.div(
+            renderMD(Markdown.parse(readme)),
+            Hiccup.Node(:hr),
+            Hiccup.h2("defined symbols:")
+          ), modulesymbols(mod)
 end
 
 function moduleinfo(mod)
