@@ -6,14 +6,9 @@ using REPL: LineEdit
 #        the module (or delete it in the buffer).
 
 function get_main_mode()
-  for mode in Base.active_repl.interface.modes
-    if mode isa LineEdit.Prompt
-      if mode.prompt == current_prompt
-        return mode
-      end
-    end
-  end
-  error("no julia repl mode found")
+  mode = Base.active_repl.interface.modes[1]
+  mode isa LineEdit.Prompt || error("no julia repl mode found")
+  mode
 end
 
 isREPL() = isdefined(Base, :active_repl)
