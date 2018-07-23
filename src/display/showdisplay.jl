@@ -65,11 +65,17 @@ function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)
   Juno.render(Juno.Editor(), x)
 end
 
+function best_treelabel(args...)
+  return applicable(treelabel, IOBuffer(), args..., MIME"application/juno+inline"()) ?
+          HTML(sprint(treelabel, args..., MIME"application/juno+inline"())) :
+          applicable(treelabel, IOBuffer(), args..., MIME"text/html"()) ?
+            HTML(sprint(treelabel, args..., MIME"text/html"())) :
+            Text(sprint(treelabel, args..., MIME"text/plain"()))
+end
+
 # TreeViews.jl -> Juno.LazyTree
 function generateTreeView(x)
-  header = applicable(treelabel, IOBuffer(), x, MIME"text/html"()) ?
-            HTML(sprint(treelabel, x, MIME"text/html"())) :
-            Text(sprint(treelabel, x, MIME"text/plain"()))
+  header = best_treelabel(x)
 
   numberofnodes(x) == 0 &&  return Tree(header, [])
 
@@ -77,13 +83,10 @@ function generateTreeView(x)
     children = Any[]
     for i in 1:numberofnodes(x)
       node = treenode(x, i)
-
-      cheader = applicable(treelabel, IOBuffer(), x, i, MIME"text/html"()) ?
-                HTML(sprint(treelabel, x, i, MIME"text/html"())) :
-                Text(sprint(treelabel, x, i, MIME"text/plain"()))
+      cheader = best_treelabel(x, i)
       if isempty(cheader.content)
         push!(children, hastreeview(node) ? generateTreeView(node) : node)
-      elseif node === nothing
+      elseif node === missing
         push!(children, cheader)
       else
         push!(children, SubTree(Row(cheader, text" → "), hastreeview(node) ? generateTreeView(node) : node))
