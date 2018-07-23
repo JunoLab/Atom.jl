@@ -1,6 +1,6 @@
 import JSON
 # mock a listener:
-eval(Atom, parse("sock = IOBuffer()"))
+Core.eval(Atom, Meta.parse("sock = IOBuffer()"))
 readmsg() = JSON.parse(String(take!(Atom.sock)))
 
 # callback count
