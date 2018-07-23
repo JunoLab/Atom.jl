@@ -36,51 +36,24 @@ handle("changemodule") do data
   nothing
 end
 
-handle("fullpath") do uri
-  uri1 = match(r"(.+)\:(\d+)$", uri)
+function fullREPLpath(uri)
+  uri1 = match(r"(.+?)(?:\:(\d+))?$", uri)
   uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
   if uri2 !== nothing
-    return Atom.package_file_path(String(uri2[1]), String(uri2[2])), parse(Int, uri2[3])
+    return normpath(expanduser(String(uri2[2]))), parse(Int, uri2[3])
   elseif uri1 !== nothing
-    return Atom.fullpath(uri1[1]), parse(Int, uri1[2])
+    line = uri1[2] ≠ nothing ? parse(Int, uri1[2]) : 0
+    return Atom.fullpath(uri1[1]), line
   end
   return "", 0
 end
 
-function package_file_path(pkg, sfile)
-  occursin(".", pkg) && (pkg = String(first(split(pkg, '.'))))
-
-  pkg == "Main" && return nothing
-
-  path = if pkg in ("Base", "Core")
-    Atom.basepath("")
-  else
-    Base.locate_package(Base.identify_package(pkg))
-  end
-
-  path == nothing && return nothing
-
-  for (root, _, files) in walkdir(dirname(path))
-    for file in files
-      basename(file) == sfile && (return joinpath(root, file))
-    end
-  end
-  return nothing
+handle("fullpath") do uri
+  return fullREPLpath(uri)
 end
 
 handle("validatepath") do uri
-  uri1 = match(r"(.+?)(:\d+)?$", uri)
-  uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
-  if uri2 ≠ nothing
-    # FIXME: always returns the first found file
-    path = package_file_path(String(uri2[1]), String(uri2[2]))
-    return path ≠ nothing
-  elseif uri1 ≠ nothing
-    path = Atom.fullpath(uri1[1])
-    return isfile(path)
-  else
-    return false
-  end
+  return isfile(fullREPLpath(uri)[1])
 end
 
 juliaprompt = "julia> "
