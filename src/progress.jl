@@ -20,6 +20,7 @@ Possible keyword arguments to logging messages consumed by this logger are:
     - `progress == nothing || progress = NaN`: set progress bar to indeterminate progress
     - `progress > 1 || progress == "done"`: destroy progress bar
   - `right_text`: Shown instead of a approximation of remaining time.
+  - `message`: Shown in a tooltip.
   - `_id`: Should be set to a symbol for updates to a progress bar if they are
     not occuring on the same line.
 """
@@ -55,6 +56,10 @@ function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
 
     if haskey(kwargs, :right_text)
       msg("progress", "rightText", id, kwargs[:right_text])
+    end
+
+    if haskey(kwargs, :message)
+      msg("progress", "message", id, kwargs[:message])
     end
   else
     if Logging.shouldlog(j.previous_logger, level, _module, group, id)
