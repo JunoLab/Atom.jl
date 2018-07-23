@@ -197,11 +197,12 @@ end
 getmethods(mod, word) = include_string(getmodule′(mod), "methods($word)")
 
 function getdocs(mod, word)
-  if Symbol(word) in keys(Docs.keywords)
+  md = if Symbol(word) in keys(Docs.keywords)
     Core.eval(Main, :(@doc($(Symbol(word)))))
   else
     include_string(getmodule′(mod), "@doc $word")
   end
+  return REPL.insert_hlines(IOBuffer(), md)
 end
 
 function gotoitem(m::Method)
