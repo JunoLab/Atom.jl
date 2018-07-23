@@ -46,3 +46,16 @@ function baselink(path, line)
   name == "<unkown file>" ? span(".fade", "<unknown file>") :
                             link(path, line, Text(appendline(name, line)))
 end
+
+using Markdown: MD, HorizontalRule
+function md_hlines(md)
+  if !isa(md, MD) || !haskey(md.meta, :results) || isempty(md.meta[:results])
+      return md
+  end
+  v = Any[]
+  for (n, doc) in enumerate(md.content)
+      push!(v, doc)
+      n == length(md.content) || push!(v, HorizontalRule())
+  end
+  return MD(v)
+end

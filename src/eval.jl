@@ -202,7 +202,7 @@ function getdocs(mod, word)
   else
     include_string(getmodule′(mod), "@doc $word")
   end
-  return REPL.insert_hlines(IOBuffer(), md)
+  return md_hlines(md)
 end
 
 function gotoitem(m::Method)
