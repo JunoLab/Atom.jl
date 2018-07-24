@@ -194,7 +194,7 @@ handle("methods") do data
   end
 end
 
-getmethods(mod, word) = include_string(getmodule′(mod), "methods($word)")
+getmethods(mod, word) = methods(getfield(getmodule′(mod), Symbol(word)))
 
 function getdocs(mod, word)
   md = if Symbol(word) in keys(Docs.keywords)
