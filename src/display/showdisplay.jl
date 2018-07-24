@@ -85,6 +85,7 @@ function generateTreeView(x)
       node = treenode(x, i)
       cheader = best_treelabel(x, i)
       if isempty(cheader.content)
+        node === missing && continue
         push!(children, hastreeview(node) ? generateTreeView(node) : node)
       elseif node === missing
         push!(children, cheader)
