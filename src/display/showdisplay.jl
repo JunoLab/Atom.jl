@@ -50,7 +50,7 @@ function Base.display(d::JunoDisplay, x)
   display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
 end
 
-using TreeViews: hastreeview, numberofnodes, treelabel, treenode
+using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
 # input from in-editor eval
 function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)
@@ -65,12 +65,20 @@ function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)
   Juno.render(Juno.Editor(), x)
 end
 
-function best_treelabel(args...)
-  return applicable(treelabel, IOBuffer(), args..., MIME"application/juno+inline"()) ?
-          HTML(sprint(treelabel, args..., MIME"application/juno+inline"())) :
-          applicable(treelabel, IOBuffer(), args..., MIME"text/html"()) ?
-            HTML(sprint(treelabel, args..., MIME"text/html"())) :
-            Text(sprint(treelabel, args..., MIME"text/plain"()))
+function best_treelabel(x)
+  return applicable(treelabel, IOBuffer(), x, MIME"application/juno+inline"()) ?
+          HTML(sprint(treelabel, x, MIME"application/juno+inline"())) :
+          applicable(treelabel, IOBuffer(), x, MIME"text/html"()) ?
+            HTML(sprint(treelabel, x, MIME"text/html"())) :
+            Text(sprint(treelabel, x, MIME"text/plain"()))
+end
+
+function best_nodelabel(x, i)
+  return applicable(nodelabel, IOBuffer(), x, i, MIME"application/juno+inline"()) ?
+          HTML(sprint(nodelabel, x, i, MIME"application/juno+inline"())) :
+          applicable(nodelabel, IOBuffer(), x, i, MIME"text/html"()) ?
+            HTML(sprint(nodelabel, x, i, MIME"text/html"())) :
+            Text(sprint(nodelabel, x, i, MIME"text/plain"()))
 end
 
 # TreeViews.jl -> Juno.LazyTree
@@ -83,7 +91,8 @@ function generateTreeView(x)
     children = Any[]
     for i in 1:numberofnodes(x)
       node = treenode(x, i)
-      cheader = best_treelabel(x, i)
+      cheader = best_nodelabel(x, i)
+
       if isempty(cheader.content)
         node === missing && continue
         push!(children, hastreeview(node) ? generateTreeView(node) : node)
