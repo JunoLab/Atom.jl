@@ -5,7 +5,7 @@ render(i::Inline, md::Markdown.MD) = render(i, renderMD(md))
 function render(e::Editor, md::Markdown.MD)
   mds = Atom.CodeTools.flatten(md)
   out = length(mds) == 1 ? Text(chomp(sprint(show, MIME"text/markdown"(), md))) :
-                           Tree(Text("MD"), [render(e, renderMD(md))])
+                           Tree(Text("MD"), [renderMD(md)])
   render(e, out)
 end
 
