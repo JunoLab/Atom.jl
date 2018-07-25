@@ -17,6 +17,8 @@ const plain_mimes = [
 ]
 
 function displayinplotpane(x)
+  PlotPaneEnabled[] || return false
+
   io = IOBuffer()
 
   # Juno-specific display always takes precedence

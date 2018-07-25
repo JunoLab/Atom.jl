@@ -22,10 +22,16 @@ handle("exit") do
   exit()
 end
 
+const PlotPaneEnabled = Ref(true)
+
 handle("enableplotpane") do enable
-  enable ?
-    Media.setdisplay(Media.Graphical, PlotPane()) :
+  if enable
+    Media.setdisplay(Media.Graphical, PlotPane())
+    PlotPaneEnabled[] = true
+  else
     Media.unsetdisplay(Media.Graphical)
+    PlotPaneEnabled[] = false
+  end
   nothing
 end
 
