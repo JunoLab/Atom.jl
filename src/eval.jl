@@ -194,7 +194,9 @@ handle("methods") do data
   end
 end
 
-getmethods(mod, word) = methods(getfield(getmodule′(mod), Symbol(word)))
+function getmethods(mod, word)
+  methods(CodeTools.getthing(getmodule′(mod), word))
+end
 
 function getdocs(mod, word)
   md = if Symbol(word) in keys(Docs.keywords)
