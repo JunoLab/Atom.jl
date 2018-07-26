@@ -135,6 +135,26 @@ function changeREPLmodule(mod)
   end
 end
 
+function reset_repl_history()
+  mode = get_main_mode()
+  hp = mode.hist
+  replc = mode.complete
+
+  if Base.active_repl.history_file
+      try
+          hist_path = REPL.find_hist_file()
+          mkpath(dirname(hist_path))
+          f = open(hist_path, read=true, write=true, create=true)
+          finalizer(replc) do replc
+              close(f)
+          end
+          REPL.hist_from_file(hp, f, hist_path)
+          REPL.history_reset_state(hp)
+      catch e
+      end
+  end
+end
+
 # make sure DisplayHook() is higher than REPLDisplay() in the display stack
 @init begin
   atreplinit((i) -> begin
@@ -143,4 +163,8 @@ end
     Base.Multimedia.pushdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(JunoDisplay())
   end)
+
+  Atom.handle("connected") do
+    reset_repl_history()
+  end
 end
