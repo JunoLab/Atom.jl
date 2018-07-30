@@ -48,21 +48,25 @@ withpath(f, path) =
 
 const evallock = ReentrantLock()
 
+cd′(f, path, flag) = (flag && isdir(path)) ? cd(f, path) : f()
+
 handle("evalshow") do data
   @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod] = data
+    @destruct [text, line, path, mod, should_cd || false] = data
     mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        try
-          res = include_string(mod, text, path, line)
-          res ≠ nothing && display(res)
-          res
-        catch e
-          # should hide parts of the backtrace here
-          Base.display_error(stderr, e, catch_backtrace())
+        cd′(dirname(path), should_cd) do
+          try
+            res = include_string(mod, text, path, line)
+            res ≠ nothing && display(res)
+            res
+          catch e
+            # should hide parts of the backtrace here
+            Base.display_error(stderr, e, catch_backtrace())
+          end
         end
       end
     end
@@ -80,13 +84,15 @@ end
 
 handle("eval") do data
   @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod, displaymode || "editor"] = data
+    @destruct [text, line, path, mod, displaymode || "editor", should_cd || false] = data
     mod = getmodule′(mod)
 
     lock(evallock)
     result = hideprompt() do
       withpath(path) do
-        @errs include_string(mod, text, path, line)
+        cd′(dirname(path), should_cd) do
+          @errs include_string(mod, text, path, line)
+        end
       end
     end
     unlock(evallock)
@@ -100,7 +106,7 @@ end
 
 handle("evalall") do data
   @dynamic let Media.input = Editor()
-    @destruct [setmod = :module || nothing, path || "untitled", code] = data
+    @destruct [setmod = :module || nothing, path || "untitled", code, should_cd || false] = data
     mod = if setmod ≠ nothing
        getmodule′(setmod)
     elseif isabspath(path)
@@ -112,24 +118,26 @@ handle("evalall") do data
     lock(evallock)
     hideprompt() do
       withpath(path) do
-        result = nothing
-        try
-          result = include_string(mod, code, path)
-        catch e
-          bt = catch_backtrace()
-          ee = EvalError(e, stacktrace(bt))
-          if isREPL()
-            printstyled(stderr, "ERROR: ", color=:red)
-            Base.showerror(stderr, e, bt)
-            println(stderr)
-          else
-            render(Console(), ee)
+        cd′(path, chould_cd) do
+          result = nothing
+          try
+            result = include_string(mod, code, path)
+          catch e
+            bt = catch_backtrace()
+            ee = EvalError(e, stacktrace(bt))
+            if isREPL()
+              printstyled(stderr, "ERROR: ", color=:red)
+              Base.showerror(stderr, e, bt)
+              println(stderr)
+            else
+              render(Console(), ee)
+            end
+            @msg error(d(:msg => "Error evaluating $(basename(path))",
+                         :detail => string(ee),
+                         :dismissable => true))
           end
-          @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => string(ee),
-                       :dismissable => true))
+          display(JunoEditorInput(result))
         end
-        display(JunoEditorInput(result))
       end
     end
     unlock(evallock)
