@@ -62,10 +62,28 @@ using Base.Docs
 function completionsummary(mod, c)
   ct = REPLCompletions.completion_text(c)
   b = Docs.Binding(mod, Symbol(ct))
-  CodeTools.description(b)
+  description(b)
 end
 
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
+  b = Docs.Binding(mod, Symbol(c.func))
+  description(b, Base.tuple_type_tail(c.method.sig))
+end
+
+using Markdown
+function description(binding, sig = Union{})
+  docs = Docs.doc(binding, sig)
+  docs isa Markdown.MD || return
+  md = CodeTools.flatten(docs).content
+  for part in md
+    if part isa Markdown.Paragraph
+      desc = Markdown.plain(part)
+      occursin("No documentation found.", desc) && return
+      return strlimit(desc, 100)
+    end
+  end
+end
+
 function completionmodule(mod, c)
   c isa REPLCompletions.ModuleCompletion ? string(c.parent) : string(mod)
 end
