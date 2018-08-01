@@ -182,4 +182,6 @@ handle("cb") do id, result
   delete!(callbacks, id)
 end
 
+handle(() -> nothing, "junorc")
+
 isconnected() = sock ≠ nothing && isopen(sock)

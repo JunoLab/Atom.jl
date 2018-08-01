@@ -156,15 +156,19 @@ function reset_repl_history()
 end
 
 # make sure DisplayHook() is higher than REPLDisplay() in the display stack
-@init begin
-  atreplinit((i) -> begin
+function fixdisplayorder()
+  if isREPL()
     Media.unsetdisplay(Editor(), Any)
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(JunoDisplay())
-  end)
+  end
+end
 
+@init begin
   Atom.handle("connected") do
     reset_repl_history()
+    fixdisplayorder()
+    nothing
   end
 end
