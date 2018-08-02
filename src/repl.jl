@@ -166,6 +166,8 @@ function fixdisplayorder()
 end
 
 @init begin
+  atreplinit(i -> fixdisplayorder())
+
   Atom.handle("connected") do
     reset_repl_history()
     fixdisplayorder()
