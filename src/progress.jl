@@ -62,7 +62,8 @@ function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
       msg("progress", "message", id, kwargs[:message])
     end
   else
-    if Logging.shouldlog(j.previous_logger, level, _module, group, id)
+    if Logging.min_enabled_level(j.previous_logger) <= level &&
+         Logging.shouldlog(j.previous_logger, level, _module, group, id)
       Logging.handle_message(j.previous_logger, level, message, _module,
                              group, id, file, line; kwargs...)
     end
@@ -73,5 +74,5 @@ Logging.shouldlog(::JunoProgressLogger, level, _module, group, id) = true
 
 Logging.catch_exceptions(::JunoProgressLogger) = true
 
-Logging.min_enabled_level(::JunoProgressLogger) = Logging.BelowMinLevel
+Logging.min_enabled_level(::JunoProgressLogger) = Logging.LogLevel(-1)
 end

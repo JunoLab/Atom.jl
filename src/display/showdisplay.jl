@@ -46,10 +46,13 @@ function displayinplotpane(x)
   end
 end
 
-
 function Base.display(d::JunoDisplay, x)
-  displayinplotpane(x)
-  display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
+  if displayinplotpane(x)
+    show(stdout, "text/plain", x)
+    println(stdout)
+  else
+    display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
+  end
 end
 
 using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
