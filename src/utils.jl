@@ -37,7 +37,7 @@ expandpath(path) =
           occursin(joinpath("julia", "stdlib"), path) ?
             begin
               p = last(split(path, joinpath("julia", "stdlib", "")))
-              return (normpath(joinpath("stdlib", p)), normpath(joinpath(basepath(joinpath("..", "stdlib")), p)))
+              return (normpath(joinpath("stdlib", p)), path)
             end :
             (pkgpath(path), path)
 
