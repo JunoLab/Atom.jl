@@ -49,9 +49,10 @@ function displayinplotpane(x)
 end
 
 function Base.display(d::JunoDisplay, x)
+  d = last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)
-    show(stdout, "text/plain", x)
-    println(stdout)
+    # pretty sure that is better than `show(stdout, "text/plain", x); println()`
+    invoke(display, Tuple{typeof(d), typeof(MIME"text/plain"()), Any}, d, MIME"text/plain"(), x)
   else
     display(last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays)), x)
   end
