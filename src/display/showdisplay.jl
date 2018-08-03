@@ -45,6 +45,7 @@ function displayinplotpane(x)
       return true
     end
   end
+  return false
 end
 
 function Base.display(d::JunoDisplay, x)
@@ -52,7 +53,7 @@ function Base.display(d::JunoDisplay, x)
     show(stdout, "text/plain", x)
     println(stdout)
   else
-    display(last(filter(x -> x isa REPL.REPLDisplay, Base.Multimedia.displays)), x)
+    display(last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays)), x)
   end
 end
 
