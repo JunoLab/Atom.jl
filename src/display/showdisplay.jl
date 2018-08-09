@@ -48,17 +48,19 @@ function displayinplotpane(x)
   return false
 end
 
+using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
+
 function Base.display(d::JunoDisplay, x)
   d = last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)
-    # pretty sure that is better than `show(stdout, "text/plain", x); println()`
+    # we shouldn't need to do this, but Plots.jl has a ugly overload on display(::REPLDisplay, ::MIME"text/plain" ::Plot)
+    # which would otherwise be used
     invoke(display, Tuple{typeof(d), typeof(MIME"text/plain"()), Any}, d, MIME"text/plain"(), x)
+    # throw(MethodError(display, "nope"))
   else
-    display(last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays)), x)
+    throw(MethodError(display, "nope"))
   end
 end
-
-using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
 # input from in-editor eval
 function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)

@@ -161,8 +161,17 @@ function fixdisplayorder()
     Media.unsetdisplay(Editor(), Any)
     Base.Multimedia.popdisplay(Media.DisplayHook())
     Base.Multimedia.pushdisplay(Media.DisplayHook())
-    Base.Multimedia.pushdisplay(JunoDisplay())
+    fixjunodisplays()
   end
+end
+
+function fixjunodisplays()
+  for d in reverse(Base.Multimedia.displays)
+    if d isa JunoDisplay
+      popdisplay(JunoDisplay())
+    end
+  end
+  pushdisplay(JunoDisplay())
 end
 
 @init begin
