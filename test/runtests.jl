@@ -1,5 +1,5 @@
 using Atom
-using Base.Test
+using Test
 
 include("./eval.jl")
 include("./utils.jl")
