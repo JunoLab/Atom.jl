@@ -120,6 +120,7 @@ function changeREPLmodule(mod)
         try
           lock($evallock)
           $msg("working")
+          $fixjunodisplays()
           # this is slow:
           Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
             global ans = Core.eval($mod, Meta.parse($line))
@@ -166,12 +167,14 @@ function fixdisplayorder()
 end
 
 function fixjunodisplays()
-  for d in reverse(Base.Multimedia.displays)
-    if d isa JunoDisplay
-      popdisplay(JunoDisplay())
+  if isREPL()
+    for d in reverse(Base.Multimedia.displays)
+      if d isa JunoDisplay
+        popdisplay(JunoDisplay())
+      end
     end
+    pushdisplay(JunoDisplay())
   end
-  pushdisplay(JunoDisplay())
 end
 
 @init begin

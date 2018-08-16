@@ -49,6 +49,7 @@ withpath(f, path) =
 const evallock = ReentrantLock()
 
 handle("evalshow") do data
+  fixjunodisplays()
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
     mod = getmodule′(mod)
@@ -79,6 +80,7 @@ handle("evalshow") do data
 end
 
 handle("eval") do data
+  fixjunodisplays()
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod, displaymode || "editor"] = data
     mod = getmodule′(mod)
@@ -99,6 +101,7 @@ handle("eval") do data
 end
 
 handle("evalall") do data
+  fixjunodisplays()
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
     mod = if setmod ≠ nothing
@@ -139,6 +142,7 @@ end
 
 
 handle("evalrepl") do data
+  fixjunodisplays()
   @dynamic let Media.input = Console()
     @destruct [mode || nothing, code, mod || "Main"] = data
     if mode == "shell"
