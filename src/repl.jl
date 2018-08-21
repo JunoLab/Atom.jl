@@ -83,13 +83,16 @@ function hideprompt(f)
 
   # restore prompt
   mistate = Base.active_repl.mistate
-  if applicable(REPL.LineEdit.write_prompt, stdout, mistate.current_mode)
-    REPL.LineEdit.write_prompt(stdout, mistate.current_mode)
-  else # for history prompts
-    changeREPLprompt(current_prompt)
+  mode = mistate.current_mode
+  if applicable(REPL.LineEdit.write_prompt, stdout, mode)
+    REPL.LineEdit.write_prompt(stdout, mode)
+  elseif mode isa REPL.LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
+    REPL.LineEdit.write_prompt(stdout, mode.parent_prompt)
+  else
+    printstyled(stdout, current_prompt, color=:green)
   end
   # Restore input buffer:
-  print(String(take!(copy(LineEdit.buffer(mistate)))))
+  print(stdout, String(take!(copy(LineEdit.buffer(mistate)))))
   r
 end
 
