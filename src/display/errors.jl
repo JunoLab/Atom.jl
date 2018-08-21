@@ -34,7 +34,7 @@ function cliptrace(trace::StackTrace)
                            frame.file == Symbol(joinpath(".", "loading.jl"))) ||
                           (frame.func == :render′ &&
                            endswith(string(frame.file), joinpath("display", "errors.jl"))), trace)
-  trace[1:(ind==0 ? end : ind-1)]
+  trace[1:(ind == nothing ? end : ind - 1)]
 end
 
 highlights(trace::StackTrace) =
