@@ -111,6 +111,15 @@ function changeREPLprompt(prompt; color = :green)
   nothing
 end
 
+# basically the same as Base's `display_error`, just with different frames removed
+function display_error(io, err, st)
+  ind = findfirst(frame -> frame.file == Symbol(@__FILE__), st)
+  st = st[1:(ind == nothing ? end : ind - 2)]
+  printstyled(io, "ERROR: "; bold=true, color=Base.error_color())
+  showerror(IOContext(io, :limit => true), err, st)
+  println(io)
+end
+
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
 
@@ -129,6 +138,10 @@ function changeREPLmodule(mod)
             global ans = Core.eval($mod, Meta.parse($line))
           end
           ans
+        catch err
+          # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
+          # seems to work just fine.
+          $display_error(stderr, err, stacktrace(catch_backtrace()))
         finally
           unlock($evallock)
           $msg("doneWorking")
