@@ -21,8 +21,7 @@ Possible keyword arguments to logging messages consumed by this logger are:
     - `progress > 1 || progress == "done"`: destroy progress bar
   - `right_text`: Shown instead of a approximation of remaining time.
   - `message`: Shown in a tooltip.
-  - `_id`: Should be set to a symbol for updates to a progress bar if they are
-    not occuring on the same line.
+  - `_id`: The progress bars' ID. Should be set (to a symbol or string) in most cases.
 """
 struct JunoProgressLogger <: AbstractLogger
   previous_logger
@@ -62,7 +61,7 @@ function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
       msg("progress", "message", id, kwargs[:message])
     end
   else
-    if (Logging.min_enabled_level(j.previous_logger) <= level || Base.CoreLogging.env_override_minlevel(group, _module)) &&
+    if (Logging.min_enabled_level(j.previous_logger) <= Logging.LogLevel(level) || Base.CoreLogging.env_override_minlevel(group, _module)) &&
         Logging.shouldlog(j.previous_logger, level, _module, group, id)
       Logging.handle_message(j.previous_logger, level, message, _module,
                              group, id, file, line; kwargs...)
