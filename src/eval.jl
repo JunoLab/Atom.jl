@@ -132,7 +132,9 @@ handle("evalall") do data
                        :detail => string(ee),
                        :dismissable => true))
         end
-        display(JunoEditorInput(result))
+        Base.invokelatest() do
+          display(JunoEditorInput(result))
+        end
       end
     end
     unlock(evallock)
