@@ -34,7 +34,15 @@ showmethod(T) = which(show, (IO, T))
 
 @render Inline x begin
   fields = fieldnames(typeof(x))
-  if showmethod(typeof(x)) ≠ showmethod(Any)
+  if showable(MIME"application/juno+inline"(), x)
+    io = IOBuffer()
+    x′ = show(IOContext(io, :limit => true), MIME"application/juno+inline"(), x)
+    if !(x′ isa Nothing)
+      defaultrepr(x′, true)
+    else
+      Text(String(take!(io)))
+    end
+  elseif showmethod(typeof(x)) ≠ showmethod(Any)
     Text(io -> show(IOContext(io, :limit => true), MIME"text/plain"(), x))
   else
     defaultrepr(x, true)
