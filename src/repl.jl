@@ -120,6 +120,27 @@ function display_error(io, err, st)
   println(io)
 end
 
+function evalrepl(mod, line)
+  try
+    lock(evallock)
+    msg("working")
+    fixjunodisplays()
+    # this is slow:
+    Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+      global ans = Core.eval(mod, Meta.parse(line))
+    end
+    ans
+  catch err
+    # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
+    # seems to work just fine.
+    display_error(stderr, err, stacktrace(catch_backtrace()))
+  finally
+    unlock(evallock)
+    msg("doneWorking")
+    @async msg("updateWorkspace")
+  end
+end
+
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
 
@@ -129,24 +150,7 @@ function changeREPLmodule(mod)
   main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
     if !isempty(line)
       quote
-        try
-          lock($evallock)
-          $msg("working")
-          $fixjunodisplays()
-          # this is slow:
-          Base.CoreLogging.with_logger($(Atom.JunoProgressLogger)(Base.CoreLogging.current_logger())) do
-            global ans = Core.eval($mod, Meta.parse($line))
-          end
-          ans
-        catch err
-          # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
-          # seems to work just fine.
-          $display_error(stderr, err, stacktrace(catch_backtrace()))
-        finally
-          unlock($evallock)
-          $msg("doneWorking")
-          @async $msg("updateWorkspace")
-        end
+        $evalrepl($mod, $line)
       end
     end
   end
