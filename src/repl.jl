@@ -113,12 +113,15 @@ end
 
 # basically the same as Base's `display_error`, just with different frames removed
 function display_error(io, err, st)
-  ind = findfirst(frame -> frame.file == Symbol(@__FILE__), st)
+  ind = findfirst(frame -> frame.file == Symbol(@__FILE__) && frame.func == :repleval, st)
   st = st[1:(ind == nothing ? end : ind - 2)]
   printstyled(io, "ERROR: "; bold=true, color=Base.error_color())
   showerror(IOContext(io, :limit => true), err, st)
   println(io)
 end
+
+# don't inline this so we can find it in the stacktrace
+@noinline repleval(mod, line) = Core.eval(mod, Meta.parse(line))
 
 function evalrepl(mod, line)
   try
@@ -127,7 +130,7 @@ function evalrepl(mod, line)
     fixjunodisplays()
     # this is slow:
     Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-      global ans = Core.eval(mod, Meta.parse(line))
+      global ans = repleval(mod, line)
     end
     ans
   catch err
