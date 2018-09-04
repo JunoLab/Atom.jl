@@ -31,8 +31,8 @@ function displayinplotpane(x)
   end
   # xml should be in a webview as well because of the possibility of embedded JS
   if showable("image/svg+xml", x)
-    render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
-    # @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
+    # render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
+    @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
     return true
   end
 
