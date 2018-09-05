@@ -120,22 +120,44 @@ function display_error(io, err, st)
   println(io)
 end
 
+function display_parse_error(io, err::Meta.ParseError)
+  printstyled(io, "ERROR: "; bold=true, color=Base.error_color())
+  printstyled(io, "syntax: ", err.msg; color=Base.error_color())
+  println(io)
+end
+
 # don't inline this so we can find it in the stacktrace
-@noinline repleval(mod, line) = Core.eval(mod, Meta.parse(line))
+@noinline repleval(mod, line) = Core.eval(mod, line)
 
 function evalrepl(mod, line)
+  global ans
   try
     lock(evallock)
     msg("working")
     fixjunodisplays()
     # this is slow:
+    errored = false
     Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-      global ans = repleval(mod, line)
+      try
+         line = Meta.parse(line)
+      catch err
+        errored = true
+        display_parse_error(stderr, err)
+      end
+      errored && return nothing
+      try
+        ans = repleval(mod, line)
+      catch err
+        # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
+        # seems to work just fine.
+
+        errored = true
+        display_error(stderr, err, stacktrace(catch_backtrace()))
+      end
     end
-    ans
+    errored ? nothing : ans
   catch err
-    # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
-    # seems to work just fine.
+    # This is for internal errors only.
     display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
     unlock(evallock)
