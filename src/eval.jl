@@ -216,7 +216,7 @@ end
 function gotoitem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
-  sig = sig[1:something(findlast(isequal(')'), sig), 0)]
+  sig = replace(sig, r" in .* at .*$" => "")
   Dict(:text => sig,
        :file => link.file,
        :line => link.line - 1,

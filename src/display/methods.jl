@@ -17,12 +17,11 @@ methodarray(x) = methodarray(methods(x))
 interpose(xs, y) = map(i -> iseven(i) ? xs[i÷2] : y, 2:2length(xs))
 
 function view(m::Method)
+  str = sprint(show, "text/html", m)
+  str = replace(str, r" in .* at .*$" => "")
+  str = string("<span>", str, "</span>")
   tv, decls, file, line = Base.arg_decl_parts(m)
-  params = [span(c(x, isempty(T) ? "" : "::", strong(stripparams(T)))) for (x, T) in decls[2:end]]
-  params = interpose(params, ", ")
-  span(c(string(m.name),
-         "(", params..., ")")),
-         file == :null ? "not found" : Atom.baselink(string(file), line)
+  HTML(str), file == :null ? "not found" : Atom.baselink(string(file), line)
 end
 
 @render i::Inline m::Method begin
