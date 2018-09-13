@@ -35,6 +35,10 @@ handle("cancelCallback") do args...
   # message" warnings.
 end
 
+handle("connected") do args...
+  # fallback
+end
+
 handle("clear-workspace") do
   # has to be run by Main otherwise it throws an error
   eval(Main, :(workspace()))
