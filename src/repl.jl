@@ -226,8 +226,10 @@ end
   atreplinit(i -> fixdisplayorder())
 
   Atom.handle("connected") do
-    reset_repl_history()
-    fixdisplayorder()
+    if isREPL()
+      reset_repl_history()
+      fixdisplayorder()
+    end
     nothing
   end
 end
