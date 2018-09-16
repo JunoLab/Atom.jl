@@ -212,14 +212,12 @@ function fixdisplayorder()
 end
 
 function fixjunodisplays()
-  if isREPL()
-    for d in reverse(Base.Multimedia.displays)
-      if d isa JunoDisplay
-        popdisplay(JunoDisplay())
-      end
+  for d in reverse(Base.Multimedia.displays)
+    if d isa JunoDisplay
+      popdisplay(JunoDisplay())
     end
-    pushdisplay(JunoDisplay())
   end
+  pushdisplay(JunoDisplay())
 end
 
 @init begin
