@@ -51,7 +51,7 @@ end
 using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
 function Base.display(d::JunoDisplay, x)
-  d = last(filter(x ->( x isa REPL.REPLDisplay), Base.Multimedia.displays))
+  d = last(filter(x -> (x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)
     # we shouldn't need to do this, but Plots.jl has a ugly overload on display(::REPLDisplay, ::MIME"text/plain" ::Plot)
     # which would otherwise be used
@@ -60,6 +60,41 @@ function Base.display(d::JunoDisplay, x)
   else
     throw(MethodError(display, "nope"))
   end
+end
+
+function customdisplaystack()
+  old = copy(Base.Multimedia.displays)
+  for d in reverse(Base.Multimedia.displays)
+    if d isa REPL.REPLDisplay ||
+       d isa TextDisplay ||
+       d isa JunoDisplay #||
+       # d isa Media.DisplayHook
+      popdisplay(d)
+    end
+  end
+  old
+end
+
+function restoredisplaystack(old)
+  empty!(Base.Multimedia.displays)
+  foreach(pushdisplay, old)
+end
+
+function displayandrender(res)
+  if !displayinplotpane(res)
+    old = customdisplaystack()
+    try
+      display(res)
+    catch e
+    end
+    restoredisplaystack(old)
+  end
+
+  if hastreeview(res)
+    res = generateTreeView(res)
+  end
+
+  Juno.render(Juno.Editor(), res)
 end
 
 # input from in-editor eval

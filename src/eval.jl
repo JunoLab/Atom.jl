@@ -95,7 +95,7 @@ handle("eval") do data
 
     Base.invokelatest() do
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display(JunoEditorInput(result))
+      displayandrender(result)
     end
   end
 end
@@ -133,7 +133,7 @@ handle("evalall") do data
                        :dismissable => true))
         end
         Base.invokelatest() do
-          display(JunoEditorInput(result))
+          displayandrender(result)
         end
       end
     end
