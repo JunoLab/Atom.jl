@@ -129,11 +129,14 @@ end
 # don't inline this so we can find it in the stacktrace
 @noinline repleval(mod, line) = Core.eval(mod, line)
 
+const inREPL = Ref{Bool}(false)
+
 function evalrepl(mod, line)
   global ans
   try
     lock(evallock)
     msg("working")
+    inREPL[] = true
     fixjunodisplays()
     # this is slow:
     errored = false
@@ -160,6 +163,7 @@ function evalrepl(mod, line)
     # This is for internal errors only.
     display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
+    inREPL[] = false
     unlock(evallock)
     msg("doneWorking")
     @async msg("updateWorkspace")

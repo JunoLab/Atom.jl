@@ -55,7 +55,7 @@ function Base.display(d::JunoDisplay, x)
   if displayinplotpane(x)
     # we shouldn't need to do this, but Plots.jl has a ugly overload on display(::REPLDisplay, ::MIME"text/plain" ::Plot)
     # which would otherwise be used
-    invoke(display, Tuple{typeof(d), typeof(MIME"text/plain"()), Any}, d, MIME"text/plain"(), x)
+    inREPL[] && invoke(display, Tuple{typeof(d), typeof(MIME"text/plain"()), Any}, d, MIME"text/plain"(), x)
     # throw(MethodError(display, "nope"))
   else
     throw(MethodError(display, "nope"))
