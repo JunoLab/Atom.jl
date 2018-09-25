@@ -70,9 +70,17 @@ current_prompt = juliaprompt
 function hideprompt(f)
   isREPL() || return f()
 
+  mistate = Base.active_repl.mistate
+  mode = mistate.current_mode
+
+  buf = String(take!(copy(LineEdit.buffer(mistate))))
+
+  # clear input buffer
+  truncate(LineEdit.buffer(mistate), 0)
+  LineEdit.refresh_multi_line(mistate)
+
   print(stdout, "\e[1K\r")
-  flush(stdout)
-  flush(stderr)
+
   r = f()
   flush(stdout)
   flush(stderr)
@@ -82,17 +90,17 @@ function hideprompt(f)
   pos[1] != 0 && println()
 
   # restore prompt
-  mistate = Base.active_repl.mistate
-  mode = mistate.current_mode
-  if applicable(REPL.LineEdit.write_prompt, stdout, mode)
-    REPL.LineEdit.write_prompt(stdout, mode)
-  elseif mode isa REPL.LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
-    REPL.LineEdit.write_prompt(stdout, mode.parent_prompt)
+  if applicable(LineEdit.write_prompt, stdout, mode)
+    LineEdit.write_prompt(stdout, mode)
+  elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
+    LineEdit.write_prompt(stdout, mode.parent_prompt)
   else
     printstyled(stdout, current_prompt, color=:green)
   end
-  # Restore input buffer:
-  print(stdout, String(take!(copy(LineEdit.buffer(mistate)))))
+
+  # restore input buffer
+  LineEdit.edit_insert(LineEdit.buffer(mistate), buf)
+  LineEdit.refresh_multi_line(mistate)
   r
 end
 
