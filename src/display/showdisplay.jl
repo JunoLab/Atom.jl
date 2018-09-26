@@ -19,30 +19,44 @@ const plain_mimes = [
 function displayinplotpane(x)
   PlotPaneEnabled[] || return false
 
-  io = IOBuffer()
-
   # Juno-specific display always takes precedence
   if showable("application/juno+plotpane", x)
-    show(plotpane_io_ctx(io), "application/juno+plotpane", x)
-    str = String(take!(io))
-    startswith(str, "data:") || (str = string("data:text/html,", str))
-    @msg ploturl(str)
-    return true
+    try
+      io = IOBuffer()
+      show(plotpane_io_ctx(io), "application/juno+plotpane", x)
+      str = String(take!(io))
+      startswith(str, "data:") || (str = string("data:text/html,", str))
+      @msg ploturl(str)
+      return true
+    catch err
+      err isa MethodError && err.f == Base.show || rethrow(err)
+    end
   end
   # xml should be in a webview as well because of the possibility of embedded JS
   if showable("image/svg+xml", x)
-    # render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
-    @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
-    return true
+    try
+      io = IOBuffer()
+      # render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
+      @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
+      return true
+    catch err
+      err isa MethodError && err.f == Base.show || rethrow(err)
+    end
   end
 
   # images
   for mime in plain_mimes
     if showable(mime, x)
-      suffix = istextmime(mime) ? "," : ";base64,"
-      str = string("<img src=\"data:", mime, suffix, stringmime(mime, x, context=plotpane_io_ctx(io)), "\">")
-      render(PlotPane(), HTML(str))
-      return true
+      try
+        io = IOBuffer()
+        suffix = istextmime(mime) ? "," : ";base64,"
+        str = stringmime(mime, x, context=plotpane_io_ctx(io))
+        str = string("<img src=\"data:", mime, suffix, str, "\">")
+        render(PlotPane(), HTML(str))
+        return true
+      catch err
+        err isa MethodError && err.f == Base.show || rethrow(err)
+      end
     end
   end
   return false
