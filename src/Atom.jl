@@ -2,11 +2,27 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, MacroTools, Reexport, Media, Base.StackTraces
+using Juno, Lazy, JSON, MacroTools, Reexport, Media, Base.StackTraces, Requires
 
 import Media: @dynamic
 
-@init Juno.activate()
+function __init__()
+  Juno.activate()
+
+  atreplinit(i -> fixdisplayorder())
+
+  Atom.handle("connected") do
+    if isREPL()
+      reset_repl_history()
+      fixdisplayorder()
+    end
+    nothing
+  end
+
+  @require WebIO="0f1e0344-ec1d-5b48-a673-e5cf874b6c29" begin
+    include("display/webio.jl")
+  end
+end
 
 include("comm.jl")
 include("display/display.jl")

@@ -231,15 +231,3 @@ function fixjunodisplays()
   end
   pushdisplay(JunoDisplay())
 end
-
-@init begin
-  atreplinit(i -> fixdisplayorder())
-
-  Atom.handle("connected") do
-    if isREPL()
-      reset_repl_history()
-      fixdisplayorder()
-    end
-    nothing
-  end
-end
