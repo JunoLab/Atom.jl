@@ -14,3 +14,5 @@ ASTInterpreter2
 WebIO
 Mux
 Requires
+HTTP
+WebSockets
