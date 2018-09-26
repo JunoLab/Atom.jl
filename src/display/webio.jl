@@ -1,67 +1,71 @@
 # TODO: this should be more robust, ideally.
-using Logging, WebIO, Mux
+using Logging
+import WebIO, HTTP, WebSockets
 
 const pages = Dict{String,Any}()
-const serving = Ref{Bool}(false)
+const server = Ref{Any}()
 const port = Ref{Int}(9000)
 
-function routepages(req)
-    return pages[req[:params][:id]]
+function isrunning(server)
+    isassigned(server) && !istaskdone(server[].serve_task)
 end
 
-function create_silent_socket(req)
-    # hide errors
-    try
-        WebIO.create_socket(req)
-    catch err
-        @debug err
-    end
+function routepages(req)
+    target = req.target[2:end]
+
+    haskey(pages, target) || return missing
+
+    io = IOBuffer()
+    webio_script = WebIO.wio_asseturl("/webio/dist/bundle.js")
+    ws_script = WebIO.wio_asseturl("/providers/websocket_connection.js")
+    print(io, """
+        <!doctype html>
+        <html>
+        <head>
+        <meta charset="UTF-8">
+        <script>var websocket_url = 'localhost:$(port[])/webio_websocket'</script>
+        <script src=$(repr(webio_script))></script>
+        <script src=$(repr(ws_script))></script>
+        </head>
+        <body>
+    """)
+    WebIO.tohtml(io, pages[target])
+    print(io, """
+        </body>
+        </html>
+    """)
+
+    return HTTP.Response(
+        200,
+        ["Content-Type" => "text/html"],
+        body = String(take!(io))
+    )
 end
 
 function Base.show(io::IO, ::MIME"application/juno+plotpane", n::Union{WebIO.Node, WebIO.Scope, WebIO.AbstractWidget})
     global pages, server
     id = rand(UInt128)
-    pages[string(id)] = n
+    pages[string(id)] = WebIO.render(n)
 
-    if !serving[]
-        setup_server()
+    if !isrunning(server)
+        server[] = setup_server()
     end
-    println("http://localhost:$(port[])/$(id)")
+
     print(io, "<meta http-equiv=\"refresh\" content=\"0; url=http://localhost:$(port[])/$(id)\"/>")
 end
 
 function setup_server()
     port[] = rand(8000:9000)
 
-    # hide http logging messages
-    with_logger(NullLogger()) do
-        @async begin
-            http = Mux.App(Mux.mux(
-                Mux.defaults,
-                Mux.route("/:id", routepages),
-                Mux.notfound()
-            ))
-
-            websock = Mux.App(Mux.mux(
-                Mux.wdefaults,
-                Mux.route("/webio-socket", create_silent_socket),
-                Mux.wclose,
-                Mux.notfound(),
-            ))
-
-            for i = 1:100
-                iserr = false
-                try
-                    Mux.serve(http, websock, port[])
-                catch err
-                    iserr = true
-                    port[] = rand(8000:9000)
-                end
-                iserr || break
-            end
-            serving[] = true
-        end
+    server = nothing
+    # STFU
+    with_logger(Logging.NullLogger()) do
+        server = WebIO.WebIOServer(
+            routepages,
+            http_port = port[],
+            singleton = false
+        )
     end
-end
 
-WebIO.setup_provider(::Val{:juno}) = setup_server()
+    return server
+end
