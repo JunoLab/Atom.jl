@@ -11,7 +11,7 @@ Reexport
 MacroTools
 DocSeeker
 ASTInterpreter2
-WebIO
+WebIO 0.4.0
 Requires
 HTTP
-WebSockets
+WebSockets 1.0.3

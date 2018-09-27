@@ -78,13 +78,9 @@ end
 
 function customdisplaystack()
   old = copy(Base.Multimedia.displays)
-  for d in reverse(Base.Multimedia.displays)
-    if d isa REPL.REPLDisplay ||
-       d isa TextDisplay ||
-       d isa JunoDisplay #||
-       # d isa Media.DisplayHook
-      popdisplay(d)
-    end
+  filter!(Base.Multimedia.displays) do d
+    !(d isa REPL.REPLDisplay || d isa TextDisplay ||
+      d isa JunoDisplay || d isa Media.DisplayHook)
   end
   old
 end

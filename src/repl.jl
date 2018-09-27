@@ -217,8 +217,6 @@ end
 function fixdisplayorder()
   if isREPL()
     Media.unsetdisplay(Editor(), Any)
-    Base.Multimedia.popdisplay(Media.DisplayHook())
-    Base.Multimedia.pushdisplay(Media.DisplayHook())
     fixjunodisplays()
   end
 end
