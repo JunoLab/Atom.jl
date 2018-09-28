@@ -56,14 +56,16 @@ handle("evalshow") do data
 
     lock(evallock)
     result = hideprompt() do
-      withpath(path) do
-        try
-          res = include_string(mod, text, path, line)
-          res ≠ nothing && display(res)
-          res
-        catch e
-          # should hide parts of the backtrace here
-          Base.display_error(stderr, e, catch_backtrace())
+      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+        withpath(path) do
+          try
+            res = include_string(mod, text, path, line)
+            res ≠ nothing && display(res)
+            res
+          catch e
+            # should hide parts of the backtrace here
+            Base.display_error(stderr, e, catch_backtrace())
+          end
         end
       end
     end
@@ -87,8 +89,10 @@ handle("eval") do data
 
     lock(evallock)
     result = hideprompt() do
-      withpath(path) do
-        @errs include_string(mod, text, path, line)
+      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+        withpath(path) do
+          @errs include_string(mod, text, path, line)
+        end
       end
     end
     unlock(evallock)
@@ -114,26 +118,28 @@ handle("evalall") do data
 
     lock(evallock)
     hideprompt() do
-      withpath(path) do
-        result = nothing
-        try
-          result = include_string(mod, code, path)
-        catch e
-          bt = catch_backtrace()
-          ee = EvalError(e, stacktrace(bt))
-          if isREPL()
-            printstyled(stderr, "ERROR: ", color=:red)
-            Base.showerror(stderr, e, bt)
-            println(stderr)
-          else
-            render(Console(), ee)
+      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+        withpath(path) do
+          result = nothing
+          try
+            result = include_string(mod, code, path)
+          catch e
+            bt = catch_backtrace()
+            ee = EvalError(e, stacktrace(bt))
+            if isREPL()
+              printstyled(stderr, "ERROR: ", color=:red)
+              Base.showerror(stderr, e, bt)
+              println(stderr)
+            else
+              render(Console(), ee)
+            end
+            @msg error(d(:msg => "Error evaluating $(basename(path))",
+                         :detail => string(ee),
+                         :dismissable => true))
           end
-          @msg error(d(:msg => "Error evaluating $(basename(path))",
-                       :detail => string(ee),
-                       :dismissable => true))
-        end
-        Base.invokelatest() do
-          displayandrender(result)
+          Base.invokelatest() do
+            displayandrender(result)
+          end
         end
       end
     end

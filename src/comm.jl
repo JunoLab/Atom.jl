@@ -93,12 +93,10 @@ function serve(port; kws...)
   server = listen(ip"127.0.0.1", port)
   print(stderr, "juno-msg-ready")
   global sock = accept(server)
-  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-    @async while isopen(sock)
-      @ierrs let
-        msg = JSON.parse(sock)
-        @async @ierrs handlemsg(msg...)
-      end
+  @async while isopen(sock)
+    @ierrs let
+      msg = JSON.parse(sock)
+      @async @ierrs handlemsg(msg...)
     end
   end
   initialise(; kws...)
@@ -106,12 +104,10 @@ end
 
 function connect(host, port; kws...)
   global sock = Sockets.connect(host, port)
-  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-    @async while isopen(sock)
-      @ierrs let
-        msg = JSON.parse(sock)
-        @async @ierrs handlemsg(msg...)
-      end
+  @async while isopen(sock)
+    @ierrs let
+      msg = JSON.parse(sock)
+      @async @ierrs handlemsg(msg...)
     end
   end
   initialise(; kws...)
