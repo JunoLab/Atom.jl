@@ -1,9 +1,10 @@
 using REPL
-using REPL: LineEdit
+using REPL.LineEdit
 # FIXME: Should refactor all REPL related functions into a struct that keeps track
 #        of global state (terminal size, current prompt, current module etc).
 # FIXME: Find a way to reprint what's currently entered in the REPL after changing
 #        the module (or delete it in the buffer).
+
 
 function get_main_mode()
   mode = Base.active_repl.interface.modes[1]
