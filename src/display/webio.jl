@@ -10,6 +10,14 @@ function isrunning(server)
     isassigned(server) && !istaskdone(server[].serve_task)
 end
 
+# Be ready for the deprecation of tohtml :P
+# once the no unsafe-script lands
+if isdefined(WebIO, :tohtml)
+    const tohtml = WebIO.tohtml
+else
+    tohtml(io, app) = show(io, MIME"text/html"(), app)
+end
+
 function routepages(req)
     target = req.target[2:end]
 
@@ -29,7 +37,7 @@ function routepages(req)
         </head>
         <body>
     """)
-    WebIO.tohtml(io, pages[target])
+    tohtml(io, pages[target])
     print(io, """
         </body>
         </html>
