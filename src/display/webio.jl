@@ -31,7 +31,7 @@ function routepages(req)
         <html>
         <head>
         <meta charset="UTF-8">
-        <script>var websocket_url = 'localhost:$(port[])/webio_websocket'</script>
+        <script>var websocket_url = 'ws://localhost:$(port[])/webio_websocket'</script>
         <script src=$(repr(webio_script))></script>
         <script src=$(repr(ws_script))></script>
         </head>
