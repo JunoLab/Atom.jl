@@ -2,10 +2,6 @@ using REPL, Base64
 
 struct JunoDisplay <: AbstractDisplay end
 
-struct JunoEditorInput
-  x::Any
-end
-
 plotpane_io_ctx(io::IO) = IOContext(io, :juno_plotsize => plotsize(), :juno_colors => syntaxcolors())
 
 const plain_mimes = [
@@ -64,6 +60,7 @@ end
 
 using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
+# called in user code and in REPL
 function Base.display(d::JunoDisplay, x)
   d = last(filter(x -> (x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)
@@ -76,20 +73,7 @@ function Base.display(d::JunoDisplay, x)
   end
 end
 
-function customdisplaystack()
-  old = copy(Base.Multimedia.displays)
-  filter!(Base.Multimedia.displays) do d
-    !(d isa REPL.REPLDisplay || d isa TextDisplay ||
-      d isa JunoDisplay || d isa Media.DisplayHook)
-  end
-  old
-end
-
-function restoredisplaystack(old)
-  empty!(Base.Multimedia.displays)
-  foreach(pushdisplay, old)
-end
-
+# called when displaying results in the editor
 function displayandrender(res)
   if !displayinplotpane(res)
     old = customdisplaystack()
@@ -107,17 +91,18 @@ function displayandrender(res)
   Juno.render(Juno.Editor(), res)
 end
 
-# input from in-editor eval
-function Base.display(d::JunoDisplay, wrapper::JunoEditorInput)
-  x = wrapper.x
-  displayinplotpane(x)
-
-  # TreeViews.jl compat
-  if hastreeview(x)
-    x = generateTreeView(x)
+function customdisplaystack()
+  old = copy(Base.Multimedia.displays)
+  filter!(Base.Multimedia.displays) do d
+    !(d isa REPL.REPLDisplay || d isa TextDisplay ||
+      d isa JunoDisplay || d isa Media.DisplayHook)
   end
+  old
+end
 
-  Juno.render(Juno.Editor(), x)
+function restoredisplaystack(old)
+  empty!(Base.Multimedia.displays)
+  foreach(pushdisplay, old)
 end
 
 function best_treelabel(x)
