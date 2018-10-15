@@ -30,6 +30,7 @@ render(::PlotPane, x) =
 end
 
 include("showdisplay.jl")
+include("tables.jl")
 include("base.jl")
 include("utils.jl")
 include("view.jl")
