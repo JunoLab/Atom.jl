@@ -5,7 +5,7 @@ using ..Atom
 function showtable(x)
     w = _showtable(x)
     str = string("data:text/html,", sprint(io -> show(io, "application/juno+plotpane", w)))
-    Atom.msg("jlpane", "asd", Dict(:url=>str, :title=>"Table Viewer"))
+    Atom.msg("jlpane", "asd", Dict(:url=>str, :title=>"Table Viewer", :devtools => true))
     nothing
 end
 
@@ -21,7 +21,9 @@ function _showtable(x)
         :colHeaders => names,
         :manualColumnResize => true,
         :manualRowResize => true,
-        :filters => true
+        :filters => true,
+        :minSpareRows => 30,
+        :columnSorting => true,
     )
 
     handler = @js function (Handsontable)
