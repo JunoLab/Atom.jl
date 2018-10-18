@@ -1,6 +1,7 @@
 module TableViewer
 using Tables, WebIO, JSExpr
 using ..Atom
+using Dates
 
 function showtable(x)
     w = _showtable(x)
@@ -12,25 +13,34 @@ end
 function _showtable(x)
     w = Scope(imports=["https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js",
                        "https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css",
-                       "https://unpkg.com/ag-grid-community/dist/styles/ag-theme-balham.css",])
+                       "https://unpkg.com/ag-grid-community/dist/styles/ag-theme-balham-dark.css",])
 
     schema = Tables.schema(x)
     names = schema.names
+    types = schema.types
 
-    coldefs = [(headerName = n, field = n) for n in names]
-
+    coldefs = [(
+                    headerName = n,
+                    field = n,
+                    type = types[i] <: Union{Missing, T where T <: Number} ? "numericColumn" : nothing,
+                    filter = types[i] <: Union{Missing, T where T <: Dates.Date} ? "agDateColumnFilter" :
+                             types[i] <: Union{Missing, T where T <: Number} ? "agNumberColumnFilter" : nothing
+               ) for (i, n) in enumerate(names)]
     options = Dict(
         :rowData => rendertable(x, names),
         :columnDefs => coldefs,
         :enableSorting => true,
-        :enableFilter => true
+        :enableFilter => true,
+        :enableColResize => true,
     )
 
     handler = @js function (agGrid)
-        this.table = @new agGrid.Grid(this.dom.querySelector("#grid"), $options)
+        gridOptions = $options
+        this.table = @new agGrid.Grid(this.dom.querySelector("#grid"), gridOptions)
+        gridOptions.columnApi.autoSizeColumns($names)
     end
     onimport(w, handler)
-    w.dom = dom"div#grid.ag-theme-balham"(style=Dict(:position => "absolute",
+    w.dom = dom"div#grid.ag-theme-balham-dark"(style=Dict(:position => "absolute",
                                                      :top => "0",
                                                      :left => "0",
                                                      :width => "100vw",
@@ -41,9 +51,13 @@ end
 function rendertable(x, names)
     out = []
     for row in Tables.rows(x)
-        inner = Dict{Symbol, String}()
+        inner = Dict{Symbol, Any}()
         for (i, col) in enumerate(Tables.eachcolumn(row))
-            inner[names[i]] = sprint(show, col)
+            if col isa Number
+                inner[names[i]] = col
+            else
+                inner[names[i]] = sprint(print, col)
+            end
         end
         push!(out, inner)
     end
