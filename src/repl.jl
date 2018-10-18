@@ -54,7 +54,7 @@ handle("fullpath") do uri
 end
 
 handle("validatepath") do uri
-  return isfile(fullREPLpath(uri)[1])
+  return isfile′(fullREPLpath(uri)[1])
 end
 
 juliaprompt = "julia> "

@@ -15,6 +15,14 @@ function realpath′(p)
   end
 end
 
+function isfile′(p)
+  try
+    isfile(p)
+  catch
+    false
+  end
+end
+
 function basepath(file)
   srcdir = joinpath(Sys.BINDIR,"..","..","base")
   releasedir = joinpath(Sys.BINDIR,"..","share","julia","base")
@@ -37,8 +45,8 @@ expandpath(path) =
           occursin(joinpath("julia", "stdlib"), path) ?
             begin
               p = last(split(path, joinpath("julia", "stdlib", "")))
-              return (normpath(joinpath("stdlib", p)), isfile(path) ? path :
-                                                       normpath(joinpath(basepath(joinpath("..", "stdlib")), p))) 
+              return (normpath(joinpath("stdlib", p)), isfile′(path) ? path :
+                                                       normpath(joinpath(basepath(joinpath("..", "stdlib")), p)))
             end :
             (pkgpath(path), path)
 
