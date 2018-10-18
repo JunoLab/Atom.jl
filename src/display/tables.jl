@@ -10,43 +10,40 @@ function showtable(x)
 end
 
 function _showtable(x)
-    w = Scope(imports=["https://cdn.jsdelivr.net/npm/handsontable@6.0.1/dist/handsontable.full.min.js",
-                       "https://cdn.jsdelivr.net/npm/handsontable@6.0.1/dist/handsontable.full.min.css"])
+    w = Scope(imports=["https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js",
+                       "https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css",
+                       "https://unpkg.com/ag-grid-community/dist/styles/ag-theme-balham.css",])
 
     schema = Tables.schema(x)
     names = schema.names
 
+    coldefs = [(headerName = n, field = n) for n in names]
+
     options = Dict(
-        :data => rendertable(x),
-        :colHeaders => names,
-        :manualColumnResize => true,
-        :manualRowResize => true,
-        :filters => true,
-        :minSpareRows => 30,
-        :columnSorting => true,
+        :rowData => rendertable(x, names),
+        :columnDefs => coldefs,
+        :enableSorting => true,
+        :enableFilter => true
     )
 
-    handler = @js function (Handsontable)
-        @var sizefix = document.createElement("style");
-        sizefix.textContent = """
-            .htCore td {
-                white-space:nowrap
-            }
-        """
-        this.dom.appendChild(sizefix)
-        this.hot = @new Handsontable(this.dom.getElementsByClassName("bar")[0], $options);
+    handler = @js function (agGrid)
+        this.table = @new agGrid.Grid(this.dom.querySelector("#grid"), $options)
     end
     onimport(w, handler)
-    w.dom = dom"div.foo"(dom"div.bar"())
+    w.dom = dom"div#grid.ag-theme-balham"(style=Dict(:position => "absolute",
+                                                     :top => "0",
+                                                     :left => "0",
+                                                     :width => "100vw",
+                                                     :height => "100vh"))
     w
 end
 
-function rendertable(x)
+function rendertable(x, names)
     out = []
     for row in Tables.rows(x)
-        inner = []
-        for col in Tables.eachcolumn(row)
-            push!(inner, sprint(show, col))
+        inner = Dict{Symbol, String}()
+        for (i, col) in enumerate(Tables.eachcolumn(row))
+            inner[names[i]] = sprint(show, col)
         end
         push!(out, inner)
     end
