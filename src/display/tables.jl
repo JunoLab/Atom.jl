@@ -26,16 +26,20 @@ function _showtable(x)
                     filter = types[i] <: Union{Missing, T where T <: Dates.Date} ? "agDateColumnFilter" :
                              types[i] <: Union{Missing, T where T <: Number} ? "agNumberColumnFilter" : nothing
                ) for (i, n) in enumerate(names)]
+
     options = Dict(
-        :rowData => rendertable(x, names),
+        # :rowData => rendertable(x, names),
+        :rowData => table2json(x),
         :columnDefs => coldefs,
         :enableSorting => true,
         :enableFilter => true,
         :enableColResize => true,
+        :multiSortKey => "ctrl"
     )
 
     handler = @js function (agGrid)
         gridOptions = $options
+        gridOptions.rowData = JSON.parse(gridOptions.rowData)
         this.table = @new agGrid.Grid(this.dom.querySelector("#grid"), gridOptions)
         gridOptions.columnApi.autoSizeColumns($names)
     end
@@ -47,6 +51,37 @@ function _showtable(x)
                                                      :height => "100vh"))
     w
 end
+
+using JSON
+# directly write JSON instead of allocating temporary dicts etc
+function table2json(table)
+    names = Tables.schema(table).names
+
+    nrows = length(Tables.rows(table))
+    ncols = length(names)
+
+    io = IOBuffer()
+    print(io, '[')
+    for (j, row) in enumerate(Tables.rows(table))
+        print(io, '{')
+        for (i, col) in enumerate(Tables.eachcolumn(row))
+            JSON.print(io, names[i])
+            print(io, ':')
+            if col isa Number
+                JSON.print(io, col)
+            else
+                JSON.print(io, sprint(print, col))
+            end
+            i == ncols || print(io, ',')
+        end
+        print(io, '}')
+        j == nrows || print(io, ',')
+    end
+    print(io, ']')
+
+    String(take!(io))
+end
+
 
 function rendertable(x, names)
     out = []
