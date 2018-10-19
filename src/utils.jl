@@ -33,7 +33,7 @@ fullpath(path) =
   (isuntitled(path) || isabspath(path) ? path : basepath(path)) |> realpath′
 
 function pkgpath(path)
-  m = match(r"([^/\\]+[/\\]src[/\\].*)$", path)
+  m = match(r"((?:[^/\\]+[/\\]){2}src[/\\].*)$", path)
   m == nothing ? basename(path) : m.captures[1]
 end
 
