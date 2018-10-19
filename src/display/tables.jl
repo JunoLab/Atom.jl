@@ -47,8 +47,9 @@ function _showtable(x)
     w.dom = dom"div#grid.ag-theme-balham-dark"(style=Dict(:position => "absolute",
                                                      :top => "0",
                                                      :left => "0",
-                                                     :width => "100vw",
-                                                     :height => "100vh"))
+                                                     :width => "100%",
+                                                     :height => "100%",
+                                                     :minHeight => "200px"))
     w
 end
 
@@ -62,21 +63,25 @@ function table2json(table)
 
     io = IOBuffer()
     print(io, '[')
-    for (j, row) in enumerate(Tables.rows(table))
+    for row in Tables.rows(table)
         print(io, '{')
-        for (i, col) in enumerate(Tables.eachcolumn(row))
+        i = 1
+        for col in Tables.eachcolumn(row)
             JSON.print(io, names[i])
+            i += 1
             print(io, ':')
             if col isa Number
                 JSON.print(io, col)
             else
                 JSON.print(io, sprint(print, col))
             end
-            i == ncols || print(io, ',')
+            print(io, ',')
         end
+        skip(io, -1)
         print(io, '}')
-        j == nrows || print(io, ',')
+        print(io, ',')
     end
+    skip(io, -1)
     print(io, ']')
 
     String(take!(io))
