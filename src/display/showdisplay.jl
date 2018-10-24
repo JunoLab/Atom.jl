@@ -12,14 +12,30 @@ const plain_mimes = [
   "image/gif"
 ]
 
+const plotpane_mime = "application/prs.juno.plotpane+html"
+const jlpane_mime = "application/prs.juno.jlpane"
+
 function displayinplotpane(x)
+  # allow openening a new pane in Atom
+  if showable("application/prs.juno.jlpane", x)
+    msg("jlpane", x.id, x.opts)
+    return true
+  end
+
   PlotPaneEnabled[] || return false
 
+  legcay_plotpane = false
   # Juno-specific display always takes precedence
   if showable("application/juno+plotpane", x)
+    legcay_plotpane = true
+    @warn("""
+      The \"application/juno+plotpane\" MIME type is deprecated. Please use \"$(plotpane_mime)\" instead.
+    """, maxlog=1, _id=:juno_plotpane_legacy)
+  end
+  if showable(plotpane_mime, x) || legcay_plotpane
     try
       io = IOBuffer()
-      show(plotpane_io_ctx(io), "application/juno+plotpane", x)
+      show(plotpane_io_ctx(io), legcay_plotpane ? "application/juno+plotpane" : plotpane_mime, x)
       str = String(take!(io))
       startswith(str, "data:") || (str = string("data:text/html,", str))
       @msg ploturl(str)
@@ -61,6 +77,7 @@ end
 using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
 # called in user code and in REPL
+Base.display(d::JunoDisplay, m::MIME{T}, x) where T = Base.display(d::JunoDisplay, x)
 function Base.display(d::JunoDisplay, x)
   d = last(filter(x -> (x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)
@@ -69,7 +86,7 @@ function Base.display(d::JunoDisplay, x)
     inREPL[] && invoke(display, Tuple{typeof(d), typeof(MIME"text/plain"()), Any}, d, MIME"text/plain"(), x)
     # throw(MethodError(display, "nope"))
   else
-    throw(MethodError(display, "nope"))
+    throw(MethodError(display, (x,)))
   end
 end
 
@@ -104,6 +121,15 @@ function restoredisplaystack(old)
   empty!(Base.Multimedia.displays)
   foreach(pushdisplay, old)
 end
+
+function bestlabel(f, args...)
+  return applicable(f, IOBuffer(), args..., MIME"application/juno+inline"()) ?
+          HTML(sprint(f, args..., MIME"application/juno+inline"())) :
+          applicable(f, IOBuffer(), args..., MIME"text/html"()) ?
+            HTML(sprint(f, args..., MIME"text/html"())) :
+            Text(sprint(f, args..., MIME"text/plain"()))
+end
+
 
 function best_treelabel(x)
   return applicable(treelabel, IOBuffer(), x, MIME"application/juno+inline"()) ?

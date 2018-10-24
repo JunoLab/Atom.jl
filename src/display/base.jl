@@ -32,11 +32,22 @@ getfield′(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
 
 showmethod(T) = which(show, (IO, T))
 
+const inline_mime = "application/prs.juno.inline"
+
 @render Inline x begin
   fields = fieldnames(typeof(x))
-  if showable(MIME"application/juno+inline"(), x)
+
+  legcay_inline = false
+  # Juno-specific display always takes precedence
+  if showable("application/juno+inline", x)
+    legcay_inline = true
+    @warn("""
+      The \"application/juno+inline\" MIME type is deprecated. Please use \"$(inline_mime)\" instead.
+    """, maxlog=1, _id=:juno_inline_legacy)
+  end
+  if showable(inline_mime, x) || legcay_inline
     io = IOBuffer()
-    x′ = show(IOContext(io, :limit => true, :color => true), MIME"application/juno+inline"(), x)
+    x′ = show(IOContext(io, :limit => true, :color => true), legcay_inline ? MIME"application/juno+inline"() : inline_mime, x)
     if !(x′ isa Nothing)
       defaultrepr(x′, true)
     else
