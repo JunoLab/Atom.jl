@@ -16,8 +16,8 @@ cd(dirname(@__FILE__))
     @test Atom.isuntitled("../test/utils.jl") == false
 
     @test Atom.pkgpath(@__FILE__) == "utils.jl"
-    @test Atom.pkgpath("foo/pkgname/src/foobar.jl") == "pkgname/src/foobar.jl"
-    @test Atom.pkgpath("foo\\pkgname ü\\src\\foobar.jl") == "pkgname ü\\src\\foobar.jl"
+    @test Atom.pkgpath("foo/bar/pkgname/src/foobar.jl") == "bar/pkgname/src/foobar.jl"
+    @test Atom.pkgpath("foo\\bar\\pkgname ü\\src\\foobar.jl") == "bar\\pkgname ü\\src\\foobar.jl"
 
     @test Atom.fullpath("untitled-asdj2cx3213") == "untitled-asdj2cx3213"
     @test Atom.fullpath("/test/foobar.jl") == "/test/foobar.jl"
