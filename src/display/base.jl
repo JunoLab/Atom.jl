@@ -120,7 +120,7 @@ end
   Text(sprint(io -> show(IOContext(io, :limit=>true), MIME"text/plain"(), xs)))
 end
 
-@render i::Inline d::Dict begin
+@render i::Inline d::AbstractDict begin
   j = 0
   st = Array{Atom.SubTree}(undef, 0)
   for (key, val) in d
@@ -128,7 +128,7 @@ end
     j += 1
     j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
   end
-  Tree(span(c(strong("Dict"),
+  Tree(span(c(strong(String(nameof(typeof(d)))),
             Atom.fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), st)
 end
 
