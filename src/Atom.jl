@@ -40,5 +40,6 @@ include("utils.jl")
 include("debugger/load.jl")
 
 include("profiler/profiler.jl")
+include("profiler/traceur.jl")
 
 end # module
