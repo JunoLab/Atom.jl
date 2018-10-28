@@ -125,10 +125,11 @@ handle("evalall") do data
             result = include_string(mod, code, path)
           catch e
             bt = catch_backtrace()
-            ee = EvalError(e, stacktrace(bt))
+            st = cliptrace(stacktrace(bt))
+            ee = EvalError(e, st)
             if isREPL()
-              printstyled(stderr, "ERROR: ", color=:red)
-              Base.showerror(stderr, e, bt)
+              printstyled(stderr, "ERROR: "; bold=true, color=Base.error_color())
+              Base.showerror(IOContext(stderr, :limit => true), e, st)
               println(stderr)
             else
               render(Console(), ee)
