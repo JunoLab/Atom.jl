@@ -13,11 +13,12 @@ end
 function transformwarn(w)
     meth = Traceur.method(w.call)
     file, path = expandpath(String(meth.file))
+    line = max(0, w.line - 1)
 
     return Dict(:file => file,
                 :realpath => path,
                 :description => w.message,
-                :range => [[w.line, 0], [w.line, 999]],
+                :range => [[line, 0], [line, 999]],
                 :provider => "Traceur",
                 :severity => "Warning")
 end
