@@ -174,8 +174,11 @@ function evalrepl(mod, line)
   finally
     inREPL[] = false
     unlock(evallock)
-    msg("doneWorking")
-    @async msg("updateWorkspace")
+    @async begin
+      msg("doneWorking")
+      msg("updateWorkspace")
+    end
+    nothing
   end
 end
 
