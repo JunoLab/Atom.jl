@@ -15,6 +15,8 @@ const plain_mimes = [
 const plotpane_mime = "application/prs.juno.plotpane+html"
 const jlpane_mime = "application/prs.juno.jlpane"
 
+
+
 function displayinplotpane(x)
   # allow openening a new pane in Atom
   if showable("application/prs.juno.jlpane", x)
@@ -28,9 +30,10 @@ function displayinplotpane(x)
   # Juno-specific display always takes precedence
   if showable("application/juno+plotpane", x)
     legcay_plotpane = true
+    m = which(show, (IO, MIME"application/juno+plotpane", typeof(x)))
     @warn("""
       The \"application/juno+plotpane\" MIME type is deprecated. Please use \"$(plotpane_mime)\" instead.
-    """, maxlog=1, _id=:juno_plotpane_legacy)
+    """, maxlog=1, _id=:juno_plotpane_legacy, _file=string(m.file), _line=m.line, _module=m.module)
   end
   if showable(plotpane_mime, x) || legcay_plotpane
     try
@@ -77,7 +80,23 @@ end
 using TreeViews: hastreeview, numberofnodes, treelabel, treenode, nodelabel
 
 # called in user code and in REPL
-Base.display(d::JunoDisplay, m::MIME{T}, x) where T = Base.display(d::JunoDisplay, x)
+function Base.display(d::JunoDisplay, m::MIME{T}, x) where T
+  displayable(d, m) || throw(MethodError(display, (d, m, x)))
+  Base.display(d::JunoDisplay, x)
+end
+
+Base.displayable(d::JunoDisplay, m::MIME"application/juno+inline") = true
+Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.inline") = true
+
+Base.displayable(d::JunoDisplay, m::MIME"application/juno+plotpane") = PlotPaneEnabled[]
+Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.jlpane") = PlotPaneEnabled[]
+Base.displayable(d::JunoDisplay, m::MIME"image/svg+xml") = PlotPaneEnabled[]
+Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.jlpane") = true
+
+function Base.displayable(d::JunoDisplay, m::MIME{T}) where T
+  string(T) in plain_mimes ? PlotPaneEnabled[] : false
+end
+
 function Base.display(d::JunoDisplay, x)
   d = last(filter(x -> (x isa REPL.REPLDisplay), Base.Multimedia.displays))
   if displayinplotpane(x)

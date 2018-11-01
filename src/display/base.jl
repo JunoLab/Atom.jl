@@ -41,9 +41,10 @@ const inline_mime = "application/prs.juno.inline"
   # Juno-specific display always takes precedence
   if showable("application/juno+inline", x)
     legcay_inline = true
+    m = which(show, (IO, MIME"application/juno+inline", typeof(x)))
     @warn("""
       The \"application/juno+inline\" MIME type is deprecated. Please use \"$(inline_mime)\" instead.
-    """, maxlog=1, _id=:juno_inline_legacy)
+    """, maxlog=1, _id=:juno_inline_legacy, _file=string(m.file), _line=m.line, _module=m.module)
   end
   if showable(inline_mime, x) || legcay_inline
     io = IOBuffer()
