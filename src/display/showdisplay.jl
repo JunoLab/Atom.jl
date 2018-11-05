@@ -28,7 +28,7 @@ function displayinplotpane(x)
 
   legcay_plotpane = false
   # Juno-specific display always takes precedence
-  if showable("application/juno+plotpane", x)
+  if showable("application/juno+plotpane", x) && !showable(plotpane_mime, x)
     legcay_plotpane = true
     m = which(show, (IO, MIME"application/juno+plotpane", typeof(x)))
     @warn("""
@@ -89,7 +89,7 @@ Base.displayable(d::JunoDisplay, m::MIME"application/juno+inline") = true
 Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.inline") = true
 
 Base.displayable(d::JunoDisplay, m::MIME"application/juno+plotpane") = PlotPaneEnabled[]
-Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.jlpane") = PlotPaneEnabled[]
+Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.plotpane+html") = PlotPaneEnabled[]
 Base.displayable(d::JunoDisplay, m::MIME"image/svg+xml") = PlotPaneEnabled[]
 Base.displayable(d::JunoDisplay, m::MIME"application/prs.juno.jlpane") = true
 

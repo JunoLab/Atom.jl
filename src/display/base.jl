@@ -39,7 +39,7 @@ const inline_mime = "application/prs.juno.inline"
 
   legcay_inline = false
   # Juno-specific display always takes precedence
-  if showable("application/juno+inline", x)
+  if showable("application/juno+inline", x) && !showable(inline_mime, x)
     legcay_inline = true
     m = which(show, (IO, MIME"application/juno+inline", typeof(x)))
     @warn("""
