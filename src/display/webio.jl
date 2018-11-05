@@ -30,7 +30,7 @@ function routepages(req)
         <html>
         <head>
         <meta charset="UTF-8">
-        <script>window._webIOWebSocketURL = 'ws://localhost:$(port[])/webio-websocket';</script>
+        <script>window._webIOWebSocketURL = 'ws://localhost:$(port[])/webio-juno-websocket';</script>
         <script src=$(repr(WebIO.bundle_key))></script>
         </head>
         <body>
@@ -65,7 +65,8 @@ function setup_server()
     server = WebIO.WebIOServer(
         routepages,
         http_port = port[],
-        singleton = false
+        singleton = false,
+        websocket_route = "/webio-juno-websocket"
     )
 
     return server
