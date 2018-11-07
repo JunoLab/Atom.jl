@@ -38,13 +38,15 @@ handle("changemodule") do data
 end
 
 function fullREPLpath(uri)
-  uri1 = match(r"(.+?)(?:\:(\d+))?$", uri)
-  uri2 = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
-  if uri2 !== nothing
-    return normpath(expanduser(String(uri2[2]))), parse(Int, uri2[3])
-  elseif uri1 !== nothing
-    line = uri1[2] ≠ nothing ? parse(Int, uri1[2]) : 0
-    return Atom.fullpath(uri1[1]), line
+  urimatch = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
+  if urimatch ≠ nothing
+    return normpath(expanduser(String(urimatch[2]))), parse(Int, urimatch[3])
+  else
+    urimatch = match(r"([^\:]+)(?:\:(\d+))?", uri)
+    if urimatch ≠ nothing
+      line = urimatch[2] ≠ nothing ? parse(Int, urimatch[2]) : 0
+      return Atom.fullpath(normpath(expanduser(String(urimatch[1])))), line
+    end
   end
   return "", 0
 end
