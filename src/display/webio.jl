@@ -32,6 +32,17 @@ function routepages(req)
         <meta charset="UTF-8">
         <script>window._webIOWebSocketURL = 'ws://localhost:$(port[])/webio-juno-websocket';</script>
         <script src=$(repr(WebIO.bundle_key))></script>
+        <style>
+            body {
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+            }
+            .webio-scope, webio-mountpoint {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
         </head>
         <body>
     """)
