@@ -61,14 +61,14 @@ strlimit(str::AbstractString, limit = 30) = lastindex(str) > limit ?  str[1:prev
 using Base.Docs
 function completionsummary(mod, c)
   ct = REPLCompletions.completion_text(c)
-  Base.isdeprecated(mod, Symbol(ct)) && return
+  (!Base.isbindingresolved( mod, Symbol(ct)) || Base.isdeprecated(mod, Symbol(ct))) && return ""
   b = Docs.Binding(mod, Symbol(ct))
   description(b)
 end
 
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
   b = Docs.Binding(mod, Symbol(c.func))
-  Base.isdeprecated(mod, Symbol(c.func)) && return
+  (!Base.isbindingresolved( mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 
@@ -80,7 +80,7 @@ function description(binding, sig = Union{})
   for part in md
     if part isa Markdown.Paragraph
       desc = Markdown.plain(part)
-      occursin("No documentation found.", desc) && return
+      occursin("No documentation found.", desc) && return ""
       return strlimit(desc, 100)
     end
   end
@@ -121,7 +121,7 @@ function completiontype(x)
 end
 
 handle("cacheCompletions") do mod
-  m = getthing(mod)
-  m = isa(m, Module) ? m : Main
-  CodeTools.completions(m)
+  # m = getthing(mod)
+  # m = isa(m, Module) ? m : Main
+  # CodeTools.completions(m)
 end
