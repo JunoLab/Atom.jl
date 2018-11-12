@@ -111,7 +111,7 @@ function completiontype(line, x, mod)
     end
 
     if f
-      return completiontype(t, x.parent)
+      return completiontype(t, x.parent, ct)
     end
   end
   x isa REPLCompletions.KeywordCompletion ? "keyword" :
@@ -123,14 +123,14 @@ function completiontype(line, x, mod)
     ""
 end
 
-function completiontype(x, mod)
+function completiontype(x, mod::Module, ct::AbstractString)
   x <: Module   ? "module"   :
   x <: DataType ? "type"     :
   x isa Type{<:Type} ? "type" :
   typeof(x) == UnionAll ? "type" :
   x <: Function ? "function" :
   x <: Tuple ? "tuple" :
-  isconst(mod, Symbol(x)) ? "constant" : ""
+  isconst(mod, Symbol(ct)) ? "constant" : ""
 end
 
 handle("cacheCompletions") do mod
