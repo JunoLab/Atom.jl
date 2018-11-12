@@ -23,7 +23,7 @@ errmsg(e::EvalError) = errmsg(e.err)
 function Base.show(io::IO, err::EvalError)
   print(io, errmsg(err))
   println(io)
-  for frame in errtrace(err)
+  for frame in cliptrace(errtrace(err))
     show(io, frame)
     println(io)
   end
