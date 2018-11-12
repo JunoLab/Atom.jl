@@ -24,6 +24,9 @@ function basecompletionadapter(line, mod)
   for c in cs[1]
     # TODO: get local completions from CSTParser or similar
     # TODO: would be cool to provide `descriptionMoreURL` here to open the docpane
+    if REPLCompletions.afterusing(line, first(cs[2]))
+      c isa REPLCompletions.PackageCompletion || continue
+    end
     push!(d, completion(mod, line, c))
   end
   d, pre
@@ -31,7 +34,6 @@ end
 
 function completion(mod, line, c)
   return Dict(:type => completiontype(line, c, mod),
-              :description => nothing,
               :rightLabel => completionmodule(mod, c),
               :leftLabel => returntype(mod, line, c),
               :text => completiontext(c),
@@ -52,8 +54,10 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   sparams = m.sparam_syms
   wa = Core.Compiler.Params(typemax(UInt))  # world age
   inf = Core.Compiler.typeinf_type(m, atypes, sparams, wa)
+  type = string(inf)
+  type == "Any" && return ""
 
-  strlimit(string(inf), 20)
+  strlimit(type, 20)
 end
 
 strlimit(str::AbstractString, limit = 30) = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
@@ -93,31 +97,40 @@ end
 function completiontype(line, x, mod)
   ct = REPLCompletions.completion_text(x)
   startswith(ct, '@') && return "macro"
+  startswith(ct, ':') && return "symbol"
+  endswith(ct, '"') && return "macro"
 
   if x isa REPLCompletions.ModuleCompletion
+    ct == "Vararg" && return ""
     t, f = try
-      str = string(line[1:(first(inds)-1)], ct)
-      REPLCompletions.get_type(Meta.parse(str, raise=false, depwarn=false), mod)
+      parsed = Meta.parse(ct, raise=false, depwarn=false)
+      REPLCompletions.get_type(parsed, x.parent)
     catch e
+      @error e
       nothing, false
     end
 
-    f && return completiontype(t)
+    if f
+      return completiontype(t, x.parent)
+    end
   end
   x isa REPLCompletions.KeywordCompletion ? "keyword" :
     x isa REPLCompletions.PathCompletion ? "path" :
-    x isa REPLCompletions.PackageCompletion ? "module" :
+    x isa REPLCompletions.PackageCompletion ? "import" :
     x isa REPLCompletions.PropertyCompletion ? "property" :
-    x isa REPLCompletions.FieldCompletion ? "field" :
-    x isa REPLCompletions.MethodCompletion ? "λ" :
-    "v"
+    x isa REPLCompletions.FieldCompletion ? "attribute" :
+    x isa REPLCompletions.MethodCompletion ? "method" :
+    ""
 end
 
-function completiontype(x)
-  x <: Module   ? "module" :
-  x <: DataType ? "type"   :
-  x <: Function ? "λ"      :
-                  "constant"
+function completiontype(x, mod)
+  x <: Module   ? "module"   :
+  x <: DataType ? "type"     :
+  x isa Type{<:Type} ? "type" :
+  typeof(x) == UnionAll ? "type" :
+  x <: Function ? "function" :
+  x <: Tuple ? "tuple" :
+  isconst(mod, Symbol(x)) ? "constant" : ""
 end
 
 handle("cacheCompletions") do mod
