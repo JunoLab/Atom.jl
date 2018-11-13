@@ -24,16 +24,25 @@ function routepages(req)
     haskey(pages, target) || return missing
 
     io = IOBuffer()
-    webio_script = WebIO.wio_asseturl("/webio/dist/bundle.js")
-    ws_script = WebIO.wio_asseturl("/providers/websocket_connection.js")
+
     print(io, """
         <!doctype html>
         <html>
         <head>
         <meta charset="UTF-8">
-        <script>var websocket_url = 'ws://localhost:$(port[])/webio_websocket/'</script>
-        <script src=$(repr(webio_script))></script>
-        <script src=$(repr(ws_script))></script>
+        <script>window._webIOWebSocketURL = 'ws://localhost:$(port[])/webio-juno-websocket';</script>
+        <script src=$(repr(WebIO.bundle_key))></script>
+        <style>
+            body {
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+            }
+            .webio-scope, webio-mountpoint {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
         </head>
         <body>
     """)
@@ -50,7 +59,7 @@ function routepages(req)
     )
 end
 
-function Base.show(io::IO, ::MIME"application/juno+plotpane", n::Union{WebIO.Node, WebIO.Scope, WebIO.AbstractWidget})
+function Base.show(io::IO, ::MIME"application/prs.juno.plotpane+html", n::Union{WebIO.Node, WebIO.Scope, WebIO.AbstractWidget})
     global pages, server
     id = rand(UInt128)
     pages[string(id)] = WebIO.render(n)
@@ -58,22 +67,18 @@ function Base.show(io::IO, ::MIME"application/juno+plotpane", n::Union{WebIO.Nod
     if !isrunning(server)
         server[] = setup_server()
     end
-
     print(io, "<meta http-equiv=\"refresh\" content=\"0; url=http://localhost:$(port[])/$(id)\"/>")
 end
 
 function setup_server()
     port[] = rand(8000:9000)
 
-    server = nothing
-    # STFU
-    with_logger(Logging.NullLogger()) do
-        server = WebIO.WebIOServer(
-            routepages,
-            http_port = port[],
-            singleton = false
-        )
-    end
+    server = WebIO.WebIOServer(
+        routepages,
+        http_port = port[],
+        singleton = false,
+        websocket_route = "/webio-juno-websocket"
+    )
 
     return server
 end

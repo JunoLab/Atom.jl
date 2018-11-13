@@ -14,5 +14,5 @@ ASTInterpreter2
 WebIO 0.4.0
 Requires
 HTTP
-WebSockets 1.0.3
+WebSockets
 Traceur
