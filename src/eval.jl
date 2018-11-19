@@ -74,7 +74,7 @@ handle("evalshow") do data
     Base.invokelatest() do
       display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display ≠ Editor() && result ≠ nothing && render(display, result)
+      display ≠ Editor() && result ≠ nothing && @ierrs render(display, result)
     end
 
     nothing
@@ -99,7 +99,7 @@ handle("eval") do data
 
     Base.invokelatest() do
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      displayandrender(result)
+      @ierrs displayandrender(result)
     end
   end
 end
@@ -139,7 +139,7 @@ handle("evalall") do data
                          :dismissable => true))
           end
           Base.invokelatest() do
-            displayandrender(result)
+            @ierrs displayandrender(result)
           end
         end
       end
