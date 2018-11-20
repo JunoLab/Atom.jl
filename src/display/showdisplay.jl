@@ -142,33 +142,24 @@ function restoredisplaystack(old)
 end
 
 function bestlabel(f, args...)
-  return applicable(f, IOBuffer(), args..., MIME"application/juno+inline"()) ?
-          HTML(sprint(f, args..., MIME"application/juno+inline"())) :
-          applicable(f, IOBuffer(), args..., MIME"text/html"()) ?
-            HTML(sprint(f, args..., MIME"text/html"())) :
-            Text(sprint(f, args..., MIME"text/plain"()))
-end
-
-
-function best_treelabel(x)
-  return applicable(treelabel, IOBuffer(), x, MIME"application/juno+inline"()) ?
-          HTML(sprint(treelabel, x, MIME"application/juno+inline"())) :
-          applicable(treelabel, IOBuffer(), x, MIME"text/html"()) ?
-            HTML(sprint(treelabel, x, MIME"text/html"())) :
-            Text(sprint(treelabel, x, MIME"text/plain"()))
-end
-
-function best_nodelabel(x, i)
-  return applicable(nodelabel, IOBuffer(), x, i, MIME"application/juno+inline"()) ?
-          HTML(sprint(nodelabel, x, i, MIME"application/juno+inline"())) :
-          applicable(nodelabel, IOBuffer(), x, i, MIME"text/html"()) ?
-            HTML(sprint(nodelabel, x, i, MIME"text/html"())) :
-            Text(sprint(nodelabel, x, i, MIME"text/plain"()))
+  if applicable(f, IOBuffer(), args..., MIME"application/prs.juno.inline"())
+    return HTML(sprint(f, args..., MIME"application/prs.juno.inline"()))
+  elseif applicable(f, IOBuffer(), args..., MIME"application/juno+inline"()) # deprecated
+    m = which(f, (IO, typeof.(args)..., MIME"application/juno+inline"));
+    @warn("""
+      The \"application/juno+inline\" MIME type is deprecated. Please use \"application/prs.juno.inline\" instead.
+    """, maxlog=1, _id=:juno_tree_legacy, _file=string(m.file), _line=m.line, _module=m.module);
+    return HTML(sprint(f, args..., MIME"application/juno+inline"()))
+  elseif applicable(f, IOBuffer(), args..., MIME"text/html"())
+    return HTML(sprint(f, args..., MIME"text/html"()))
+  else
+    return Text(sprint(f, args..., MIME"text/plain"()))
+  end
 end
 
 # TreeViews.jl -> Juno.LazyTree
 function generateTreeView(x)
-  header = best_treelabel(x)
+  header = bestlabel(treelabel, x)
 
   numberofnodes(x) == 0 &&  return Tree(header, [])
 
@@ -176,7 +167,7 @@ function generateTreeView(x)
     children = Any[]
     for i in 1:numberofnodes(x)
       node = treenode(x, i)
-      cheader = best_nodelabel(x, i)
+      cheader = bestlabel(nodelabel, x, i)
 
       if isempty(cheader.content)
         node === missing && continue
