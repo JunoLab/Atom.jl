@@ -37,18 +37,18 @@ const inline_mime = "application/prs.juno.inline"
 @render Inline x begin
   fields = fieldnames(typeof(x))
 
-  legcay_inline = false
+  legacy_inline = false
   # Juno-specific display always takes precedence
   if showable("application/juno+inline", x) && !showable(inline_mime, x)
-    legcay_inline = true
+    legacy_inline = true
     m = which(show, (IO, MIME"application/juno+inline", typeof(x)))
     @warn("""
       The \"application/juno+inline\" MIME type is deprecated. Please use \"$(inline_mime)\" instead.
     """, maxlog=1, _id=:juno_inline_legacy, _file=string(m.file), _line=m.line, _module=m.module)
   end
-  if showable(inline_mime, x) || legcay_inline
+  if showable(inline_mime, x) || legacy_inline
     io = IOBuffer()
-    x′ = show(IOContext(io, :limit => true, :color => true), legcay_inline ? MIME"application/juno+inline"() : inline_mime, x)
+    x′ = show(IOContext(io, :limit => true, :color => true), legacy_inline ? MIME"application/juno+inline"() : inline_mime, x)
     if !(x′ isa Nothing)
       defaultrepr(x′, true)
     else
