@@ -26,19 +26,19 @@ function displayinplotpane(x)
 
   PlotPaneEnabled[] || return false
 
-  legcay_plotpane = false
+  legacy_plotpane = false
   # Juno-specific display always takes precedence
   if showable("application/juno+plotpane", x) && !showable(plotpane_mime, x)
-    legcay_plotpane = true
+    legacy_plotpane = true
     m = which(show, (IO, MIME"application/juno+plotpane", typeof(x)))
     @warn("""
       The \"application/juno+plotpane\" MIME type is deprecated. Please use \"$(plotpane_mime)\" instead.
     """, maxlog=1, _id=:juno_plotpane_legacy, _file=string(m.file), _line=m.line, _module=m.module)
   end
-  if showable(plotpane_mime, x) || legcay_plotpane
+  if showable(plotpane_mime, x) || legacy_plotpane
     try
       io = IOBuffer()
-      show(plotpane_io_ctx(io), legcay_plotpane ? "application/juno+plotpane" : plotpane_mime, x)
+      show(plotpane_io_ctx(io), legacy_plotpane ? "application/juno+plotpane" : plotpane_mime, x)
       str = String(take!(io))
       startswith(str, "data:") || (str = string("data:text/html,", str))
       @msg ploturl(str)
