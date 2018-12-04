@@ -18,6 +18,28 @@ function isfile′(p)
   end
 end
 
+using Pkg
+function finddevpackages()
+    usage_file = joinpath(Pkg.logdir(), "manifest_usage.toml")
+    manifests = Set{String}()
+    if isfile(usage_file)
+        for (manifest_file, infos) in Pkg.TOML.parse(String(read(usage_file)))
+            push!(manifests, manifest_file)
+        end
+    else
+        push!(manifests, Pkg.Types.Context().env.manifest_file)
+    end
+    devpkgs = Dict{String, String}()
+    for manifest in manifests
+        isfile(manifest) || continue
+        for (pkg, infos) in Pkg.Types.read_manifest(manifest)
+            haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
+        end
+    end
+
+    devpkgs
+end
+
 function basepath(file)
   srcdir = joinpath(Sys.BINDIR,"..","..","base")
   releasedir = joinpath(Sys.BINDIR,"..","share","julia","base")

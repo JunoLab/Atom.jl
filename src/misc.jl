@@ -22,6 +22,10 @@ handle("exit") do
   exit()
 end
 
+handle("packages") do
+  finddevpackages()
+end
+
 const PlotPaneEnabled = Ref(true)
 
 handle("enableplotpane") do enable
