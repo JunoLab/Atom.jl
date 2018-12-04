@@ -56,10 +56,10 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   sparams = m.sparam_syms
   wa = Core.Compiler.Params(typemax(UInt))  # world age
   inf = Core.Compiler.typeinf_type(m, atypes, sparams, wa)
-  type = string(inf)
-  type == "Any" && return ""
+  typ = string(inf)
+  typ == "Any" && return ""
 
-  strlimit(type, 20)
+  strlimit(typ, 20)
 end
 
 strlimit(str::AbstractString, limit = 30) = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
