@@ -107,6 +107,7 @@ function Base.display(d::JunoDisplay, x)
   else
     throw(MethodError(display, (x,)))
   end
+  return nothing
 end
 
 # called when displaying results in the editor
@@ -123,7 +124,6 @@ function displayandrender(res)
   if hastreeview(res)
     res = generateTreeView(res)
   end
-
   Juno.render(Juno.Editor(), res)
 end
 
