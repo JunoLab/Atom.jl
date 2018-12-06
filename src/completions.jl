@@ -56,8 +56,8 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   sparams = m.sparam_syms
   wa = Core.Compiler.Params(typemax(UInt))  # world age
   inf = Core.Compiler.typeinf_type(m, atypes, sparams, wa)
+  inf in (nothing, Any, Union{}) && return ""
   typ = string(inf)
-  typ == "Any" && return ""
 
   strlimit(typ, 20)
 end
