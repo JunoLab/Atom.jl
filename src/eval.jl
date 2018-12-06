@@ -60,7 +60,7 @@ handle("evalshow") do data
         withpath(path) do
           try
             res = include_string(mod, text, path, line)
-            res ≠ nothing && display(res)
+            res ≠ nothing && !ends_with_semicolon(text) && display(res)
             res
           catch e
             # should hide parts of the backtrace here
