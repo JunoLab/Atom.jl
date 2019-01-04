@@ -55,7 +55,11 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   atypes = m.sig
   sparams = m.sparam_syms
   wa = Core.Compiler.Params(typemax(UInt))  # world age
-  inf = Core.Compiler.typeinf_type(m, atypes, sparams, wa)
+  inf = try
+    Core.Compiler.typeinf_type(m, atypes, sparams, wa)
+  catch err
+    nothing
+  end
   inf in (nothing, Any, Union{}) && return ""
   typ = string(inf)
 
@@ -80,11 +84,10 @@ end
 
 using Markdown
 function description(binding, sig = Union{})
-  local docs
-  try
-    docs = Docs.doc(binding, sig)
+  docs = try
+    Docs.doc(binding, sig)
   catch err
-    return ""
+    ""
   end
   docs isa Markdown.MD || return ""
   md = CodeTools.flatten(docs).content
