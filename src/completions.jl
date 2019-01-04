@@ -80,8 +80,13 @@ end
 
 using Markdown
 function description(binding, sig = Union{})
-  docs = Docs.doc(binding, sig)
-  docs isa Markdown.MD || return
+  local docs
+  try
+    docs = Docs.doc(binding, sig)
+  catch err
+    return ""
+  end
+  docs isa Markdown.MD || return ""
   md = CodeTools.flatten(docs).content
   for part in md
     if part isa Markdown.Paragraph
@@ -122,7 +127,7 @@ function completiontype(line, x, mod)
     x isa REPLCompletions.PropertyCompletion ? "property" :
     x isa REPLCompletions.FieldCompletion ? "attribute" :
     x isa REPLCompletions.MethodCompletion ? "method" :
-    ""
+    "object"
 end
 
 function completiontype(x, mod::Module, ct::AbstractString)
@@ -132,7 +137,7 @@ function completiontype(x, mod::Module, ct::AbstractString)
   typeof(x) == UnionAll ? "type" :
   x <: Function ? "function" :
   x <: Tuple ? "tuple" :
-  isconst(mod, Symbol(ct)) ? "constant" : ""
+  isconst(mod, Symbol(ct)) ? "constant" : "object"
 end
 
 handle("cacheCompletions") do mod
