@@ -18,16 +18,26 @@ end
 
 using REPL.REPLCompletions
 function basecompletionadapter(line, mod)
-  cs = REPL.REPLCompletions.completions(line, lastindex(line), mod)
-  pre = line[cs[2]]
+  comps, replace, shouldcomplete = try
+    REPL.REPLCompletions.completions(line, lastindex(line), mod)
+  catch err
+    # might error when e.g. type inference fails
+    [], 1:0, false
+  end
+
+  pre = line[replace]
   d = []
-  for c in cs[1]
+  for c in comps
     # TODO: get local completions from CSTParser or similar
     # TODO: would be cool to provide `descriptionMoreURL` here to open the docpane
-    if REPLCompletions.afterusing(line, first(cs[2]))
+    if REPLCompletions.afterusing(line, first(replace))
       c isa REPLCompletions.PackageCompletion || continue
     end
-    push!(d, completion(mod, line, c))
+    try
+      push!(d, completion(mod, line, c))
+    catch err
+      continue
+    end
   end
   d, pre
 end
