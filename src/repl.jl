@@ -73,7 +73,8 @@ current_prompt = juliaprompt
 function hideprompt(f)
   isREPL() || return f()
 
-  mistate = Base.active_repl.mistate
+  repl = Base.active_repl
+  mistate = repl.mistate
   mode = mistate.current_mode
 
   buf = String(take!(copy(LineEdit.buffer(mistate))))
@@ -83,8 +84,10 @@ function hideprompt(f)
   LineEdit.refresh_multi_line(mistate)
 
   print(stdout, "\e[1K\r")
-
+  REPL.Terminals.raw!(repl.t, false)
   r = f()
+  REPL.Terminals.raw!(repl.t, true)
+
   flush(stdout)
   flush(stderr)
   sleep(0.05)
@@ -100,6 +103,8 @@ function hideprompt(f)
   else
     printstyled(stdout, current_prompt, color=:green)
   end
+
+  truncate(LineEdit.buffer(mistate), 0)
 
   # restore input buffer
   LineEdit.edit_insert(LineEdit.buffer(mistate), buf)

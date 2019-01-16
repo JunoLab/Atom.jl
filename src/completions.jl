@@ -52,7 +52,7 @@ end
 
 completiontext(x) = REPLCompletions.completion_text(x)
 completiontext(x::REPLCompletions.PathCompletion) = strip(REPLCompletions.completion_text(x), '"')
-completiontext(x::REPLCompletions.DictCompletion) = strip(REPLCompletions.completion_text(x), ']')
+completiontext(x::REPLCompletions.DictCompletion) = strip(REPLCompletions.completion_text(x), ['"', ']'])
 function completiontext(x::REPLCompletions.MethodCompletion)
   ct = REPLCompletions.completion_text(x)
   ct = match(r"^(.*) in .*$", ct)
