@@ -1,7 +1,7 @@
 import ASTInterpreter2
 import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
-import Juno: Row, ProgressBar, Tree
+import Juno: Row, Tree
 import REPL
 using Media
 using MacroTools
@@ -12,35 +12,27 @@ state = nothing
 isdebugging() = chan ≠ nothing
 
 # entrypoint
-function enter(arg)
+function enter(mod, arg)
   quote
     # FIXME: should use `qualifyASTInterpreter(ASTInterpreter2._make_stack(arg))`
     # instead, but I can't get that to work.
-    let stack = $(make_stack(arg))
-      Atom.Debugger.startdebugging(stack)
+    let stack = $(Atom.Debugger._make_stack(mod, arg))
+      $(@__MODULE__).startdebugging(stack)
     end
   end
 end
 
-function make_stack(arg)
-    arg = expand(arg)
-    @assert isa(arg, Expr) && arg.head == :call
-    kws = collect(filter(x->isexpr(x,:kw),arg.args))
-    if !isempty(kws)
-      args = Expr(:tuple,:(Core.kwfunc($(args[1]))),
-        Expr(:call,Base.vector_any,mapreduce(
-          x->[QuoteNode(x.args[1]),x.args[2]],vcat,kws)...),
-        map(x->isexpr(x,:parameters)?QuoteNode(x):x,
-          filter(x->!isexpr(x,:kw),arg.args))...)
-    else
-      args = Expr(:tuple,
-        map(x->isexpr(x,:parameters)?QuoteNode(x):x, arg.args)...)
+function _make_stack(mod, arg)
+    args = try
+        ASTInterpreter2.extract_args(mod, arg)
+    catch e
+        return :(throw($e))
     end
     quote
         theargs = $(esc(args))
-        stack = [Atom.Debugger.ASTInterpreter2.enter_call_expr(Expr(:call,theargs...))]
-        Atom.Debugger.ASTInterpreter2.maybe_step_through_wrapper!(stack)
-        stack[1] = Atom.Debugger.ASTInterpreter2.JuliaStackFrame(stack[1], Atom.Debugger.ASTInterpreter2.maybe_next_call!(stack[1]))
+        stack = [$(@__MODULE__).ASTInterpreter2.enter_call_expr(Expr(:call,theargs...))]
+        $(@__MODULE__).ASTInterpreter2.maybe_step_through_wrapper!(stack)
+        stack[1] = $(@__MODULE__).ASTInterpreter2.JuliaStackFrame(stack[1], $(@__MODULE__).ASTInterpreter2.maybe_next_call!(stack[1]))
         stack
     end
 end
@@ -64,10 +56,10 @@ function startdebugging(stack)
 
   if Atom.isREPL()
     # FIXME: Should get rid of the second code path (see comment in repl.jl).
-    if Atom.repleval[]
+    if Atom.inREPL[]
       t = @async debugprompt()
     else
-      Atom.changeREPLprompt("debug> ", color=:magenta)
+      Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
     end
   end
 
@@ -114,21 +106,22 @@ function startdebugging(stack)
     debugmode(false)
 
     if Atom.isREPL()
-      if Atom.repleval[]
+      if Atom.inREPL[]
         istaskdone(t) || schedule(t, InterruptException(); error=true)
         print("\r                        \r")
       else
-        Atom.changeREPLprompt(Atom.current_prompt, color = :green)
+        Atom.changeREPLprompt(Atom.juliaprompt, color = :green, write = false)
       end
     end
   end
   res
 end
 
+using REPL
 function debugprompt()
   try
-    panel = Base.LineEdit.Prompt("debug> ";
-              prompt_prefix="\e[35m",
+    panel = REPL.LineEdit.Prompt("debug> ";
+              prompt_prefix="\e[38;5;166m",
               prompt_suffix=Base.text_colors[:white],
               on_enter = s -> true)
 
@@ -140,8 +133,8 @@ function debugprompt()
       isempty(line) && return true
 
       if !ok
-        Base.LineEdit.transition(s, :abort)
-        Base.LineEdit.reset_state(s)
+        REPL.LineEdit.transition(s, :abort)
+        REPL.LineEdit.reset_state(s)
         return false
       end
 
@@ -161,9 +154,10 @@ function debugprompt()
       return true
     end
 
-    REPL.run_interface(Base.active_repl.t, Base.LineEdit.ModalInterface([panel]))
+    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel]))
   catch e
-    e isa InterruptException || rethrow(e) end
+    e isa InterruptException || rethrow(e)
+  end
 end
 
 # setup handlers for stepper commands
@@ -247,10 +241,8 @@ end
 function localvars(frame::ASTInterpreter2.JuliaStackFrame)
   items = []
   for i = 1:length(frame.locals)
-    if !isnull(frame.locals[i])
-      # #self# is only interesting if it has values inside of it. We already know
-      # which function we're in otherwise.
-      val = get(frame.locals[i])
+    if frame.locals[i] !== nothing
+      val = something(frame.locals[i])
       if frame.code.slotnames[i] == Symbol("#self#") && (isa(val, Type) || sizeof(val) == 0)
         continue
       end
@@ -258,12 +250,12 @@ function localvars(frame::ASTInterpreter2.JuliaStackFrame)
     end
   end
   for i = 1:length(frame.sparams)
-    push!(items, wsitem(frame.meth.sparam_syms[i], get(Nullable{Any}(frame.sparams[i]), Undefined())))
+    push!(items, wsitem(frame.meth.sparam_syms[i], something(frame.sparams[i], Undefined())))
   end
   return items
 end
 
-type Undefined end
+struct Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 

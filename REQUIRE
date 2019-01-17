@@ -11,6 +11,7 @@ Reexport
 MacroTools
 DocSeeker
 ASTInterpreter2
+DebuggerFramework
 WebIO 0.6.0
 Requires
 HTTP

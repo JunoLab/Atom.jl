@@ -112,14 +112,17 @@ function hideprompt(f)
   r
 end
 
-function changeREPLprompt(prompt; color = :green)
+function changeREPLprompt(prompt; color = :green, write = true)
   if strip(prompt) == strip(current_prompt)
     return nothing
   end
 
   main_mode = get_main_mode()
   main_mode.prompt = prompt
-  if Base.active_repl.mistate.current_mode == main_mode
+  main_mode.prompt_prefix = color isa Symbol ?
+    string(first(split(sprint(io -> printstyled(IOContext(io, :color => true), " ", color=color)), ' '))) :
+    color
+  if Base.active_repl.mistate.current_mode == main_mode && write
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
   end
@@ -149,43 +152,57 @@ const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
   global ans
-  try
-    lock(evallock)
-    msg("working")
-    inREPL[] = true
-    fixjunodisplays()
-    # this is slow:
-    errored = false
-    Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+  if isdebugging()
+    try
+      msg("working")
       try
-         line = Meta.parse(line)
+        ans = Atom.Debugger.interpret(line)
       catch err
-        errored = true
-        display_parse_error(stderr, err)
-      end
-      errored && return nothing
-      try
-        ans = repleval(mod, line)
-      catch err
-        # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
-        # seems to work just fine.
-
-        errored = true
         display_error(stderr, err, stacktrace(catch_backtrace()))
       end
-    end
-    errored ? nothing : ans
-  catch err
-    # This is for internal errors only.
-    display_error(stderr, err, stacktrace(catch_backtrace()))
-  finally
-    inREPL[] = false
-    unlock(evallock)
-    @async begin
-      msg("doneWorking")
+    finally
       msg("updateWorkspace")
+      msg("doneWorking")
     end
-    nothing
+  else
+    try
+      lock(evallock)
+      msg("working")
+      inREPL[] = true
+      fixjunodisplays()
+      # this is slow:
+      errored = false
+      Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+        try
+           line = Meta.parse(line)
+        catch err
+          errored = true
+          display_parse_error(stderr, err)
+        end
+        errored && return nothing
+        try
+          ans = repleval(mod, line)
+        catch err
+          # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
+          # seems to work just fine.
+
+          errored = true
+          display_error(stderr, err, stacktrace(catch_backtrace()))
+        end
+      end
+      errored ? nothing : ans
+    catch err
+      # This is for internal errors only.
+      display_error(stderr, err, stacktrace(catch_backtrace()))
+    finally
+      inREPL[] = false
+      unlock(evallock)
+      @async begin
+        msg("doneWorking")
+        msg("updateWorkspace")
+      end
+      nothing
+    end
   end
 end
 
