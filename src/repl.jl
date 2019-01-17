@@ -154,6 +154,7 @@ function evalrepl(mod, line)
   global ans
   if isdebugging()
     try
+      REPL.Terminals.raw!(Base.active_repl.t, true)
       msg("working")
       try
         ans = Atom.Debugger.interpret(line)
@@ -163,6 +164,7 @@ function evalrepl(mod, line)
     finally
       msg("updateWorkspace")
       msg("doneWorking")
+      REPL.Terminals.raw!(Base.active_repl.t, false)
     end
   else
     try

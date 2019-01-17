@@ -1,6 +1,6 @@
 import ASTInterpreter2
 import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
-import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console
+import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
 import REPL
 using Media
@@ -14,9 +14,7 @@ isdebugging() = chan ≠ nothing
 # entrypoint
 function enter(mod, arg)
   quote
-    # FIXME: should use `qualifyASTInterpreter(ASTInterpreter2._make_stack(arg))`
-    # instead, but I can't get that to work.
-    let stack = $(Atom.Debugger._make_stack(mod, arg))
+    let stack = $(_make_stack(mod, arg))
       $(@__MODULE__).startdebugging(stack)
     end
   end
@@ -35,16 +33,6 @@ function _make_stack(mod, arg)
         stack[1] = $(@__MODULE__).ASTInterpreter2.JuliaStackFrame(stack[1], $(@__MODULE__).ASTInterpreter2.maybe_next_call!(stack[1]))
         stack
     end
-end
-
-function qualifyASTInterpreter(expr)
-  postwalk(expr) do ex
-    if @capture(ex, f_(xs__)) && startswith(string(f), "ASTInterpreter2")
-      :($(Symbol("Atom.Debugger.", f))($(xs...)))
-    else
-      ex
-    end
-  end
 end
 
 # setup interpreter
@@ -90,14 +78,10 @@ function startdebugging(stack)
       end
     end
   catch e
-    ee = EvalError(e, catch_stacktrace())
     if Atom.isREPL()
-      print("\r                        \r")
-      print_with_color(:red, stderr, "ERROR: ")
-      Base.showerror(stderr, e, backtrace())
-      println(stderr)
+      display_error(stderr, err, stacktrace(catch_backtrace()))
     else
-      render(Console(), ee)
+      render(Console(), EvalError(e, catch_stacktrace()))
     end
   finally
     res = state.overall_result
@@ -110,6 +94,7 @@ function startdebugging(stack)
         istaskdone(t) || schedule(t, InterruptException(); error=true)
         print("\r                        \r")
       else
+        print("\r                        \r")
         Atom.changeREPLprompt(Atom.juliaprompt, color = :green, write = false)
       end
     end
