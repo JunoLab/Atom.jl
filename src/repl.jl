@@ -84,9 +84,7 @@ function hideprompt(f)
   LineEdit.refresh_multi_line(mistate)
 
   print(stdout, "\e[1K\r")
-  REPL.Terminals.raw!(repl.t, false)
   r = f()
-  REPL.Terminals.raw!(repl.t, true)
 
   flush(stdout)
   flush(stderr)
@@ -154,7 +152,6 @@ function evalrepl(mod, line)
   global ans
   if isdebugging()
     try
-      REPL.Terminals.raw!(Base.active_repl.t, true)
       msg("working")
       try
         ans = Atom.Debugger.interpret(line)
@@ -164,7 +161,6 @@ function evalrepl(mod, line)
     finally
       msg("updateWorkspace")
       msg("doneWorking")
-      REPL.Terminals.raw!(Base.active_repl.t, false)
     end
   else
     try
