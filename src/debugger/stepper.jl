@@ -60,7 +60,7 @@ function startdebugging(stack)
         if val == :nextline
           execute_command(state, state.stack[state.level], Val{:n}(), "n")
         elseif val == :stepexpr
-            execute_command(state, state.stack[state.level], Val{:nc}(), "nc")
+          execute_command(state, state.stack[state.level], Val{:nc}(), "nc")
         elseif val == :stepin
           execute_command(state, state.stack[state.level], Val{:s}(), "s")
         elseif val == :finish
@@ -77,7 +77,7 @@ function startdebugging(stack)
         stepto(state)
       end
     end
-  catch e
+  catch err
     if Atom.isREPL()
       display_error(stderr, err, stacktrace(catch_backtrace()))
     else
@@ -107,7 +107,7 @@ function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
               prompt_prefix="\e[38;5;166m",
-              prompt_suffix=Base.text_colors[:white],
+              prompt_suffix="\e[0m",
               on_enter = s -> true)
 
     panel.on_done = (s, buf, ok) -> begin
@@ -127,10 +127,8 @@ function debugprompt()
         r = Atom.Debugger.interpret(line)
         r ≠ nothing && display(r)
         println()
-      catch e
-        print_with_color(:red, stderr, "ERROR: ")
-        Base.showerror(stderr, e, backtrace())
-        println(stderr)
+      catch err
+        display_error(stderr, err, stacktrace(catch_backtrace()))
       end
 
       Atom.msg("doneWorking")
