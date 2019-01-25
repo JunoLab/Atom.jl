@@ -29,12 +29,19 @@ function Base.show(io::IO, err::EvalError)
   end
 end
 
+const MAX_STACKTRACE_LENGTH = 100
+const STACKTRACE_END_LENGTH = 30
+
 function cliptrace(trace::StackTrace)
   ind = findlast(frame -> (frame.func == :include_string &&
                            frame.file == Symbol(joinpath(".", "loading.jl"))) ||
                           (frame.func == :render′ &&
-                           endswith(string(frame.file), joinpath("display", "errors.jl"))), trace)
-  trace[1:(ind == nothing ? end : ind - 1)]
+                           endswith(string(frame.file), joinpath(@__DIR__, "errors.jl"))), trace)
+  trace = trace[1:(ind == nothing ? end : ind - 1)]
+  if length(trace) > MAX_STACKTRACE_LENGTH
+    splice!(trace, (MAX_STACKTRACE_LENGTH - STACKTRACE_END_LENGTH):(length(trace) - STACKTRACE_END_LENGTH))
+  end
+  trace
 end
 
 highlights(trace::StackTrace) =
