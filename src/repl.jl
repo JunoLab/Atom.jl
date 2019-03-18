@@ -154,7 +154,7 @@ function evalrepl(mod, line)
     try
       msg("working")
       try
-        ans = Atom.Debugger.interpret(line)
+        ans = Atom.JunoDebugger.interpret(line)
       catch err
         display_error(stderr, err, stacktrace(catch_backtrace()))
       end

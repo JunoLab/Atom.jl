@@ -1,7 +1,7 @@
-isdebugging() = isdefined(Atom, :Debugger) && isdefined(Debugger, :isdebugging) && Atom.Debugger.isdebugging()
+isdebugging() = isdefined(Atom, :JunoDebugger) && isdefined(JunoDebugger, :isdebugging) && Atom.JunoDebugger.isdebugging()
 
-module Debugger
-using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup
+module JunoDebugger
+using ..Atom, MacroTools, Lazy, Hiccup
 
 include("stepper.jl")
 

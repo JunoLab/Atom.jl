@@ -42,7 +42,7 @@ handle("workspace") do mod
   filter!(n -> !isa(getfield(mod, n), Module), ns)
   contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
   if isdebugging()
-    prepend!(contexts, Debugger.contexts())
+    prepend!(contexts, JunoDebugger.contexts())
   end
   return contexts
 end
