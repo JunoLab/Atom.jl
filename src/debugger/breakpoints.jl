@@ -1,6 +1,6 @@
-using Juno, Gallium
+using Juno
+using JuliaInterpreter
 import Atom: basepath, handle
-import Gallium: Breakpoint
 
 const bps = Dict{Tuple{String,Int},Breakpoint}()
 

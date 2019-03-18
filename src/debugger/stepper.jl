@@ -1,16 +1,21 @@
-using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args,
-                        root, caller, whereis, get_return, nstatements, @lookup
-using JuliaInterpreter
-import Debugger: DebuggerState, execute_command, print_status, locinfo, eval_code
-using Debugger
+using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
+                        root, caller, whereis, get_return, nstatements, @lookup, Frame
+import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
 import REPL
 using Media
 using MacroTools
 
+mutable struct DebuggerState
+  frame::Union{Nothing, Frame}
+  result
+end
+DebuggerState(frame::Frame) = DebuggerState(frame, nothing)
+DebuggerState() = DebuggerState(nothing, nothing)
+
 const chan = Ref{Union{Channel, Nothing}}()
-const state = Ref{Union{DebuggerState, Nothing}}()
+const STATE = DebuggerState()
 
 isdebugging() = isassigned(chan) && chan[] !== nothing
 
@@ -39,11 +44,8 @@ function _make_frame(mod, arg)
 end
 
 # setup interpreter
-function startdebugging(stack)
-  repl = Base.active_repl
-  terminal = Base.active_repl.t
-
-  global state[] = DebuggerState(stack, repl, terminal)
+function startdebugging(frame)
+  global STATE.frame = frame
   global chan[] = Channel(0)
 
   debugmode(true)
@@ -56,32 +58,41 @@ function startdebugging(stack)
     end
   end
 
-  stepto(state[])
+  stepto(frame)
   res = nothing
 
   try
     evalscope() do
       for val in chan[]
-        if val == :nextline
-          execute_command(state[], Val{:n}(), "n")
+        ret = if val == :nextline
+          debug_command(frame, :n)
         elseif val == :stepexpr
-          execute_command(state[], Val{:nc}(), "nc")
+          debug_command(frame, :nc)
         elseif val == :stepin
-          execute_command(state[], Val{:s}(), "s")
+          debug_command(frame, :s)
         elseif val == :finish
-          execute_command(state[], Val{:so}(), "so")
+          debug_command(frame, :finish)
         elseif val isa Tuple && val[1] == :toline
-          frame = Debugger.active_frame(state[])
-          while locinfo(frame).line < val[2]
-            execute_command(state[], Val{:n}(), "n")
-            frame = Debugger.active_frame(state[])
-            frame === nothing && break
+          _r = nothing
+          _, line = JuliaInterpreter.whereis(frame)
+          while line < val[2]
+            _r = debug_command(frame, :n)
+            _r === nothing && break
+            _, line = JuliaInterpreter.whereis(frame)
           end
+          _r
         else
           warn("Internal: Unknown debugger message $val.")
         end
-        state[].frame === nothing && break
-        stepto(state[])
+
+        if ret === nothing
+          STATE.result = res = JuliaInterpreter.get_return(root(frame))
+          break
+        else
+          STATE.frame = frame = ret[1]
+          JuliaInterpreter.maybe_next_call!(frame)
+          stepto(frame)
+        end
       end
     end
   catch err
@@ -91,9 +102,7 @@ function startdebugging(stack)
       render(Console(), EvalError(e, catch_stacktrace()))
     end
   finally
-    res = state[].overall_result
     chan[] = nothing
-    state[] = nothing
     debugmode(false)
 
     if Atom.isREPL()
@@ -163,24 +172,19 @@ debugmode(on) = @msg debugmode(on)
 ## Stepping
 
 # perform step in frontend
-function stepto(state::DebuggerState)
-  frame = Debugger.active_frame(state)
-  loc = locinfo(frame)
-  if loc == nothing
-    @warn "not implemented"
-  else
-    file, line = loc.filepath, loc.line
-  end
-  stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
+function stepto(frame::Frame)
+  file, line = JuliaInterpreter.whereis(frame)
+  stepto(Atom.fullpath(string(file)), line, stepview(nextstate(frame)))
 end
+stepto(state::DebuggerState) = stepto(state.frame)
 stepto(file, line, text) = @msg stepto(file, line, text)
 stepto(::Nothing) = debugmode(false)
 
 # return expression that will be evaluated next
-function nextstate(state)
+nextstate(state::DebuggerState) = nextstate(state.frame)
+function nextstate(frame::Frame)
   maybe_quote(x) = (isa(x, Expr) || isa(x, Symbol)) ? QuoteNode(x) : x
 
-  frame = Debugger.active_frame(state)
   expr = pc_expr(frame)
   isa(expr, Expr) && (expr = copy(expr))
   if isexpr(expr, :(=))
@@ -216,17 +220,18 @@ end
 
 function evalscope(f)
   try
-    # @msg doneWorking()
-    # unlock(Atom.evallock)
+    @msg doneWorking()
+    unlock(Atom.evallock)
     f()
   finally
-    # lock(Atom.evallock)
-    # @msg working()
+    lock(Atom.evallock)
+    @msg working()
   end
 end
 
 ## Workspace
-function contexts(s::DebuggerState = state[])
+function contexts(s::DebuggerState = STATE)
+  s.frame === nothing && return []
   ctx = []
   trace = ""
   frame = root(s.frame)
@@ -256,6 +261,33 @@ struct Undefined end
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
 ## Evaluation
-function interpret(code::AbstractString, s::DebuggerState = state[])
-  eval_code(Debugger.active_frame(s), code)
+function interpret(code::AbstractString, s::DebuggerState = STATE)
+  s.frame === nothing && return
+  eval_code(s.frame, code)
+end
+
+# copied from https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
+function eval_code(frame::Frame, command::AbstractString)
+    expr = Base.parse_input_line(command)
+    isexpr(expr, :toplevel) && (expr = expr.args[end])
+    # see https://github.com/JuliaLang/julia/issues/31255 for the Symbol("") check
+    vars = filter(v -> v.name != Symbol(""), JuliaInterpreter.locals(frame))
+    res = gensym()
+    eval_expr = Expr(:let,
+        Expr(:block, map(x->Expr(:(=), x...), [(v.name, v.value) for v in vars])...),
+        Expr(:block,
+            Expr(:(=), res, expr),
+            Expr(:tuple, res, Expr(:tuple, [v.name for v in vars]...))
+        ))
+    eval_res, res = Core.eval(moduleof(frame), eval_expr)
+    j = 1
+    for (i, v) in enumerate(vars)
+        if v.isparam
+            frame.framedata.sparams[j] = res[i]
+            j += 1
+        else
+            frame.framedata.locals[frame.framedata.last_reference[v.name]] = Some{Any}(res[i])
+        end
+    end
+    eval_res
 end
