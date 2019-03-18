@@ -72,23 +72,24 @@ function startdebugging(frame)
           debug_command(frame, :s)
         elseif val == :finish
           debug_command(frame, :finish)
-        elseif val isa Tuple && val[1] == :toline
-          _r = nothing
-          _, line = JuliaInterpreter.whereis(frame)
-          while line < val[2]
-            _r = debug_command(frame, :n)
-            _r === nothing && break
-            _, line = JuliaInterpreter.whereis(frame)
-          end
-          _r
+        elseif val isa Tuple && val[1] == :toline && val[2] isa Int
+          method = frame.framecode.scope
+          @assert method isa Method
+          # set temporary breakpoint
+          bp = JuliaInterpreter.breakpoint(method, val[2])
+          _ret = debug_command(frame, :finish)
+          # and remove it again
+          JuliaInterpreter.remove(bp)
+          _ret
         else
           warn("Internal: Unknown debugger message $val.")
         end
-
+        
         if ret === nothing
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           break
         else
+          # STATE.frame = frame = JuliaInterpreter.maybe_step_through_wrapper!(ret[1])
           STATE.frame = frame = ret[1]
           JuliaInterpreter.maybe_next_call!(frame)
           stepto(frame)
