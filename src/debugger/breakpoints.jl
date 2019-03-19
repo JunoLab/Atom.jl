@@ -5,6 +5,7 @@ import Atom: basepath, handle
 
 handle("clearbps") do
   JuliaInterpreter.remove()
+  allbreakpoints()
 end
 
 # Juno.@render Juno.Inline bp::Gallium.Breakpoint begin
@@ -61,6 +62,24 @@ end
 handle("toggleBP") do file, line
   removebreakpoint(file, line) || addbreakpoint(file, line)
   allbreakpoints()
+end
+
+handle("getBreakpoints") do
+  allbreakpoints()
+end
+
+handle("toggleException") do
+  if JuliaInterpreter.break_on_error[]
+    JuliaInterpreter.break_off(:error)
+  else
+    JuliaInterpreter.break_on(:error)
+  end
+  return JuliaInterpreter.break_on_error[]
+end
+
+handle("toggleUncaught") do
+  @warn "not supported yet"
+  return false
 end
 
 function addbreakpoint(file, line)

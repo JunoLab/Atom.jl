@@ -72,6 +72,8 @@ function startdebugging(frame)
           debug_command(frame, :s, true)
         elseif val == :finish
           debug_command(frame, :finish, true)
+        elseif val == :stop
+          return nothing
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
           method = frame.framecode.scope
           @assert method isa Method
@@ -161,7 +163,7 @@ function debugprompt()
 end
 
 # setup handlers for stepper commands
-for cmd in [:nextline, :stepin, :stepexpr, :finish]
+for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop]
   handle(()->put!(chan[], cmd), string(cmd))
 end
 
@@ -194,7 +196,7 @@ end
 function stack(frame)
   ctx = []
   frame = root(frame)
-  level = -1
+  level = 0
   while frame ≠ nothing
     name = frame.framecode.scope isa Method ? frame.framecode.scope.name : "???"
     file, line = JuliaInterpreter.whereis(frame)
