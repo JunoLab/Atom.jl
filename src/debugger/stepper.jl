@@ -37,7 +37,7 @@ function _make_frame(mod, arg)
     quote
       theargs = $(esc(args))
       frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
-      $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
+      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
       $(@__MODULE__).JuliaInterpreter.maybe_next_call!(frame)
       frame
     end
@@ -65,26 +65,26 @@ function startdebugging(frame)
     evalscope() do
       for val in chan[]
         ret = if val == :nextline
-          debug_command(frame, :n)
+          debug_command(frame, :n, true)
         elseif val == :stepexpr
-          debug_command(frame, :nc)
+          debug_command(frame, :nc, true)
         elseif val == :stepin
-          debug_command(frame, :s)
+          debug_command(frame, :s, true)
         elseif val == :finish
-          debug_command(frame, :finish)
+          debug_command(frame, :finish, true)
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
           method = frame.framecode.scope
           @assert method isa Method
           # set temporary breakpoint
           bp = JuliaInterpreter.breakpoint(method, val[2])
-          _ret = debug_command(frame, :finish)
+          _ret = debug_command(frame, :finish, true)
           # and remove it again
           JuliaInterpreter.remove(bp)
           _ret
         else
           warn("Internal: Unknown debugger message $val.")
         end
-        
+
         if ret === nothing
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           break
@@ -175,11 +175,77 @@ debugmode(on) = @msg debugmode(on)
 # perform step in frontend
 function stepto(frame::Frame)
   file, line = JuliaInterpreter.whereis(frame)
-  stepto(Atom.fullpath(string(file)), line, stepview(nextstate(frame)))
+  file = Atom.fullpath(string(file))
+
+  @msg stepto(file, line+1, stepview(nextstate(frame)), moreinfo(file, line, frame))
 end
 stepto(state::DebuggerState) = stepto(state.frame)
-stepto(file, line, text) = @msg stepto(file, line, text)
 stepto(::Nothing) = debugmode(false)
+
+function moreinfo(file, line, frame)
+  info = Dict()
+  info["shortpath"], _ = Atom.expandpath(file)
+  info["line"] = line
+  info["stack"] = stack(frame)
+  info["moreinfo"] = get_code_around(file, line, frame)
+  return info
+end
+
+function stack(frame)
+  ctx = []
+  frame = root(frame)
+  level = -1
+  while frame ≠ nothing
+    name = frame.framecode.scope isa Method ? frame.framecode.scope.name : "???"
+    file, line = JuliaInterpreter.whereis(frame)
+    file = Atom.fullpath(string(file))
+    shortpath, _ = Atom.expandpath(file)
+    level += 1
+    c = Dict(
+      :level => level,
+      :name => name,
+      :line => line,
+      :file => file,
+      :shortpath => shortpath
+    )
+    push!(ctx, c)
+
+    frame = frame.callee
+  end
+  reverse(ctx)
+end
+
+
+"""
+    get_code_around(file, line, frame; around = 3)
+
+Get source code/CodeInfo around the currently active line in `frame`.
+"""
+function get_code_around(file, line, frame; around = 3)
+  if isfile(file)
+    lines = readlines(file)
+  else
+    buf = IOBuffer()
+    src = frame.framecode.src
+    show(buf, src)
+    active_line = convert(Int, frame.pc[])
+
+    lines = filter!(split(String(take!(buf)), '\n')) do line
+        !(line == "CodeInfo(" || line == ")" || isempty(line))
+    end
+
+    lines .= replace.(lines, Ref(r"\$\(QuoteNode\((.+?)\)\)" => s"\1"))
+  end
+  firstline = max(1, line - around)
+  lastline = min(length(lines), line + around)
+
+  return (
+    code = join(lines[firstline:lastline], '\n'),
+    firstline = firstline,
+    lastline = lastline,
+    currentline = line
+  )
+end
 
 # return expression that will be evaluated next
 nextstate(state::DebuggerState) = nextstate(state.frame)
