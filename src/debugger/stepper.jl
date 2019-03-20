@@ -179,7 +179,7 @@ function stepto(frame::Frame)
   file, line = JuliaInterpreter.whereis(frame)
   file = Atom.fullpath(string(file))
 
-  @msg stepto(file, line+1, stepview(nextstate(frame)), moreinfo(file, line, frame))
+  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame))
 end
 stepto(state::DebuggerState) = stepto(state.frame)
 stepto(::Nothing) = debugmode(false)
@@ -228,6 +228,7 @@ function get_code_around(file, line, frame; around = 3)
     lines = readlines(file)
   else
     buf = IOBuffer()
+    line = convert(Int, frame.pc[])
     src = frame.framecode.src
     show(buf, src)
     active_line = convert(Int, frame.pc[])

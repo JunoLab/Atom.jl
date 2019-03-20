@@ -1,32 +1,8 @@
 using Juno
 import JuliaInterpreter
 using CodeTracking
+using CodeTools
 import Atom: basepath, handle
-
-handle("clearbps") do
-  JuliaInterpreter.remove()
-  allbreakpoints()
-end
-
-# Juno.@render Juno.Inline bp::Gallium.Breakpoint begin
-#   if isempty(bp.active_locations) && isempty(bp.inactive_locations) && isempty(bp.sources)
-#     Text("Empty Breakpoint.")
-#   else
-#     if !isempty(bp.sources)
-#       Juno.Row(Text("Breakpoint at "), Atom.baselink(string(bp.sources[1].fname), bp.sources[1].line))
-#     else
-#       sprint(show, bp)
-#     end
-#   end
-# end
-
-handle("getbps") do
-  ret = []
-  for (k, bp) in bps
-    push!(ret, Dict(:view => render(Juno.Inline(), bp)))
-  end
-  ret
-end
 
 function allbreakpoints()
   bps = JuliaInterpreter.breakpoints()
@@ -50,7 +26,7 @@ function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef)
     return Dict(
       :file => file,
       :shortpath => shortpath,
-      :line => line - 1,
+      :line => line,
       :isactive => isactive,
       :condition => condition
     )
@@ -60,26 +36,92 @@ function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef)
 end
 
 handle("toggleBP") do file, line
-  removebreakpoint(file, line) || addbreakpoint(file, line)
-  allbreakpoints()
+  (file !== nothing && isfile(file)) || return [], "File not found."
+  with_error_message() do
+    removebreakpoint(file, line) || addbreakpoint(file, line)
+    allbreakpoints()
+  end
 end
 
 handle("getBreakpoints") do
-  allbreakpoints()
+  with_error_message() do
+    allbreakpoints()
+  end
 end
 
 handle("toggleException") do
-  if JuliaInterpreter.break_on_error[]
-    JuliaInterpreter.break_off(:error)
-  else
-    JuliaInterpreter.break_on(:error)
+  with_error_message() do
+    if JuliaInterpreter.break_on_error[]
+      JuliaInterpreter.break_off(:error)
+    else
+      JuliaInterpreter.break_on(:error)
+    end
+    return JuliaInterpreter.break_on_error[]
   end
-  return JuliaInterpreter.break_on_error[]
 end
 
 handle("toggleUncaught") do
-  @warn "not supported yet"
-  return false
+  return   Dict(
+      :response => noting,
+      :error => "Not supported yet."
+    )
+end
+
+handle("clearbps") do
+  with_error_message() do
+    JuliaInterpreter.remove()
+    allbreakpoints()
+  end
+end
+
+handle("addArgs") do arg
+  with_error_message() do
+    add_breakpoint_args(arg)
+    allbreakpoints()
+  end
+end
+
+handle("getbps") do
+  with_error_message() do
+    ret = []
+    for (k, bp) in bps
+      push!(ret, Dict(:view => render(Juno.Inline(), bp)))
+    end
+    ret
+  end
+end
+
+function with_error_message(f)
+  ret, err = nothing, false
+  try
+    ret = f()
+  catch err
+    err = sprint(showerror, err)
+  end
+  Dict(
+    :response => ret,
+    :error => err
+  )
+end
+
+"""
+    add_breakpoint_args(arg)
+
+Takes a string of the form `foo` or `foo(Bar, Baz)` and sets a breakpoint for the appropriate methods.
+"""
+function add_breakpoint_args(arg)
+  m = match(r"(.*?)(\(.*\))?$", arg)
+  m === nothing && return
+  if m[1] ≠ nothing
+    if m[2] ≠ nothing
+      fun = CodeTools.getthing(Main, m[1])
+      args = Main.eval(Meta.parse("tuple$(m[2])"))
+      meth = which(fun, args)
+    else
+      meth = CodeTools.getthing(Main, arg)
+    end
+  end
+  JuliaInterpreter.breakpoint(meth)
 end
 
 function addbreakpoint(file, line)
