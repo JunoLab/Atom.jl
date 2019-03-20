@@ -211,11 +211,15 @@ function stack(frame)
   frame = root(frame)
   level = 0
   while frame ≠ nothing
-    name = frame.framecode.scope isa Method ? frame.framecode.scope.name : "???"
+    method = frame.framecode.scope
+
+    name = sprint(show, "text/plain", method)
+    name = replace(name, r" in .* at .*$" => "")
+    name = replace(name, r" where .*$" => "")
+
     file, line = JuliaInterpreter.whereis(frame)
     file = Atom.fullpath(string(file))
     shortpath, _ = Atom.expandpath(file)
-    level += 1
     c = Dict(
       :level => level,
       :name => name,
@@ -225,6 +229,7 @@ function stack(frame)
     )
     push!(ctx, c)
 
+    level += 1
     frame = frame.callee
   end
   reverse(ctx)
