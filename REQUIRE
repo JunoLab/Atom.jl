@@ -16,5 +16,5 @@ HTTP
 WebSockets
 Traceur
 
-JuliaInterpreter
-CodeTracking
+JuliaInterpreter 0.3
+CodeTracking 0.4
