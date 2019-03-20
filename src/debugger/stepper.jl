@@ -20,10 +20,10 @@ const STATE = DebuggerState()
 isdebugging() = isassigned(chan) && chan[] !== nothing
 
 # entrypoint
-function enter(mod, arg)
+function enter(mod, arg; initial_continue = false)
   quote
     let frame = $(_make_frame(mod, arg))
-      $(@__MODULE__).startdebugging(frame)
+      $(@__MODULE__).startdebugging(frame, $(initial_continue))
     end
   end
 end
@@ -44,24 +44,37 @@ function _make_frame(mod, arg)
 end
 
 # setup interpreter
-function startdebugging(frame)
+function startdebugging(frame, initial_continue = false)
   global STATE.frame = frame
   global chan[] = Channel(0)
 
-  debugmode(true)
-  if Atom.isREPL()
-    # FIXME: Should get rid of the second code path (see comment in repl.jl).
-    if Atom.inREPL[]
-      t = @async debugprompt()
-    else
-      Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
-    end
-  end
-
-  stepto(frame)
   res = nothing
+  repltask = nothing
 
   try
+    if initial_continue
+      ret = debug_command(frame, :finish, true)
+      if ret === nothing
+        STATE.result = res = JuliaInterpreter.get_return(root(frame))
+        return res
+      end
+      STATE.frame = frame = ret[1]
+      JuliaInterpreter.maybe_next_call!(frame)
+    end
+
+    debugmode(true)
+
+    if Atom.isREPL()
+      # FIXME: Should get rid of the second code path (see comment in repl.jl).
+      if Atom.inREPL[]
+        repltask = @async debugprompt()
+      else
+        Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
+      end
+    end
+
+    stepto(frame)
+
     evalscope() do
       for val in chan[]
         ret = if val == :nextline
@@ -109,8 +122,8 @@ function startdebugging(frame)
     debugmode(false)
 
     if Atom.isREPL()
-      if Atom.inREPL[]
-        istaskdone(t) || schedule(t, InterruptException(); error=true)
+      if repltask ≠ nothing
+        istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
         print("\r                        \r")
       else
         print("\r                        \r")

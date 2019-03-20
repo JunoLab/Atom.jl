@@ -1,5 +1,5 @@
-function enter(mod, ex)
-  JunoDebugger.enter(mod, ex)
+function enter(mod, ex; initial_continue = false)
+  JunoDebugger.enter(mod, ex; initial_continue = initial_continue)
 end
 
 isdebugging() = JunoDebugger.isdebugging()

@@ -95,6 +95,20 @@ handle("getbps") do
   end
 end
 
+handle("toggleAllActiveBP") do state
+  with_error_message() do
+    state ? JuliaInterpreter.disable() : JuliaInterpreter.enable()
+    allbreakpoints()
+  end
+end
+
+handle("toggleActiveBP") do file, line
+  with_error_message() do
+    toggleactive(file, line)
+    allbreakpoints()
+  end
+end
+
 function with_error_message(f)
   ret, err = nothing, false
   try
@@ -141,6 +155,16 @@ function location(bp::JuliaInterpreter.BreakpointRef)
   end
 end
 
+function toggleactive(file, line)
+  bps = JuliaInterpreter.breakpoints()
+  for bp in bps
+    bp_file, bp_line = location(bp)
+    if normpath(bp_file) == normpath(file) && bp_line == line
+      bp[].isactive ? JuliaInterpreter.disable(bp) : JuliaInterpreter.enable(bp)
+    end
+  end
+end
+
 function removebreakpoint(file, line)
   bps = JuliaInterpreter.breakpoints()
   removed = false
@@ -152,11 +176,6 @@ function removebreakpoint(file, line)
     end
   end
   removed
-end
-
-function breakpoint(args...)
-  JuliaInterpreter.breakpoint(args...)
-  return
 end
 
 function no_chance_of_breaking()
