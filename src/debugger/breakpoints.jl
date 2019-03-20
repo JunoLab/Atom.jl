@@ -76,7 +76,11 @@ end
 
 handle("addArgs") do arg
   with_error_message() do
-    add_breakpoint_args(arg)
+    bp = add_breakpoint_args(arg)
+    isempty(bp) && error("""
+      Invalid spec. Please specify as `foo` or `foo(Bar, Baz)`, e.g. `sin` or `sin(Int)`. Make sure
+      the function and all types can be reached from `Main`.
+      """)
     allbreakpoints()
   end
 end
