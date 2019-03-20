@@ -52,30 +52,30 @@ function startdebugging(frame, initial_continue = false)
   repltask = nothing
 
   try
-    if initial_continue
-      ret = debug_command(frame, :finish, true)
-      if ret === nothing
-        STATE.result = res = JuliaInterpreter.get_return(root(frame))
-        return res
-      end
-      STATE.frame = frame = ret[1]
-      JuliaInterpreter.maybe_next_call!(frame)
-    end
-
-    debugmode(true)
-
-    if Atom.isREPL()
-      # FIXME: Should get rid of the second code path (see comment in repl.jl).
-      if Atom.inREPL[]
-        repltask = @async debugprompt()
-      else
-        Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
-      end
-    end
-
-    stepto(frame)
-
     evalscope() do
+      if initial_continue
+        ret = debug_command(frame, :finish, true)
+        if ret === nothing
+          STATE.result = res = JuliaInterpreter.get_return(root(frame))
+          return res
+        end
+        STATE.frame = frame = ret[1]
+        JuliaInterpreter.maybe_next_call!(frame)
+      end
+
+      debugmode(true)
+
+      if Atom.isREPL()
+        # FIXME: Should get rid of the second code path (see comment in repl.jl).
+        if Atom.inREPL[]
+          repltask = @async debugprompt()
+        else
+          Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
+        end
+      end
+
+      stepto(frame)
+
       for val in chan[]
         ret = if val == :nextline
           debug_command(frame, :n, true)
