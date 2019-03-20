@@ -1,12 +1,12 @@
 import Traceur
 
-macro trace(ex)
-    :(showtrace(gettrace(() -> $(esc(ex)))))
+function trace(ex, args...)
+    :($(showtrace)($(gettrace)(() -> $(esc(ex)); $(map(esc, args)...))))
 end
 
-function gettrace(f)
+function gettrace(f; kwargs...)
     warns = []
-    Traceur.trace(x -> push!(warns, transformwarn(x)), f)
+    Traceur.trace(x -> push!(warns, transformwarn(x)), f; kwargs...)
     warns
 end
 

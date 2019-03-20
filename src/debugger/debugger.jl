@@ -1,8 +1,13 @@
-isdebugging() = isdefined(Atom, :Debugger) && isdefined(Debugger, :isdebugging) && Atom.Debugger.isdebugging()
+function enter(mod, ex; initial_continue = false)
+  JunoDebugger.enter(mod, ex; initial_continue = initial_continue)
+end
 
-module Debugger
-using ..Atom, MacroTools, ASTInterpreter2, Lazy, Hiccup
+isdebugging() = JunoDebugger.isdebugging()
 
+module JunoDebugger
+using ..Atom, MacroTools, Lazy, Hiccup
+
+include("breakpoints.jl")
 include("stepper.jl")
 
 end # module

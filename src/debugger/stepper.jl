@@ -1,80 +1,114 @@
-import ASTInterpreter2
-import DebuggerFramework: DebuggerState, execute_command, print_status, locinfo, eval_code, dummy_state
+using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
+                        root, caller, whereis, get_return, nstatements, @lookup, Frame
+import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
 import REPL
 using Media
 using MacroTools
 
-chan = nothing
-state = nothing
+mutable struct DebuggerState
+  frame::Union{Nothing, Frame}
+  result
+end
+DebuggerState(frame::Frame) = DebuggerState(frame, nothing)
+DebuggerState() = DebuggerState(nothing, nothing)
 
-isdebugging() = chan ≠ nothing
+const chan = Ref{Union{Channel, Nothing}}()
+const STATE = DebuggerState()
+
+isdebugging() = isassigned(chan) && chan[] !== nothing
 
 # entrypoint
-function enter(mod, arg)
+function enter(mod, arg; initial_continue = false)
   quote
-    let stack = $(_make_stack(mod, arg))
-      $(@__MODULE__).startdebugging(stack)
+    let frame = $(_make_frame(mod, arg))
+      $(@__MODULE__).startdebugging(frame, $(initial_continue))
     end
   end
 end
 
-function _make_stack(mod, arg)
+function _make_frame(mod, arg)
     args = try
-        ASTInterpreter2.extract_args(mod, arg)
+      extract_args(mod, arg)
     catch e
-        return :(throw($e))
+      return :(throw($e))
     end
     quote
-        theargs = $(esc(args))
-        stack = [$(@__MODULE__).ASTInterpreter2.enter_call_expr(Expr(:call,theargs...))]
-        $(@__MODULE__).ASTInterpreter2.maybe_step_through_wrapper!(stack)
-        stack[1] = $(@__MODULE__).ASTInterpreter2.JuliaStackFrame(stack[1], $(@__MODULE__).ASTInterpreter2.maybe_next_call!(stack[1]))
-        stack
+      theargs = $(esc(args))
+      frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
+      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
+      $(@__MODULE__).JuliaInterpreter.maybe_next_call!(frame)
+      frame
     end
 end
 
 # setup interpreter
-function startdebugging(stack)
-  global state = dummy_state(stack)
-  global chan = Channel(0)
+function startdebugging(frame, initial_continue = false)
+  global STATE.frame = frame
+  global chan[] = Channel(0)
 
-  debugmode(true)
-
-  if Atom.isREPL()
-    # FIXME: Should get rid of the second code path (see comment in repl.jl).
-    if Atom.inREPL[]
-      t = @async debugprompt()
-    else
-      Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
-    end
-  end
-
-  stepto(state)
   res = nothing
+  repltask = nothing
 
   try
+    if initial_continue
+      ret = debug_command(frame, :finish, true)
+      if ret === nothing
+        STATE.result = res = JuliaInterpreter.get_return(root(frame))
+        return res
+      end
+      STATE.frame = frame = ret[1]
+      JuliaInterpreter.maybe_next_call!(frame)
+    end
+
+    debugmode(true)
+
+    if Atom.isREPL()
+      # FIXME: Should get rid of the second code path (see comment in repl.jl).
+      if Atom.inREPL[]
+        repltask = @async debugprompt()
+      else
+        Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
+      end
+    end
+
+    stepto(frame)
+
     evalscope() do
-      for val in chan
-        if val == :nextline
-          execute_command(state, state.stack[state.level], Val{:n}(), "n")
+      for val in chan[]
+        ret = if val == :nextline
+          debug_command(frame, :n, true)
         elseif val == :stepexpr
-          execute_command(state, state.stack[state.level], Val{:nc}(), "nc")
+          debug_command(frame, :nc, true)
         elseif val == :stepin
-          execute_command(state, state.stack[state.level], Val{:s}(), "s")
+          debug_command(frame, :s, true)
         elseif val == :finish
-          execute_command(state, state.stack[state.level], Val{:finish}(), "finish")
-        elseif typeof(val) <: Tuple && val[1] == :toline
-          while locinfo(state.stack[state.level]).line < val[2]
-            execute_command(state, state.stack[state.level], Val{:n}(), "n")
-            length(state.stack) == 0 && break
-          end
+          debug_command(frame, :finish, true)
+        elseif val == :stop
+          return nothing
+        elseif val isa Tuple && val[1] == :toline && val[2] isa Int
+          method = frame.framecode.scope
+          @assert method isa Method
+          # set temporary breakpoint
+          bp = JuliaInterpreter.breakpoint(method, val[2])
+          _ret = debug_command(frame, :finish, true)
+          # and remove it again
+          JuliaInterpreter.remove(bp)
+          _ret
         else
           warn("Internal: Unknown debugger message $val.")
         end
-        length(state.stack) == 0 && break
-        stepto(state)
+
+        if ret === nothing
+          STATE.result = res = JuliaInterpreter.get_return(root(frame))
+          break
+        else
+          # STATE.frame = frame = JuliaInterpreter.maybe_step_through_wrapper!(ret[1])
+          STATE.frame = frame = ret[1]
+          JuliaInterpreter.maybe_next_call!(frame)
+          stepto(frame)
+        end
       end
     end
   catch err
@@ -84,14 +118,12 @@ function startdebugging(stack)
       render(Console(), EvalError(e, catch_stacktrace()))
     end
   finally
-    res = state.overall_result
-    chan = nothing
-    state = nothing
+    chan[] = nothing
     debugmode(false)
 
     if Atom.isREPL()
-      if Atom.inREPL[]
-        istaskdone(t) || schedule(t, InterruptException(); error=true)
+      if repltask ≠ nothing
+        istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
         print("\r                        \r")
       else
         print("\r                        \r")
@@ -124,7 +156,7 @@ function debugprompt()
       end
 
       try
-        r = Atom.Debugger.interpret(line)
+        r = Atom.JunoDebugger.interpret(line)
         r ≠ nothing && display(r)
         println()
       catch err
@@ -144,11 +176,11 @@ function debugprompt()
 end
 
 # setup handlers for stepper commands
-for cmd in [:nextline, :stepin, :stepexpr, :finish]
-  handle(()->put!(chan, cmd), string(cmd))
+for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop]
+  handle(()->put!(chan[], cmd), string(cmd))
 end
 
-handle((line)->put!(chan, (:toline, line)), "toline")
+handle((line)->put!(chan[], (:toline, line)), "toline")
 
 # notify the frontend that we start debugging now
 debugmode(on) = @msg debugmode(on)
@@ -156,29 +188,106 @@ debugmode(on) = @msg debugmode(on)
 ## Stepping
 
 # perform step in frontend
-function stepto(state::DebuggerState)
-  frame = state.stack[state.level]
-  loc = locinfo(frame)
-  if loc == nothing
-    file, line = ASTInterpreter2.determine_line_and_file(frame, frame.pc.next_stmt)[end]
-  else
-    file, line = loc.filepath, loc.line
-  end
-  stepto(Atom.fullpath(string(file)), line, stepview(nextstate(state)))
+function stepto(frame::Frame)
+  file, line = JuliaInterpreter.whereis(frame)
+  file = Atom.fullpath(string(file))
+
+  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame))
 end
-stepto(file, line, text) = @msg stepto(file, line, text)
+stepto(state::DebuggerState) = stepto(state.frame)
 stepto(::Nothing) = debugmode(false)
 
+function moreinfo(file, line, frame)
+  info = Dict()
+  info["shortpath"], _ = Atom.expandpath(file)
+  info["line"] = line
+  info["stack"] = stack(frame)
+  info["moreinfo"] = get_code_around(file, line, frame)
+  return info
+end
+
+function stack(frame)
+  ctx = []
+  frame = root(frame)
+  level = 0
+  while frame ≠ nothing
+    method = frame.framecode.scope
+
+    name = sprint(show, "text/plain", method)
+    name = replace(name, r" in .* at .*$" => "")
+    name = replace(name, r" where .*$" => "")
+
+    file, line = JuliaInterpreter.whereis(frame)
+    file = Atom.fullpath(string(file))
+    shortpath, _ = Atom.expandpath(file)
+    c = Dict(
+      :level => level,
+      :name => name,
+      :line => line,
+      :file => file,
+      :shortpath => shortpath
+    )
+    push!(ctx, c)
+
+    level += 1
+    frame = frame.callee
+  end
+  reverse(ctx)
+end
+
+
+"""
+    get_code_around(file, line, frame; around = 3)
+
+Get source code/CodeInfo around the currently active line in `frame`.
+"""
+function get_code_around(file, line, frame; around = 3)
+  if isfile(file)
+    lines = readlines(file)
+  else
+    buf = IOBuffer()
+    line = convert(Int, frame.pc[])
+    src = frame.framecode.src
+    show(buf, src)
+    active_line = convert(Int, frame.pc[])
+
+    lines = filter!(split(String(take!(buf)), '\n')) do line
+        !(line == "CodeInfo(" || line == ")" || isempty(line))
+    end
+
+    lines .= replace.(lines, Ref(r"\$\(QuoteNode\((.+?)\)\)" => s"\1"))
+  end
+  firstline = max(1, line - around)
+  lastline = min(length(lines), line + around)
+
+  return (
+    code = join(lines[firstline:lastline], '\n'),
+    firstline = firstline,
+    lastline = lastline,
+    currentline = line
+  )
+end
+
 # return expression that will be evaluated next
-function nextstate(state)
-  frame = state.stack[state.level]
-  expr = ASTInterpreter2.pc_expr(frame, frame.pc)
+nextstate(state::DebuggerState) = nextstate(state.frame)
+function nextstate(frame::Frame)
+  maybe_quote(x) = (isa(x, Expr) || isa(x, Symbol)) ? QuoteNode(x) : x
+
+  expr = pc_expr(frame)
   isa(expr, Expr) && (expr = copy(expr))
   if isexpr(expr, :(=))
       expr = expr.args[2]
   end
   if isexpr(expr, :call) || isexpr(expr, :return)
-      expr.args = map(var -> ASTInterpreter2.lookup_var_if_var(frame, var), expr.args)
+    for i in 1:length(expr.args)
+      val = try
+          @lookup(frame, expr.args[i])
+      catch err
+          err isa UndefVarError || rethrow(err)
+          expr.args[i]
+      end
+      expr.args[i] = maybe_quote(val)
+    end
   end
   expr
 end
@@ -209,31 +318,28 @@ function evalscope(f)
 end
 
 ## Workspace
-
-function contexts(s::DebuggerState = state)
-  cxt = []
+function contexts(s::DebuggerState = STATE)
+  s.frame === nothing && return []
+  ctx = []
   trace = ""
-  for frame in reverse(state.stack)
-    trace = string(trace, "/", frame.meth.name)
+  frame = root(s.frame)
+  while frame ≠ nothing
+    trace = string(trace, "/", frame.framecode.scope isa Method ?
+                                frame.framecode.scope.name : "???")
     c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
-    push!(cxt, c)
+    push!(ctx, c)
+
+    frame = frame.callee
   end
-  cxt
+  reverse(ctx)
 end
 
-function localvars(frame::ASTInterpreter2.JuliaStackFrame)
+function localvars(frame)
+  vars = JuliaInterpreter.locals(frame)
   items = []
-  for i = 1:length(frame.locals)
-    if frame.locals[i] !== nothing
-      val = something(frame.locals[i])
-      if frame.code.slotnames[i] == Symbol("#self#") && (isa(val, Type) || sizeof(val) == 0)
-        continue
-      end
-      push!(items, wsitem(frame.code.slotnames[i], val))
-    end
-  end
-  for i = 1:length(frame.sparams)
-    push!(items, wsitem(frame.meth.sparam_syms[i], something(frame.sparams[i], Undefined())))
+  for v in vars
+      v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
+      push!(items, wsitem(String(v.name), v.value))
   end
   return items
 end
@@ -243,7 +349,33 @@ struct Undefined end
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
 ## Evaluation
+function interpret(code::AbstractString, s::DebuggerState = STATE)
+  s.frame === nothing && return
+  eval_code(s.frame, code)
+end
 
-function interpret(code::AbstractString, frame::DebuggerState = state)
-  eval_code(state, state.stack[state.level], code)
+# copied from https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
+function eval_code(frame::Frame, command::AbstractString)
+    expr = Base.parse_input_line(command)
+    isexpr(expr, :toplevel) && (expr = expr.args[end])
+    # see https://github.com/JuliaLang/julia/issues/31255 for the Symbol("") check
+    vars = filter(v -> v.name != Symbol(""), JuliaInterpreter.locals(frame))
+    res = gensym()
+    eval_expr = Expr(:let,
+        Expr(:block, map(x->Expr(:(=), x...), [(v.name, v.value) for v in vars])...),
+        Expr(:block,
+            Expr(:(=), res, expr),
+            Expr(:tuple, res, Expr(:tuple, [v.name for v in vars]...))
+        ))
+    eval_res, res = Core.eval(moduleof(frame), eval_expr)
+    j = 1
+    for (i, v) in enumerate(vars)
+        if v.isparam
+            frame.framedata.sparams[j] = res[i]
+            j += 1
+        else
+            frame.framedata.locals[frame.framedata.last_reference[v.name]] = Some{Any}(res[i])
+        end
+    end
+    eval_res
 end
