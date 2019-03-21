@@ -85,6 +85,8 @@ function startdebugging(frame, initial_continue = false)
           debug_command(frame, :s, true)
         elseif val == :finish
           debug_command(frame, :finish, true)
+        elseif val == :continue
+          debug_command(frame, :c, true)
         elseif val == :stop
           return nothing
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
@@ -176,7 +178,7 @@ function debugprompt()
 end
 
 # setup handlers for stepper commands
-for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop]
+for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
   handle(()->put!(chan[], cmd), string(cmd))
 end
 
