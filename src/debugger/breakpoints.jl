@@ -4,21 +4,46 @@ using CodeTracking
 using CodeTools
 import Atom: basepath, handle
 
+const _breakpoints = Dict{Int, Any}()
+const _conditions = Dict{Any, Any}()
+
+"""
+    allbreakpoints()
+
+Updates internal `_breakpoints` dictionary and returns all breakpoints in a vector of dictionaries.
+"""
 function allbreakpoints()
   bps = JuliaInterpreter.breakpoints()
-  filter!(x -> x ≠ nothing, simple_breakpoint.(bps))
+  simple_bps = []
+  empty!(_breakpoints)
+  id = 1
+
+  for (bp, cond) in _conditions
+    bp in bps && continue
+    delete!(_conditions, bp)
+  end
+
+  for bp in bps
+    sbp = simple_breakpoint(bp, id = id)
+    if sbp === nothing
+      @warn "Not good. Weird breakpoint encountered."
+    end
+    _breakpoints[id] = bp
+    push!(simple_bps, sbp)
+    id += 1
+  end
+
+  simple_bps
 end
 
-function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef)
+function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef; id = nothing)
   file, line = location(bp)
   isactive = bp[].isactive
   condition = bp[].condition
-  condition = if condition == JuliaInterpreter.truecondition
-    "true"
-  elseif condition == JuliaInterpreter.falsecondition
-    "false"
+  condition = if condition == JuliaInterpreter.truecondition || condition == JuliaInterpreter.falsecondition
+    nothing
   else
-    string(condition)
+    get(_conditions, bp, "?")
   end
 
   if file ≠ nothing
@@ -28,17 +53,29 @@ function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef)
       :shortpath => shortpath,
       :line => line,
       :isactive => isactive,
-      :condition => condition
+      :condition => condition,
+      :id => id
     )
   else
     return nothing
   end
 end
 
-handle("toggleBP") do file, line
-  (file !== nothing && isfile(file)) || return [], "File not found."
+handle("toggleBP") do item
   with_error_message() do
-    removebreakpoint(file, line) || addbreakpoint(file, line)
+    if haskey(item, "id") && item["id"] ≠ nothing
+      id = item["id"]
+      if haskey(_breakpoints, id)
+        JuliaInterpreter.remove(_breakpoints[id])
+      else
+        error("Inconsistent internal state.")
+      end
+    else
+      file, line = item["file"], item["line"]
+      (file !== nothing && isfile(file)) || return [], "File not found."
+      removebreakpoint(file, line) || addbreakpoint(file, line)
+
+    end
     allbreakpoints()
   end
 end
@@ -102,9 +139,47 @@ handle("toggleAllActiveBP") do state
   end
 end
 
-handle("toggleActiveBP") do file, line
+handle("toggleActiveBP") do item
   with_error_message() do
-    toggleactive(file, line)
+    if haskey(item, "id") && item["id"] ≠ nothing
+      id = item["id"]
+      if haskey(_breakpoints, id)
+        bp = _breakpoints[id]
+        bp[].isactive ? JuliaInterpreter.disable(bp) : JuliaInterpreter.enable(bp)
+      else
+        error("Inconsistent internal state.")
+      end
+    else
+      file, line = item["file"], item["line"]
+      toggleactive(file, line)
+    end
+    allbreakpoints()
+  end
+end
+
+handle("addConditionById") do item, cond
+  with_error_message() do
+    if haskey(item, "id") && item["id"] ≠ nothing
+      id = item["id"]
+      if haskey(_breakpoints, id)
+        bp = _breakpoints[id]
+        framecode = bp.framecode
+        stmtidx = bp.stmtidx
+
+        expr = Meta.parse(cond)
+        if !(expr isa JuliaInterpreter.Condition)
+          error("Breakpoint condition must be an expression or a tuple of a module and an expression.")
+        end
+        JuliaInterpreter.remove(bp)
+        bp = JuliaInterpreter.breakpoint!(framecode, stmtidx, expr)
+        _conditions[bp] = cond
+      else
+        error("Inconsistent Internal State. Abort abort aboooort!")
+      end
+    else
+      error("Inconsistent Internal State. Abort abort aboooort!")
+    end
+
     allbreakpoints()
   end
 end
@@ -149,7 +224,18 @@ end
 function location(bp::JuliaInterpreter.BreakpointRef)
   if checkbounds(Bool, bp.framecode.breakpoints, bp.stmtidx)
       lineno = JuliaInterpreter.linenumber(bp.framecode, bp.stmtidx)
-      whereis(bp.framecode.scope)[1], lineno
+      bps = filter(bp->bp[].isactive, JuliaInterpreter.breakpoints())
+
+      # work around https://github.com/timholy/CodeTracking.jl/issues/27
+      for bp in bps
+          JuliaInterpreter.disable(bp)
+      end
+      ret = whereis(bp.framecode.scope)[1], lineno
+      for bp in bps
+          JuliaInterpreter.enable(bp)
+      end
+
+      ret
   else
       nothing, 0
   end
