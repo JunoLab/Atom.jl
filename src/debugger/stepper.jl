@@ -106,7 +106,6 @@ function startdebugging(frame, initial_continue = false)
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           break
         else
-          # STATE.frame = frame = JuliaInterpreter.maybe_step_through_wrapper!(ret[1])
           STATE.frame = frame = ret[1]
           JuliaInterpreter.maybe_next_call!(frame)
           stepto(frame)
@@ -303,7 +302,7 @@ function stepview(ex)
   elseif @capture(ex, return x_)
     Row(span(".syntax--support.syntax--keyword", "return "), x)
   else
-    Text(string(ex))
+    Text(repr(ex))
   end
   render(Inline(), out)
 end

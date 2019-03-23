@@ -71,6 +71,7 @@ handle("toggleBP") do item
         error("Inconsistent internal state.")
       end
     else
+      haskey(item, "file") && haskey(item, "line") || return [], "File must be saved."
       file, line = item["file"], item["line"]
       (file !== nothing && isfile(file)) || return [], "File not found."
       removebreakpoint(file, line) || addbreakpoint(file, line)
