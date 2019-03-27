@@ -19,6 +19,8 @@ const STATE = DebuggerState()
 
 isdebugging() = isassigned(chan) && chan[] !== nothing
 
+maybe_quote(x) = (isa(x, Expr) || isa(x, Symbol)) ? QuoteNode(x) : x
+
 # entrypoint
 function enter(mod, arg; initial_continue = false)
   quote
@@ -272,8 +274,6 @@ end
 # return expression that will be evaluated next
 nextstate(state::DebuggerState) = nextstate(state.frame)
 function nextstate(frame::Frame)
-  maybe_quote(x) = (isa(x, Expr) || isa(x, Symbol)) ? QuoteNode(x) : x
-
   expr = pc_expr(frame)
   isa(expr, Expr) && (expr = copy(expr))
   if isexpr(expr, :(=))
@@ -363,7 +363,7 @@ function eval_code(frame::Frame, command::AbstractString)
     vars = filter(v -> v.name != Symbol(""), JuliaInterpreter.locals(frame))
     res = gensym()
     eval_expr = Expr(:let,
-        Expr(:block, map(x->Expr(:(=), x...), [(v.name, v.value) for v in vars])...),
+        Expr(:block, map(x->Expr(:(=), x...), [(v.name, maybe_quote(v.value)) for v in vars])...),
         Expr(:block,
             Expr(:(=), res, expr),
             Expr(:tuple, res, Expr(:tuple, [v.name for v in vars]...))
