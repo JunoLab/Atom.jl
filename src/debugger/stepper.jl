@@ -10,9 +10,10 @@ using MacroTools
 mutable struct DebuggerState
   frame::Union{Nothing, Frame}
   result
+  broke_on_error::Bool
 end
-DebuggerState(frame::Frame) = DebuggerState(frame, nothing)
-DebuggerState() = DebuggerState(nothing, nothing)
+DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false)
+DebuggerState() = DebuggerState(nothing, nothing, false)
 
 const chan = Ref{Union{Channel, Nothing}}()
 const STATE = DebuggerState()
@@ -67,12 +68,16 @@ function startdebugging(frame, initial_continue = false)
           return res
         end
         STATE.frame = frame = ret[1]
+        pc = ret[2]
+        if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
+          STATE.broke_on_error = true
+          Base.display_error(stderr, ret[2].err, [])
+        end
       end
 
       JuliaInterpreter.maybe_next_call!(frame)
 
       debugmode(true)
-
       if Atom.isREPL()
         # FIXME: Should get rid of the second code path (see comment in repl.jl).
         if Atom.inREPL[]
@@ -85,6 +90,15 @@ function startdebugging(frame, initial_continue = false)
       stepto(frame)
 
       for val in chan[]
+        if val == :stop
+          return nothing
+        end
+
+        if STATE.broke_on_error
+          printstyled(stderr, "Cannot step after breaking on error\n"; color=Base.error_color())
+          continue
+        end
+
         ret = if val == :nextline
           debug_command(frame, :n, true)
         elseif val == :stepexpr
@@ -95,8 +109,6 @@ function startdebugging(frame, initial_continue = false)
           debug_command(frame, :finish, true)
         elseif val == :continue
           debug_command(frame, :c, true)
-        elseif val == :stop
-          return nothing
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
           method = frame.framecode.scope
           @assert method isa Method
@@ -115,6 +127,11 @@ function startdebugging(frame, initial_continue = false)
           break
         else
           STATE.frame = frame = ret[1]
+          pc = ret[2]
+          if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
+            STATE.broke_on_error = true
+            Base.display_error(stderr, pc.err, [])
+          end
           JuliaInterpreter.maybe_next_call!(frame)
           stepto(frame)
         end
