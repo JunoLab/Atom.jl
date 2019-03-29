@@ -37,20 +37,6 @@ handle("changemodule") do data
   nothing
 end
 
-function fullREPLpath(uri)
-  urimatch = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
-  if urimatch ≠ nothing
-    return normpath(expanduser(String(urimatch[2]))), parse(Int, urimatch[3])
-  else
-    urimatch = match(r"([^\:]+)(?:\:(\d+))?", uri)
-    if urimatch ≠ nothing
-      line = urimatch[2] ≠ nothing ? parse(Int, urimatch[2]) : 0
-      return Atom.fullpath(normpath(expanduser(String(urimatch[1])))), line
-    end
-  end
-  return "", 0
-end
-
 handle("fullpath") do uri
   return fullREPLpath(uri)
 end

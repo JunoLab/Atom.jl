@@ -1,3 +1,5 @@
+include("path_matching.jl")
+
 isuntitled(p) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
 
 appendline(path, line) = line > 0 ? "$path:$line" : path
