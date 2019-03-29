@@ -44,6 +44,12 @@ function _make_frame(mod, arg)
     end
 end
 
+const prompt_color = if Sys.iswindows()
+  "\e[33m"
+else
+  "\e[38;5;166m"
+end
+
 # setup interpreter
 function startdebugging(frame, initial_continue = false)
   global STATE.frame = frame
@@ -72,7 +78,7 @@ function startdebugging(frame, initial_continue = false)
         if Atom.inREPL[]
           repltask = @async debugprompt()
         else
-          Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
+          Atom.changeREPLprompt("debug> ", color=prompt_color)
         end
       end
 
@@ -141,7 +147,7 @@ using REPL
 function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix="\e[38;5;166m",
+              prompt_prefix=prompt_color,
               prompt_suffix="\e[0m",
               on_enter = s -> true)
 
