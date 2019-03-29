@@ -61,8 +61,12 @@ function _make_frame(mod, arg)
     quote
       theargs = $(esc(args))
       frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
-      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
-      $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
+      if frame !== nothing
+        frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
+        if frame !== nothing
+          $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
+        end
+      end
     end
 end
 
@@ -74,6 +78,9 @@ end
 
 # setup interpreter
 function startdebugging(frame, initial_continue = false)
+  if frame === nothing
+    error("failed to enter the function, perhaps it is set to run in compiled mode")
+  end
   global STATE.frame = frame
   global chan[] = Channel(0)
 
@@ -99,14 +106,7 @@ function startdebugging(frame, initial_continue = false)
       JuliaInterpreter.maybe_next_call!(frame)
 
       debugmode(true)
-      if Atom.isREPL()
-        # FIXME: Should get rid of the second code path (see comment in repl.jl).
-        if Atom.inREPL[]
-          repltask = @async debugprompt()
-        else
-          Atom.changeREPLprompt("debug> ", color=prompt_color)
-        end
-      end
+      repltask = @async debugprompt()
 
       stepto(frame)
 
@@ -159,24 +159,14 @@ function startdebugging(frame, initial_continue = false)
       end
     end
   catch err
-    if Atom.isREPL()
-      display_error(stderr, err, stacktrace(catch_backtrace()))
-    else
-      render(Console(), EvalError(e, catch_stacktrace()))
-    end
+    display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
     chan[] = nothing
     debugmode(false)
-
-    if Atom.isREPL()
-      if repltask ≠ nothing
-        istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
-        print("\r                        \r")
-      else
-        print("\r                        \r")
-        Atom.changeREPLprompt(Atom.juliaprompt, color = :green, write = false)
-      end
+    if repltask ≠ nothing
+      istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
     end
+    print("\r                        \r")
   end
   res
 end
