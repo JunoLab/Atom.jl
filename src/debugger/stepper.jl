@@ -182,33 +182,41 @@ function startdebugging(frame, initial_continue = false)
 end
 
 using REPL
+using REPL.LineEdit
+
 function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix=prompt_color,
-              prompt_suffix="\e[0m",
+              prompt_prefix = prompt_color,
+              prompt_suffix = Base.text_colors[:normal],
               on_enter = s -> true)
 
+    panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
+    REPL.history_reset_state(panel.hist)
+
+    search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
+    search_prompt.complete = REPL.LatexCompletions()
+
     panel.on_done = (s, buf, ok) -> begin
+      if !ok
+        LineEdit.transition(s, :abort)
+        REPL.LineEdit.reset_state(s)
+        return false
+      end
       Atom.msg("working")
 
       line = String(take!(buf))
 
       isempty(line) && return true
 
-      if !ok
-        REPL.LineEdit.transition(s, :abort)
-        REPL.LineEdit.reset_state(s)
-        return false
-      end
-
       try
         r = Atom.JunoDebugger.interpret(line)
         r ≠ nothing && display(r)
-        println()
       catch err
         display_error(stderr, err, stacktrace(catch_backtrace()))
       end
+      println()
+      LineEdit.reset_state(s)
 
       Atom.msg("doneWorking")
       Atom.msg("updateWorkspace")
@@ -216,8 +224,12 @@ function debugprompt()
       return true
     end
 
-    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel]))
+    panel.keymap_dict = LineEdit.keymap(Dict{Any,Any}[skeymap, LineEdit.history_keymap, LineEdit.default_keymap, LineEdit.escape_defaults])
+
+    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel, search_prompt]))
   catch e
+    Atom.msg("doneWorking")
+    Atom.msg("updateWorkspace")
     e isa InterruptException || rethrow(e)
   end
 end
