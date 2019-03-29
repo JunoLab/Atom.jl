@@ -39,9 +39,8 @@ function _make_frame(mod, arg)
     quote
       theargs = $(esc(args))
       frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
-      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
-      $(@__MODULE__).JuliaInterpreter.maybe_next_call!(frame)
-      frame
+      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
+      $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
     end
 end
 
@@ -55,15 +54,16 @@ function startdebugging(frame, initial_continue = false)
 
   try
     evalscope() do
-      if initial_continue
-        ret = debug_command(frame, :finish, true)
+      if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
+        ret = debug_command(frame, :c, true)
         if ret === nothing
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           return res
         end
         STATE.frame = frame = ret[1]
-        JuliaInterpreter.maybe_next_call!(frame)
       end
+
+      JuliaInterpreter.maybe_next_call!(frame)
 
       debugmode(true)
 
