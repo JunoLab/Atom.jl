@@ -11,9 +11,30 @@ mutable struct DebuggerState
   frame::Union{Nothing, Frame}
   result
   broke_on_error::Bool
+  level::Int
 end
-DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false)
-DebuggerState() = DebuggerState(nothing, nothing, false)
+DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false, 1)
+DebuggerState() = DebuggerState(nothing, nothing, false, 1)
+
+function active_frame(state::DebuggerState)
+    frame = state.frame
+    for i in 1:(stacklength(state) - state.level - 1)
+        frame = caller(frame)
+    end
+    @assert frame !== nothing
+    return frame
+end
+stacklength(state::DebuggerState) = stacklength(state.frame)
+stacklength(::Nothing) = 0
+function stacklength(frame::Frame)
+    s = 0
+    while frame !== nothing
+        s += 1
+        frame = caller(frame)
+    end
+    return s
+end
+
 
 const chan = Ref{Union{Channel, Nothing}}()
 const STATE = DebuggerState()
@@ -209,24 +230,28 @@ end
 handle((line)->put!(chan[], (:toline, line)), "toline")
 
 # notify the frontend that we start debugging now
-debugmode(on) = @msg debugmode(on)
+function debugmode(on)
+  @msg debugmode(on)
+  Atom.msg("doneWorking")
+end
 
 ## Stepping
 
 # perform step in frontend
-function stepto(frame::Frame)
+function stepto(frame::Frame, level = stacklength(STATE)-1)
   file, line = JuliaInterpreter.whereis(frame)
   file = Atom.fullpath(string(file))
 
-  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame))
+  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame, level))
 end
-stepto(state::DebuggerState) = stepto(state.frame)
+stepto(state::DebuggerState) = stepto(state.frame, state.level)
 stepto(::Nothing) = debugmode(false)
 
-function moreinfo(file, line, frame)
+function moreinfo(file, line, frame, level)
   info = Dict()
   info["shortpath"], _ = Atom.expandpath(file)
   info["line"] = line
+  info["level"] = level
   info["stack"] = stack(frame)
   info["moreinfo"] = get_code_around(file, line, frame)
   return info
@@ -372,10 +397,19 @@ struct Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
+handle("setStackLevel") do level
+  with_error_message() do
+    level = level isa String ? parseInt(level) : level
+    STATE.level = level
+    stepto(active_frame(STATE), level)
+    nothing
+  end
+end
+
 ## Evaluation
 function interpret(code::AbstractString, s::DebuggerState = STATE)
   s.frame === nothing && return
-  eval_code(s.frame, code)
+  eval_code(active_frame(s), code)
 end
 
 # copied from https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
