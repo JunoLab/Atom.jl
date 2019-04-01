@@ -39,6 +39,20 @@ end
     @test !isempty(Atom.getdocs("Main", "@deprecate"))
 end
 
+@testset "REPL path finding" begin
+    if Sys.iswindows()
+        @test Atom.fullREPLpath(raw"@ Atom C:\Users\ads\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl", 25)
+        @test Atom.fullREPLpath(raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl", 25)
+        @test Atom.fullREPLpath(raw".\foo\bar.jl:1") == (Atom.fullpath(raw".\foo\bar.jl"), 1)
+        @test Atom.fullREPLpath(raw"foo\bar.jl:1") == (Atom.fullpath(raw".\foo\bar.jl"), 1)
+    else
+        @test Atom.fullREPLpath("@ Atom /home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
+        @test Atom.fullREPLpath("/home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
+        @test Atom.fullREPLpath("./foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
+        @test Atom.fullREPLpath("foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
+    end
+end
+
 #TODO: baselink, edit
 
 cd(old_pwd)

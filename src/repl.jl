@@ -37,20 +37,6 @@ handle("changemodule") do data
   nothing
 end
 
-function fullREPLpath(uri)
-  urimatch = match(r"@ ([^\s]+)\s(.*?)\:(\d+)", uri)
-  if urimatch ≠ nothing
-    return normpath(expanduser(String(urimatch[2]))), parse(Int, urimatch[3])
-  else
-    urimatch = match(r"([^\:]+)(?:\:(\d+))?", uri)
-    if urimatch ≠ nothing
-      line = urimatch[2] ≠ nothing ? parse(Int, urimatch[2]) : 0
-      return Atom.fullpath(normpath(expanduser(String(urimatch[1])))), line
-    end
-  end
-  return "", 0
-end
-
 handle("fullpath") do uri
   return fullREPLpath(uri)
 end
@@ -150,57 +136,43 @@ const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
   global ans
-  if isdebugging()
-    try
-      msg("working")
+  try
+    lock(evallock)
+    msg("working")
+    inREPL[] = true
+    fixjunodisplays()
+    # this is slow:
+    errored = false
+    Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
       try
-        ans = Atom.JunoDebugger.interpret(line)
+         line = Meta.parse(line)
       catch err
+        errored = true
+        display_parse_error(stderr, err)
+      end
+      errored && return nothing
+      try
+        ans = repleval(mod, line)
+      catch err
+        # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
+        # seems to work just fine.
+
+        errored = true
         display_error(stderr, err, stacktrace(catch_backtrace()))
       end
-    finally
-      msg("updateWorkspace")
+    end
+    errored ? nothing : ans
+  catch err
+    # This is for internal errors only.
+    display_error(stderr, err, stacktrace(catch_backtrace()))
+  finally
+    inREPL[] = false
+    unlock(evallock)
+    @async begin
       msg("doneWorking")
+      msg("updateWorkspace")
     end
-  else
-    try
-      lock(evallock)
-      msg("working")
-      inREPL[] = true
-      fixjunodisplays()
-      # this is slow:
-      errored = false
-      Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-        try
-           line = Meta.parse(line)
-        catch err
-          errored = true
-          display_parse_error(stderr, err)
-        end
-        errored && return nothing
-        try
-          ans = repleval(mod, line)
-        catch err
-          # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
-          # seems to work just fine.
-
-          errored = true
-          display_error(stderr, err, stacktrace(catch_backtrace()))
-        end
-      end
-      errored ? nothing : ans
-    catch err
-      # This is for internal errors only.
-      display_error(stderr, err, stacktrace(catch_backtrace()))
-    finally
-      inREPL[] = false
-      unlock(evallock)
-      @async begin
-        msg("doneWorking")
-        msg("updateWorkspace")
-      end
-      nothing
-    end
+    nothing
   end
 end
 

@@ -80,15 +80,15 @@ strlimit(str::AbstractString, limit = 30) = lastindex(str) > limit ?  str[1:prev
 
 using Base.Docs
 function completionsummary(mod, c)
-  ct = REPLCompletions.completion_text(c)
-  (!Base.isbindingresolved( mod, Symbol(ct)) || Base.isdeprecated(mod, Symbol(ct))) && return ""
-  b = Docs.Binding(mod, Symbol(ct))
+  ct = Symbol(REPLCompletions.completion_text(c))
+  (!Base.isbindingresolved(mod, ct) || Base.isdeprecated(mod, ct)) && return ""
+  b = Docs.Binding(mod, ct)
   description(b)
 end
 
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
   b = Docs.Binding(mod, Symbol(c.func))
-  (!Base.isbindingresolved( mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
+  (!Base.isbindingresolved(mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 

@@ -10,9 +10,31 @@ using MacroTools
 mutable struct DebuggerState
   frame::Union{Nothing, Frame}
   result
+  broke_on_error::Bool
+  level::Int
 end
-DebuggerState(frame::Frame) = DebuggerState(frame, nothing)
-DebuggerState() = DebuggerState(nothing, nothing)
+DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false, 1)
+DebuggerState() = DebuggerState(nothing, nothing, false, 1)
+
+function active_frame(state::DebuggerState)
+    frame = state.frame
+    for i in 1:(stacklength(state) - state.level - 1)
+        frame = caller(frame)
+    end
+    @assert frame !== nothing
+    return frame
+end
+stacklength(state::DebuggerState) = stacklength(state.frame)
+stacklength(::Nothing) = 0
+function stacklength(frame::Frame)
+    s = 0
+    while frame !== nothing
+        s += 1
+        frame = caller(frame)
+    end
+    return s
+end
+
 
 const chan = Ref{Union{Channel, Nothing}}()
 const STATE = DebuggerState()
@@ -39,14 +61,26 @@ function _make_frame(mod, arg)
     quote
       theargs = $(esc(args))
       frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
-      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
-      $(@__MODULE__).JuliaInterpreter.maybe_next_call!(frame)
-      frame
+      if frame !== nothing
+        frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
+        if frame !== nothing
+          $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
+        end
+      end
     end
+end
+
+const prompt_color = if Sys.iswindows()
+  "\e[33m"
+else
+  "\e[38;5;166m"
 end
 
 # setup interpreter
 function startdebugging(frame, initial_continue = false)
+  if frame === nothing
+    error("failed to enter the function, perhaps it is set to run in compiled mode")
+  end
   global STATE.frame = frame
   global chan[] = Channel(0)
 
@@ -55,30 +89,37 @@ function startdebugging(frame, initial_continue = false)
 
   try
     evalscope() do
-      if initial_continue
-        ret = debug_command(frame, :finish, true)
+      if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
+        ret = debug_command(frame, :c, true)
         if ret === nothing
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           return res
         end
         STATE.frame = frame = ret[1]
-        JuliaInterpreter.maybe_next_call!(frame)
-      end
-
-      debugmode(true)
-
-      if Atom.isREPL()
-        # FIXME: Should get rid of the second code path (see comment in repl.jl).
-        if Atom.inREPL[]
-          repltask = @async debugprompt()
-        else
-          Atom.changeREPLprompt("debug> ", color="\e[38;5;166m")
+        pc = ret[2]
+        if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
+          STATE.broke_on_error = true
+          Base.display_error(stderr, ret[2].err, [])
         end
       end
+
+      JuliaInterpreter.maybe_next_call!(frame)
+
+      debugmode(true)
+      repltask = @async debugprompt()
 
       stepto(frame)
 
       for val in chan[]
+        if val == :stop
+          return nothing
+        end
+
+        if STATE.broke_on_error
+          printstyled(stderr, "Cannot step after breaking on error\n"; color=Base.error_color())
+          continue
+        end
+
         ret = if val == :nextline
           debug_command(frame, :n, true)
         elseif val == :stepexpr
@@ -89,8 +130,6 @@ function startdebugging(frame, initial_continue = false)
           debug_command(frame, :finish, true)
         elseif val == :continue
           debug_command(frame, :c, true)
-        elseif val == :stop
-          return nothing
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
           method = frame.framecode.scope
           @assert method isa Method
@@ -109,62 +148,65 @@ function startdebugging(frame, initial_continue = false)
           break
         else
           STATE.frame = frame = ret[1]
+          pc = ret[2]
+          if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
+            STATE.broke_on_error = true
+            Base.display_error(stderr, pc.err, [])
+          end
           JuliaInterpreter.maybe_next_call!(frame)
           stepto(frame)
         end
       end
     end
   catch err
-    if Atom.isREPL()
-      display_error(stderr, err, stacktrace(catch_backtrace()))
-    else
-      render(Console(), EvalError(e, catch_stacktrace()))
-    end
+    display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
     chan[] = nothing
     debugmode(false)
-
-    if Atom.isREPL()
-      if repltask ≠ nothing
-        istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
-        print("\r                        \r")
-      else
-        print("\r                        \r")
-        Atom.changeREPLprompt(Atom.juliaprompt, color = :green, write = false)
-      end
+    if repltask ≠ nothing
+      istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
     end
+    print("\r                        \r")
   end
   res
 end
 
 using REPL
+using REPL.LineEdit
+
 function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix="\e[38;5;166m",
-              prompt_suffix="\e[0m",
+              prompt_prefix = prompt_color,
+              prompt_suffix = Base.text_colors[:normal],
               on_enter = s -> true)
 
+    panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
+    REPL.history_reset_state(panel.hist)
+
+    search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
+    search_prompt.complete = REPL.LatexCompletions()
+
     panel.on_done = (s, buf, ok) -> begin
+      if !ok
+        LineEdit.transition(s, :abort)
+        REPL.LineEdit.reset_state(s)
+        return false
+      end
       Atom.msg("working")
 
       line = String(take!(buf))
 
       isempty(line) && return true
 
-      if !ok
-        REPL.LineEdit.transition(s, :abort)
-        REPL.LineEdit.reset_state(s)
-        return false
-      end
-
       try
         r = Atom.JunoDebugger.interpret(line)
         r ≠ nothing && display(r)
-        println()
       catch err
         display_error(stderr, err, stacktrace(catch_backtrace()))
       end
+      println()
+      LineEdit.reset_state(s)
 
       Atom.msg("doneWorking")
       Atom.msg("updateWorkspace")
@@ -172,8 +214,12 @@ function debugprompt()
       return true
     end
 
-    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel]))
+    panel.keymap_dict = LineEdit.keymap(Dict{Any,Any}[skeymap, LineEdit.history_keymap, LineEdit.default_keymap, LineEdit.escape_defaults])
+
+    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel, search_prompt]))
   catch e
+    Atom.msg("doneWorking")
+    Atom.msg("updateWorkspace")
     e isa InterruptException || rethrow(e)
   end
 end
@@ -186,24 +232,28 @@ end
 handle((line)->put!(chan[], (:toline, line)), "toline")
 
 # notify the frontend that we start debugging now
-debugmode(on) = @msg debugmode(on)
+function debugmode(on)
+  @msg debugmode(on)
+  Atom.msg("doneWorking")
+end
 
 ## Stepping
 
 # perform step in frontend
-function stepto(frame::Frame)
+function stepto(frame::Frame, level = stacklength(STATE)-1)
   file, line = JuliaInterpreter.whereis(frame)
   file = Atom.fullpath(string(file))
 
-  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame))
+  @msg stepto(file, line, stepview(nextstate(frame)), moreinfo(file, line, frame, level))
 end
-stepto(state::DebuggerState) = stepto(state.frame)
+stepto(state::DebuggerState) = stepto(state.frame, state.level)
 stepto(::Nothing) = debugmode(false)
 
-function moreinfo(file, line, frame)
+function moreinfo(file, line, frame, level)
   info = Dict()
   info["shortpath"], _ = Atom.expandpath(file)
   info["line"] = line
+  info["level"] = level
   info["stack"] = stack(frame)
   info["moreinfo"] = get_code_around(file, line, frame)
   return info
@@ -349,10 +399,19 @@ struct Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
 Atom.wsicon(::Undefined) = "icon-circle-slash"
 
+handle("setStackLevel") do level
+  with_error_message() do
+    level = level isa String ? parseInt(level) : level
+    STATE.level = level
+    stepto(active_frame(STATE), level)
+    nothing
+  end
+end
+
 ## Evaluation
 function interpret(code::AbstractString, s::DebuggerState = STATE)
   s.frame === nothing && return
-  eval_code(s.frame, code)
+  eval_code(active_frame(s), code)
 end
 
 # copied from https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
