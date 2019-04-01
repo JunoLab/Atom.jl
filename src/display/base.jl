@@ -140,7 +140,11 @@ end
 
 @render i::Inline x::Complex begin
   re, ima = reim(x)
-  span(c(render(i, re), signbit(ima) ? " - " : " + ", render(i, abs(ima)), "im"))
+  if signbit(ima)
+    span(c(render(i, re), " - ", render(i, -ima), "im"))
+  else
+    span(c(render(i, re), " + ", render(i, ima), "im"))
+  end
 end
 
 @render Inline p::Ptr begin
