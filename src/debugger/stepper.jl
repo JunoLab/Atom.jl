@@ -43,8 +43,11 @@ isdebugging() = isassigned(chan) && chan[] !== nothing
 
 maybe_quote(x) = (isa(x, Expr) || isa(x, Symbol)) ? QuoteNode(x) : x
 
+check_is_call(arg) = !(arg isa Expr && arg.head == :call) && throw(ArgumentError("@enter and @run must be applied to a function call"))
+
 # entrypoint
 function enter(mod, arg; initial_continue = false)
+  check_is_call(arg)
   quote
     let frame = $(_make_frame(mod, arg))
       $(@__MODULE__).startdebugging(frame, $(initial_continue))
