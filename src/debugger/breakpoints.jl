@@ -83,7 +83,12 @@ end
 
 handle("getBreakpoints") do
   with_error_message() do
-    allbreakpoints()
+    Dict(
+      :breakpoints => allbreakpoints(),
+      :onException => JuliaInterpreter.break_on_error[],
+      :onUncaught => false
+    )
+
   end
 end
 
