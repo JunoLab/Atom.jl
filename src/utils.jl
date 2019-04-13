@@ -35,7 +35,13 @@ function finddevpackages()
     for manifest in manifests
         isfile(manifest) || continue
         for (pkg, infos) in Pkg.Types.read_manifest(manifest)
-            haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
+            @static if VERSION < v"1.1"
+                haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
+            else
+                if infos.path ≠ nothing
+                    devpkgs[infos.name] = infos.path
+                end
+            end
         end
     end
 
