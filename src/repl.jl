@@ -12,7 +12,9 @@ function get_main_mode()
   mode
 end
 
-isREPL() = isdefined(Base, :active_repl)
+isREPL() = isdefined(Base, :active_repl) &&
+           isdefined(Base.active_repl, :interface) &&
+           isdefined(Base.active_repl.interface, :modes)
 
 handle("changeprompt") do prompt
   isREPL() || return
