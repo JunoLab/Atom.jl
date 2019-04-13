@@ -53,6 +53,10 @@ end
     end
 end
 
+@testset "finding dev packages" begin
+    @test Atom.finddevpackages() isa Dict
+end
+
 #TODO: baselink, edit
 
 cd(old_pwd)
