@@ -76,8 +76,6 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   strlimit(typ, 20)
 end
 
-strlimit(str::AbstractString, limit = 30) = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
-
 using Base.Docs
 function completionsummary(mod, c)
   ct = Symbol(REPLCompletions.completion_text(c))
