@@ -20,7 +20,7 @@ function isfile′(p)
   end
 end
 
-using Pkg
+using Pkg, OrderedCollections
 function finddevpackages()
     usage_file = joinpath(Pkg.logdir(), "manifest_usage.toml")
     manifests = Set{String}()
@@ -35,17 +35,17 @@ function finddevpackages()
     for manifest in manifests
         isfile(manifest) || continue
         for (pkg, infos) in Pkg.Types.read_manifest(manifest)
-            @static if VERSION < v"1.1"
-                haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
+            if isdefined(infos, :path)
+              if infos.path ≠ nothing
+                devpkgs[infos.name] = infos.path
+              end
             else
-                if infos.path ≠ nothing
-                    devpkgs[infos.name] = infos.path
-                end
+              haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
             end
         end
     end
 
-    devpkgs
+    sort(devpkgs)
 end
 
 function basepath(file)
