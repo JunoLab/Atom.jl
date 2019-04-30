@@ -36,6 +36,24 @@ function allbreakpoints()
   simple_bps
 end
 
+function simple_breakpoint(bp::JuliaInterpreter.BreakpointFileLocation; id = nothing)
+  file, line = location(bp)
+  condition = bp.condition
+  isactive = bp.enabled[]
+  shortpath, _ = Atom.expandpath(file)
+
+  condition = condition === nothing ? nothing : get(_conditions, bp, "?")
+
+  return Dict(
+    :file => file,
+    :shortpath => shortpath,
+    :line => line,
+    :isactive => isactive,
+    :condition => condition,
+    :id => id
+  )
+end
+
 function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef; id = nothing)
   file, line = location(bp)
   isactive = bp[].isactive
@@ -169,15 +187,12 @@ handle("addConditionById") do item, cond
       id = item["id"]
       if haskey(_breakpoints, id)
         bp = _breakpoints[id]
-        framecode = bp.framecode
-        stmtidx = bp.stmtidx
-
         expr = Meta.parse(cond)
         if !(expr isa JuliaInterpreter.Condition)
           error("Breakpoint condition must be an expression or a tuple of a module and an expression.")
         end
-        JuliaInterpreter.remove(bp)
-        bp = JuliaInterpreter.breakpoint!(framecode, stmtidx, expr)
+
+        bp = add_conditional_bp(bp, expr)
         _conditions[bp] = cond
       else
         error("Inconsistent Internal State. Abort abort aboooort!")
@@ -188,6 +203,19 @@ handle("addConditionById") do item, cond
 
     allbreakpoints()
   end
+end
+
+function add_conditional_bp(bp::JuliaInterpreter.BreakpointFileLocation, expr)
+  file, line = location(bp)
+  JuliaInterpreter.remove(bp)
+  JuliaInterpreter.breakpoint(file, line, expr)
+end
+
+function add_conditional_bp(bp::JuliaInterpreter.BreakpointRef, expr)
+  framecode = bp.framecode
+  stmtidx = bp.stmtidx
+  JuliaInterpreter.remove(bp)
+  JuliaInterpreter.breakpoint!(framecode, stmtidx, expr)
 end
 
 function with_error_message(f)
@@ -226,6 +254,8 @@ end
 function addbreakpoint(file, line)
   JuliaInterpreter.breakpoint(file, line)
 end
+
+location(bp::JuliaInterpreter.BreakpointFileLocation) = bp.abspath, bp.line
 
 function location(bp::JuliaInterpreter.BreakpointRef)
   if checkbounds(Bool, bp.framecode.breakpoints, bp.stmtidx)
