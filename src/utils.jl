@@ -31,17 +31,22 @@ function finddevpackages()
     else
         push!(manifests, Pkg.Types.Context().env.manifest_file)
     end
+
     devpkgs = Dict{String, String}()
     for manifest in manifests
         isfile(manifest) || continue
-        for (pkg, infos) in Pkg.Types.read_manifest(manifest)
-            if isdefined(infos, :path)
-              if infos.path ≠ nothing
-                devpkgs[infos.name] = infos.path
+        try
+          for (pkg, infos) in Pkg.Types.read_manifest(manifest)
+              if isdefined(infos, :path)
+                if infos.path ≠ nothing
+                  devpkgs[infos.name] = infos.path
+                end
+              else
+                haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
               end
-            else
-              haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
-            end
+          end
+        catch err
+          @debug("Error reading manifest.", exception=err)
         end
     end
 
