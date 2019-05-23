@@ -79,6 +79,12 @@ else
   "\e[38;5;166m"
 end
 
+function add_breakpoint(bp)
+  cond = bp["condition"]
+  cond = cond === nothing ? cond : Meta.parse(cond)
+  JuliaInterpreter.breakpoint(bp["file"], bp["line"], cond)
+end
+
 # setup interpreter
 function startdebugging(frame, initial_continue = false)
   if frame === nothing
@@ -88,6 +94,8 @@ function startdebugging(frame, initial_continue = false)
   STATE.frame = frame
   STATE.broke_on_error = false
   global chan[] = Channel(0)
+
+  temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
   res = nothing
   repltask = nothing
@@ -166,6 +174,7 @@ function startdebugging(frame, initial_continue = false)
   catch err
     display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
+    JuliaInterpreter.remove.(temp_bps)
     chan[] = nothing
     debugmode(false)
     if repltask ≠ nothing

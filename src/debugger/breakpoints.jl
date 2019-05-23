@@ -36,47 +36,30 @@ function allbreakpoints()
   simple_bps
 end
 
-function simple_breakpoint(bp::JuliaInterpreter.BreakpointFileLocation; id = nothing)
-  file, line = location(bp)
-  condition = bp.condition
-  isactive = bp.enabled[]
-  shortpath, _ = Atom.expandpath(file)
+function simple_breakpoint(bp::JuliaInterpreter.BreakpointSignature; id = id)
+  io = IOBuffer()
+  print(io, bp.f)
+  if bp.sig !== nothing
+    print(io, '(', join("::" .* string.(bp.sig.types), ", "), ')')
+  end
+  description = String(take!(io))
+  file, line = "", 0
+  if bp.f isa Method
+    _, _, file, line = Base.arg_decl_parts(bp.f)
+    file = Atom.basepath(string(file))
+    description = replace(description, r" in .* at .*$" => "")
+  end
 
-  condition = condition === nothing ? nothing : get(_conditions, bp, "?")
+  condition = bp.condition === nothing ? nothing : get(_conditions, bp, "?")
 
   return Dict(
     :file => file,
-    :shortpath => shortpath,
     :line => line,
-    :isactive => isactive,
+    :description => description,
+    :isactive => bp.enabled[],
     :condition => condition,
     :id => id
   )
-end
-
-function simple_breakpoint(bp::JuliaInterpreter.BreakpointRef; id = nothing)
-  file, line = location(bp)
-  isactive = bp[].isactive
-  condition = bp[].condition
-  condition = if condition == JuliaInterpreter.truecondition || condition == JuliaInterpreter.falsecondition
-    nothing
-  else
-    get(_conditions, bp, "?")
-  end
-
-  if file ≠ nothing
-    shortpath, _ = Atom.expandpath(file)
-    return Dict(
-      :file => file,
-      :shortpath => shortpath,
-      :line => line,
-      :isactive => isactive,
-      :condition => condition,
-      :id => id
-    )
-  else
-    return nothing
-  end
 end
 
 handle("toggleBP") do item
@@ -89,12 +72,38 @@ handle("toggleBP") do item
         error("Inconsistent internal state.")
       end
     else
-      haskey(item, "file") && haskey(item, "line") || return [], "File must be saved."
-      file, line = item["file"], item["line"]
-      (file !== nothing && isfile(file)) || return [], "File not found."
-      removebreakpoint(file, line) || addbreakpoint(file, line)
-
+      error("We have a problem, Houston.")
     end
+    allbreakpoints()
+  end
+end
+
+handle("addConditionById") do item, cond
+  with_error_message() do
+    if haskey(item, "id") && item["id"] ≠ nothing
+      id = item["id"]
+      if haskey(_breakpoints, id)
+        bp = _breakpoints[id]
+        bp isa JuliaInterpreter.BreakpointSignature || error("Wrong breakpoint type encountered.")
+
+        func = bp.f
+        sig = bp.sig
+        line = bp.line
+
+        expr = Meta.parse(cond)
+        if !(expr isa JuliaInterpreter.Condition)
+          error("Breakpoint condition must be an expression or a tuple of a module and an expression.")
+        end
+        JuliaInterpreter.remove(bp)
+        bp = JuliaInterpreter.breakpoint(func, sig, line, expr)
+        _conditions[bp] = cond
+      else
+        error("Inconsistent Internal State. Abort abort aboooort!")
+      end
+    else
+      error("Inconsistent Internal State. Abort abort aboooort!")
+    end
+
     allbreakpoints()
   end
 end
@@ -106,11 +115,21 @@ handle("getBreakpoints") do
       :onException => JuliaInterpreter.break_on_error[],
       :onUncaught => false
     )
-
   end
 end
 
 handle("toggleException") do
+  with_error_message() do
+    if JuliaInterpreter.break_on_throw[]
+      JuliaInterpreter.break_off(:throw)
+    else
+      JuliaInterpreter.break_on(:throw)
+    end
+    return JuliaInterpreter.break_on_throw[]
+  end
+end
+
+handle("toggleUncaught") do
   with_error_message() do
     if JuliaInterpreter.break_on_error[]
       JuliaInterpreter.break_off(:error)
@@ -121,27 +140,9 @@ handle("toggleException") do
   end
 end
 
-handle("toggleUncaught") do
-  return   Dict(
-      :response => noting,
-      :error => "Not supported yet."
-    )
-end
-
 handle("clearbps") do
   with_error_message() do
     JuliaInterpreter.remove()
-    allbreakpoints()
-  end
-end
-
-handle("addArgs") do arg
-  with_error_message() do
-    bp = add_breakpoint_args(arg)
-    bp isa Vector && isempty(bp) && error("""
-      Invalid spec or no matching methods found. Please specify as `foo` or `foo(Bar, Baz)`, e.g.
-      `sin` or `sin(Int)`. Make sure the function and all types can be reached from `Main`.
-      """)
     allbreakpoints()
   end
 end
@@ -153,6 +154,17 @@ handle("getbps") do
       push!(ret, Dict(:view => render(Juno.Inline(), bp)))
     end
     ret
+  end
+end
+
+handle("addArgs") do arg
+  with_error_message() do
+    bp = add_breakpoint_args(arg)
+    bp isa Vector && isempty(bp) && error("""
+      Invalid spec or no matching methods found. Please specify as `foo` or `foo(Bar, Baz)`, e.g.
+      `sin` or `sin(Int)`. Make sure the function and all types can be reached from `Main`.
+      """)
+    allbreakpoints()
   end
 end
 
@@ -169,53 +181,15 @@ handle("toggleActiveBP") do item
       id = item["id"]
       if haskey(_breakpoints, id)
         bp = _breakpoints[id]
-        bp[].isactive ? JuliaInterpreter.disable(bp) : JuliaInterpreter.enable(bp)
+        bp.enabled[] ? JuliaInterpreter.disable(bp) : JuliaInterpreter.enable(bp)
       else
         error("Inconsistent internal state.")
       end
     else
-      file, line = item["file"], item["line"]
-      toggleactive(file, line)
+      error("I'm broken.")
     end
     allbreakpoints()
   end
-end
-
-handle("addConditionById") do item, cond
-  with_error_message() do
-    if haskey(item, "id") && item["id"] ≠ nothing
-      id = item["id"]
-      if haskey(_breakpoints, id)
-        bp = _breakpoints[id]
-        expr = Meta.parse(cond)
-        if !(expr isa JuliaInterpreter.Condition)
-          error("Breakpoint condition must be an expression or a tuple of a module and an expression.")
-        end
-
-        bp = add_conditional_bp(bp, expr)
-        _conditions[bp] = cond
-      else
-        error("Inconsistent Internal State. Abort abort aboooort!")
-      end
-    else
-      error("Inconsistent Internal State. Abort abort aboooort!")
-    end
-
-    allbreakpoints()
-  end
-end
-
-function add_conditional_bp(bp::JuliaInterpreter.BreakpointFileLocation, expr)
-  file, line = location(bp)
-  JuliaInterpreter.remove(bp)
-  JuliaInterpreter.breakpoint(file, line, expr)
-end
-
-function add_conditional_bp(bp::JuliaInterpreter.BreakpointRef, expr)
-  framecode = bp.framecode
-  stmtidx = bp.stmtidx
-  JuliaInterpreter.remove(bp)
-  JuliaInterpreter.breakpoint!(framecode, stmtidx, expr)
 end
 
 function with_error_message(f)
@@ -249,55 +223,6 @@ function add_breakpoint_args(arg)
     end
   end
   JuliaInterpreter.breakpoint(meth)
-end
-
-function addbreakpoint(file, line)
-  JuliaInterpreter.breakpoint(file, line)
-end
-
-location(bp::JuliaInterpreter.BreakpointFileLocation) = bp.abspath, bp.line
-
-function location(bp::JuliaInterpreter.BreakpointRef)
-  if checkbounds(Bool, bp.framecode.breakpoints, bp.stmtidx)
-      lineno = JuliaInterpreter.linenumber(bp.framecode, bp.stmtidx)
-      bps = filter(bp->bp[].isactive, JuliaInterpreter.breakpoints())
-
-      # work around https://github.com/timholy/CodeTracking.jl/issues/27
-      for bp in bps
-          JuliaInterpreter.disable(bp)
-      end
-      ret = whereis(bp.framecode.scope)[1], lineno
-      for bp in bps
-          JuliaInterpreter.enable(bp)
-      end
-
-      ret
-  else
-      nothing, 0
-  end
-end
-
-function toggleactive(file, line)
-  bps = JuliaInterpreter.breakpoints()
-  for bp in bps
-    bp_file, bp_line = location(bp)
-    if normpath(bp_file) == normpath(file) && bp_line == line
-      bp[].isactive ? JuliaInterpreter.disable(bp) : JuliaInterpreter.enable(bp)
-    end
-  end
-end
-
-function removebreakpoint(file, line)
-  bps = JuliaInterpreter.breakpoints()
-  removed = false
-  for bp in bps
-    bp_file, bp_line = location(bp)
-    if normpath(bp_file) == normpath(file) && bp_line == line
-      JuliaInterpreter.remove(bp)
-      removed = true
-    end
-  end
-  removed
 end
 
 function no_chance_of_breaking()
