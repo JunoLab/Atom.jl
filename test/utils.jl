@@ -54,7 +54,7 @@ end
 end
 
 @testset "finding dev packages" begin
-    @test Atom.finddevpackages() isa Dict
+    @test Atom.finddevpackages() isa AbstractDict
 end
 
 #TODO: baselink, edit
