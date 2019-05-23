@@ -7,6 +7,8 @@ import Atom: basepath, handle
 const _breakpoints = Dict{Int, Any}()
 const _conditions = Dict{Any, Any}()
 
+const _compiledMode = Ref{Any}(JuliaInterpreter.finish_and_return!)
+
 """
     allbreakpoints()
 
@@ -115,6 +117,15 @@ handle("getBreakpoints") do
       :onException => JuliaInterpreter.break_on_error[],
       :onUncaught => false
     )
+  end
+end
+
+handle("toggleCompiled") do
+  with_error_message() do
+    _compiledMode[] = (_compiledMode[] === JuliaInterpreter.finish_and_return! ?
+      (_compiledMode[] = JuliaInterpreter.Compiled()) :
+      (_compiledMode[] = JuliaInterpreter.finish_and_return!))
+    return _compiledMode[] === JuliaInterpreter.Compiled()
   end
 end
 

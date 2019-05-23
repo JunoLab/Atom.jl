@@ -35,7 +35,6 @@ function stacklength(frame::Frame)
     return s
 end
 
-
 const chan = Ref{Union{Channel, Nothing}}()
 const STATE = DebuggerState()
 
@@ -103,7 +102,7 @@ function startdebugging(frame, initial_continue = false)
   try
     evalscope() do
       if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
-        ret = debug_command(frame, :c, true)
+        ret = debug_command(_compiledMode[], frame, :c, true)
         if ret === nothing
           STATE.result = res = JuliaInterpreter.get_return(root(frame))
           return res
@@ -134,21 +133,21 @@ function startdebugging(frame, initial_continue = false)
         end
 
         ret = if val == :nextline
-          debug_command(frame, :n, true)
+          debug_command(_compiledMode[], frame, :n, true)
         elseif val == :stepexpr
-          debug_command(frame, :nc, true)
+          debug_command(_compiledMode[], frame, :nc, true)
         elseif val == :stepin
-          debug_command(frame, :s, true)
+          debug_command(_compiledMode[], frame, :s, true)
         elseif val == :finish
-          debug_command(frame, :finish, true)
+          debug_command(_compiledMode[], frame, :finish, true)
         elseif val == :continue
-          debug_command(frame, :c, true)
+          debug_command(_compiledMode[], frame, :c, true)
         elseif val isa Tuple && val[1] == :toline && val[2] isa Int
           method = frame.framecode.scope
           @assert method isa Method
           # set temporary breakpoint
           bp = JuliaInterpreter.breakpoint(method, val[2])
-          _ret = debug_command(frame, :finish, true)
+          _ret = debug_command(_compiledMode[], frame, :finish, true)
           # and remove it again
           JuliaInterpreter.remove(bp)
           _ret
