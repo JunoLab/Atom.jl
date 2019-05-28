@@ -25,7 +25,7 @@ function allbreakpoints()
     delete!(_conditions, bp)
   end
 
-  for bp in bps
+  for bp in filter!(bp -> bp isa JuliaInterpreter.BreakpointSignature, bps)
     sbp = simple_breakpoint(bp, id = id)
     if sbp === nothing
       @warn "Not good. Weird breakpoint encountered."

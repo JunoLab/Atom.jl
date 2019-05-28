@@ -17,22 +17,22 @@ DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false, 1)
 DebuggerState() = DebuggerState(nothing, nothing, false, 1)
 
 function active_frame(state::DebuggerState)
-    frame = state.frame
-    for i in 1:(stacklength(state) - state.level - 1)
-        frame = caller(frame)
-    end
-    @assert frame !== nothing
-    return frame
+  frame = state.frame
+  for i in 1:(stacklength(state) - state.level - 1)
+    frame = caller(frame)
+  end
+  @assert frame !== nothing
+  return frame
 end
 stacklength(state::DebuggerState) = stacklength(state.frame)
 stacklength(::Nothing) = 0
 function stacklength(frame::Frame)
-    s = 0
-    while frame !== nothing
-        s += 1
-        frame = caller(frame)
-    end
-    return s
+  s = 0
+  while frame !== nothing
+    s += 1
+    frame = caller(frame)
+  end
+  return s
 end
 
 const chan = Ref{Union{Channel, Nothing}}()
@@ -55,21 +55,21 @@ function enter(mod, arg; initial_continue = false)
 end
 
 function _make_frame(mod, arg)
-    args = try
-      extract_args(mod, arg)
-    catch e
-      return :(throw($e))
-    end
-    quote
-      theargs = $(esc(args))
-      frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
+  args = try
+    extract_args(mod, arg)
+  catch e
+    return :(throw($e))
+  end
+  quote
+    theargs = $(esc(args))
+    frame = $(@__MODULE__).JuliaInterpreter.enter_call_expr(Expr(:call, theargs...))
+    if frame !== nothing
+      frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
       if frame !== nothing
-        frame = $(@__MODULE__).JuliaInterpreter.maybe_step_through_kwprep!(frame)
-        if frame !== nothing
-          $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
-        end
+        $(@__MODULE__).JuliaInterpreter.maybe_step_through_wrapper!(frame)
       end
     end
+  end
 end
 
 const prompt_color = if Sys.iswindows()
@@ -122,10 +122,18 @@ function startdebugging(frame, initial_continue = false)
 
       stepto(frame)
 
+      # make sure we're at the bottom of the callstack initially
+      STATE.level = stacklength(STATE) - 1
+
       for val in chan[]
         if val == :stop
           return nothing
         end
+
+        # remove all file/line breakpoints
+        JuliaInterpreter.remove.(temp_bps)
+        # and re-add them to get changes from frontend
+        temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
         if STATE.broke_on_error
           printstyled(stderr, "Cannot step after breaking on error\n"; color=Base.error_color())
@@ -160,6 +168,7 @@ function startdebugging(frame, initial_continue = false)
           break
         else
           STATE.frame = frame = ret[1]
+          STATE.level = stacklength(STATE) - 1
           pc = ret[2]
           if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
             STATE.broke_on_error = true
