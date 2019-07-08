@@ -46,6 +46,7 @@ include("repl.jl")
 include("docs.jl")
 include("completions.jl")
 include("misc.jl")
+include("formatter.jl")
 include("frontend.jl")
 include("utils.jl")
 
