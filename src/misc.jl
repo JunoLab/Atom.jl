@@ -44,3 +44,19 @@ handle("cancelCallback") do args...
   # Until then it's better to silently fail than spam the REPL with "unrecognised
   # message" warnings.
 end
+
+using Pkg: status
+handle("reportinfo") do
+  io = IOBuffer()
+  versioninfo(io)
+  println(io)
+
+  old = stdout
+  rd, wr = redirect_stdout()
+  Pkg.status()
+  redirect_stdout(old)
+  close(wr)
+  println(io, String(read(rd)))
+
+  String(take!(io))
+end
