@@ -204,6 +204,7 @@ function debugprompt()
               on_enter = s -> true)
 
     panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
+    panel.complete = REPL.LatexCompletions()
     REPL.history_reset_state(panel.hist)
 
     search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
