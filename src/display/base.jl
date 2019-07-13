@@ -30,7 +30,7 @@ end
 
 getfield′(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
 
-showmethod(T) = which(show, (IO, T))
+showmethod(args...) = which(show, (IO, args...))
 
 const inline_mime = "application/prs.juno.inline"
 
@@ -55,6 +55,8 @@ const inline_mime = "application/prs.juno.inline"
       Text(String(take!(io)))
     end
   elseif showmethod(typeof(x)) ≠ showmethod(Any)
+    Text(filter(isvalid, sprint(io -> show(IOContext(io, :limit => true, :color => true), x))))
+  elseif showmethod(MIME"text/plain", typeof(x)) ≠ showmethod(MIME"text/plain", Any)
     Text(filter(isvalid, sprint(io -> show(IOContext(io, :limit => true, :color => true), MIME"text/plain"(), x))))
   else
     defaultrepr(x, true)
