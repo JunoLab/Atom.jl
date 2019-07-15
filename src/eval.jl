@@ -180,8 +180,23 @@ handle("evalrepl") do data
   return
 end
 
+function methodmdstring(word, mtable)
+  header = "\n***\n`$(word)` has **$(length(mtable))** methods\n"
+
+  body = map(mtable) do method
+    m = string(method)
+    ma = match(r" at ", m)
+    text = m[1:ma.offset - 1]
+    isbase = method.module === Base || parentmodule(method.module) === Base
+    link = isbase ? basepath(string(method.file)) : method.file
+    "- [$(text)]($(link):$(method.line))"
+  end |> lists -> join(lists, "\n")
+
+  header * body
+end
+
 handle("docs") do data
-  @destruct [mod || "Main", word] = data
+  @destruct [mod || "Main", word, datatip || nothing] = data
   docstring = @errs getdocs(mod, word)
 
   docstring isa EvalError && return Dict(:error => true)
@@ -191,10 +206,17 @@ handle("docs") do data
       []
     end
 
-  Dict(:error    => false,
-       :type     => :dom,
-       :tag      => :div,
-       :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
+  if (datatip == "datatip")
+    mstring = isempty(mtable) ? "" : methodmdstring(word, mtable)
+    mdstring = string(docstring) * mstring
+    Dict(:error    => false,
+         :mdstring => mdstring)
+  else
+    Dict(:error    => false,
+         :type     => :dom,
+         :tag      => :div,
+         :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
+  end
 end
 
 handle("methods") do data
