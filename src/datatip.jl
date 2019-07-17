@@ -17,12 +17,12 @@ end
 function processmdtext!(text, datatips)
   (text == "" || text == "\n") && return
   push!(datatips, Dict(:type  => :markdown,
-                         :value => text))
+                       :value => text))
 end
 
 function processmdcode!(code, datatips)
   push!(datatips, Dict(:type  => :snippet,
-                         :value => code))
+                       :value => code))
 end
 
 function processmethodtable!(word, mtable, datatips)
@@ -40,7 +40,7 @@ function processmethodtable!(word, mtable, datatips)
   end |> lists -> join(lists, "\n")
 
   push!(datatips, Dict(:type  => :markdown,
-                         :value => header * body))
+                       :value => header * body))
 end
 
 function makedatatip(docs, word, mtable)
@@ -79,6 +79,6 @@ handle("datatip") do data
       []
     end
 
-  Dict(:error    => false,
-       :strings  => makedatatip(docs, word, mtable))
+  Dict(:error   => false,
+       :strings => makedatatip(docs, word, mtable))
 end
