@@ -197,9 +197,7 @@ function searchcodeblocks(md, codeblocks)
 end
 
 function processmdtext!(text, docstrings)
-  if text == "" || text == "\n"
-    return
-  end
+  if text == "" || text == "\n" return end
   push!(docstrings, Dict(:type  => :markdown,
                          :value => text))
 end
@@ -210,9 +208,7 @@ function processmdcode!(code, docstrings)
 end
 
 function processmethodtable!(word, mtable, docstrings)
-  if isempty(mtable)
-    return
-  end
+  if isempty(mtable) return end
 
   header = "\n***\n`$(word)` has **$(length(mtable))** methods\n"
 
@@ -235,14 +231,13 @@ function makedatatip(docstring, word, mtable)
   codes = searchcodeblocks(docstring)
 
   datatips = []
-
   processmdtext!(texts[1], datatips)
   for (code, text) in zip(codes, texts[2:end])
     processmdcode!(code, datatips)
     processmdtext!(text, datatips)
   end
-
   processmethodtable!(word, mtable, datatips)
+
   datatips
 end
 
