@@ -1,11 +1,11 @@
 # Extract only code blocks from Markdown.MD
-function searchcodeblocks(md)
+function searchcodeblocks(docs)
   codeblocks = []
-  searchcodeblocks(md, codeblocks)
+  searchcodeblocks(docs, codeblocks)
   codeblocks
 end
-function searchcodeblocks(md, codeblocks)
-  for content in md.content
+function searchcodeblocks(docs, codeblocks)
+  for content in docs.content
     if content isa Markdown.Code
       push!(codeblocks, content.code)
     elseif content isa Markdown.MD
@@ -14,18 +14,18 @@ function searchcodeblocks(md, codeblocks)
   end
 end
 
-function processmdtext!(text, docstrings)
+function processmdtext!(text, datatips)
   (text == "" || text == "\n") && return
-  push!(docstrings, Dict(:type  => :markdown,
+  push!(datatips, Dict(:type  => :markdown,
                          :value => text))
 end
 
-function processmdcode!(code, docstrings)
-  push!(docstrings, Dict(:type  => :snippet,
+function processmdcode!(code, datatips)
+  push!(datatips, Dict(:type  => :snippet,
                          :value => code))
 end
 
-function processmethodtable!(word, mtable, docstrings)
+function processmethodtable!(word, mtable, datatips)
   isempty(mtable) && return
 
   header = "\n***\n`$(word)` has **$(length(mtable))** methods\n"
@@ -39,14 +39,16 @@ function processmethodtable!(word, mtable, docstrings)
     "- $(text)$(file):$(m.line)"
   end |> lists -> join(lists, "\n")
 
-  push!(docstrings, Dict(:type  => :markdown,
+  push!(datatips, Dict(:type  => :markdown,
                          :value => header * body))
 end
 
-function makedatatip(docstring, word, mtable)
-  # @NOTE: Separates non code blocks that would be rendered as markdown text (horrible hack)
-  texts = split(string(docstring), r"```[^```]+```")
-  codes = searchcodeblocks(docstring)
+function makedatatip(docs, word, mtable)
+  # @FIXME?: Separates non code blocks that would be rendered as snippet text.
+  #          Maybe setting up functions to deconstruct each `Markdown.MD.content`
+  #          into an appropriate markdown string would help.
+  texts = split(string(docs), r"```[^```]+```")
+  codes = searchcodeblocks(docs)
 
   datatips = []
   processmdtext!(texts[1], datatips)
@@ -59,15 +61,24 @@ function makedatatip(docstring, word, mtable)
   datatips
 end
 
+const novariable_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
+
 handle("datatip") do data
   @destruct [mod || "Main", word] = data
-  docstring = @errs getdocs(mod, word)
+  docs = @errs getdocs(mod, word)
 
-  docstring isa EvalError && return Dict(:error => true)
+  docs isa EvalError && return Dict(:error => true)
+  # @FIXME: This is another horrible hack, may not be rubust to future documentation change.
+  #         Refered to https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152
+  if match(novariable_regex, string(docs)) isa RegexMatch
+    return Dict(:novariable => true)
+  end
 
-  mtable = try getmethods(mod, word) catch e [] end
+  mtable = try getmethods(mod, word)
+    catch e
+      []
+    end
 
-  mdstring = string(docstring)
   Dict(:error    => false,
-       :strings  => makedatatip(docstring, word, mtable))
+       :strings  => makedatatip(docs, word, mtable))
 end
