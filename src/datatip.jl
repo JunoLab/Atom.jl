@@ -70,9 +70,7 @@ handle("datatip") do data
   docs isa EvalError && return Dict(:error => true)
   # @FIXME: This is another horrible hack, may not be rubust to future documentation change.
   #         Refered to https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152
-  if match(novariable_regex, string(docs)) isa RegexMatch
-    return Dict(:novariable => true)
-  end
+  match(novariable_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
 
   mtable = try getmethods(mod, word)
     catch e
