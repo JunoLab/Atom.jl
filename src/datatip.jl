@@ -44,9 +44,10 @@ function processmethodtable!(word, mtable, datatips)
 end
 
 function makedatatip(docs, word, mtable)
-  # @FIXME?: Separates non code blocks that would be rendered as snippet text.
-  #          Maybe setting up functions to deconstruct each `Markdown.MD.content`
-  #          into an appropriate markdown string would help.
+  # @FIXME?: Separates code blocks from the other markdown texts in order to
+  #          render them as code snippet text by atom-ide-ui's datatip service.
+  #          Setting up functions to deconstruct each `Markdown.MD.content`
+  #          into an appropriate markdown string might be preferred.
   texts = split(string(docs), r"```[^```]+```")
   codes = searchcodeblocks(docs)
 
