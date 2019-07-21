@@ -1,3 +1,14 @@
+"""
+Regex to match code blocks from markdown texts.
+"""
+const codeblock_regex = r"```((?!```).)*?```"s
+"""
+Regex that matches for a Julia documentation text when there is no documentation
+is found for the target variable/method.
+Refered to https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152.
+"""
+const nodoc_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
+
 # Extract only code blocks from Markdown.MD
 function searchcodeblocks(docs)
   codeblocks = []
@@ -48,7 +59,7 @@ function makedatatip(docs, word, mtable)
   #          render them as code snippet text by atom-ide-ui's datatip service.
   #          Setting up functions to deconstruct each `Markdown.MD.content`
   #          into an appropriate markdown string might be preferred.
-  texts = split(string(docs), r"```[^```]+```")
+  texts = split(string(docs), codeblock_regex)
   codes = searchcodeblocks(docs)
 
   datatips = []
@@ -62,16 +73,13 @@ function makedatatip(docs, word, mtable)
   datatips
 end
 
-const novariable_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
-
 handle("datatip") do data
   @destruct [mod || "Main", word] = data
   docs = @errs getdocs(mod, word)
 
   docs isa EvalError && return Dict(:error => true)
   # @FIXME: This is another horrible hack, may not be rubust to future documentation change.
-  #         Refered to https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152
-  match(novariable_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
+  match(nodoc_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
 
   mtable = try getmethods(mod, word)
     catch e
