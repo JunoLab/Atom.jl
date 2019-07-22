@@ -3,11 +3,11 @@ Regex to match code blocks from markdown texts.
 """
 const codeblock_regex = r"```((?!```).)*?```"s
 """
-Regex that matches for a Julia documentation text when there is no documentation
-is found for the target variable/method.
+Regex that matches for a Julia documentation text when there is no binding exists
+for the target word.
 Refered to https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152.
 """
-const nodoc_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
+const nobinding_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
 
 # Extract only code blocks from Markdown.MD
 function searchcodeblocks(docs)
@@ -46,7 +46,7 @@ function processmethodtable!(word, mtable, datatips)
     text = mstring[1:match(r" at ", mstring).offset + 3]
     isbase = m.module === Base || parentmodule(m.module) === Base
     file = isbase ? basepath(string(m.file)) : m.file
-    # @NOTE: Datatip service component can't handle links
+    # @NOTE: Datatip service component can't handle links to file paths.
     "- $(text)$(file):$(m.line)"
   end |> lists -> join(lists, "\n")
 
@@ -79,7 +79,7 @@ handle("datatip") do data
 
   docs isa EvalError && return Dict(:error => true)
   # @FIXME: This is another horrible hack, may not be rubust to future documentation change.
-  match(nodoc_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
+  match(nobinding_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
 
   mtable = try getmethods(mod, word)
     catch e
