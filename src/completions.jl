@@ -94,8 +94,8 @@ end
 
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
   ct = Symbol(c.func)
+  !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
-  !cangetdocs(mod, ct) && return ""  
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 
