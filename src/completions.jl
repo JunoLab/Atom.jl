@@ -80,7 +80,7 @@ using Base.Docs
 
 function completionsummary(mod, c)
   ct = Symbol(REPLCompletions.completion_text(c))
-  (!Base.isbindingresolved(mod, ct) || Base.isdeprecated(mod, ct)) && return ""
+  !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
   description(b)
 end
@@ -88,18 +88,23 @@ end
 function completionsummary(mod, c::REPLCompletions.ModuleCompletion)
   mod = c.parent
   word = c.mod
-  (!Base.isbindingresolved(mod, Symbol(word)) || Base.isdeprecated(mod, Symbol(word))) && return ""
+  !cangetdocs(mod, Symbol(word)) && return ""
   getdocs(string(mod), word) |> makedescription
+end
+
+function completionsummary(mod, c::REPLCompletions.MethodCompletion)
+  ct = Symbol(c.func)
+  b = Docs.Binding(mod, ct)
+  !cangetdocs(mod, ct) && return ""  
+  description(b, Base.tuple_type_tail(c.method.sig))
 end
 
 function completionsummary(mod, c::REPLCompletions.KeywordCompletion)
   getdocs(string(mod), c.keyword) |> makedescription
 end
 
-function completionsummary(mod, c::REPLCompletions.MethodCompletion)
-  b = Docs.Binding(mod, Symbol(c.func))
-  (!Base.isbindingresolved(mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
-  description(b, Base.tuple_type_tail(c.method.sig))
+function cangetdocs(m, s)
+  Base.isbindingresolved(m, s) && !Base.isdeprecated(m, s)
 end
 
 function description(binding, sig = Union{})
