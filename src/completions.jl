@@ -120,7 +120,7 @@ function makedescription(docs)
     if part isa Markdown.Paragraph
       desc = Markdown.plain(part)
       occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, 100)
+      return strlimit(desc, 200)
     end
   end
 end
