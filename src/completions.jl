@@ -77,6 +77,7 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
 end
 
 using Base.Docs
+
 function completionsummary(mod, c)
   ct = Symbol(REPLCompletions.completion_text(c))
   (!Base.isbindingresolved(mod, ct) || Base.isdeprecated(mod, ct)) && return ""
@@ -90,13 +91,18 @@ function completionsummary(mod, c::REPLCompletions.MethodCompletion)
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 
-using Markdown
 function description(binding, sig = Union{})
   docs = try
     Docs.doc(binding, sig)
   catch err
     ""
   end
+  makedescription(docs)
+end
+
+using Markdown
+
+function makedescription(docs)
   docs isa Markdown.MD || return ""
   md = CodeTools.flatten(docs).content
   for part in md
@@ -142,8 +148,8 @@ function completiontype(line, x, mod)
 end
 
 function completiontype(x, mod::Module, ct::AbstractString)
-  x <: Module   ? "module"   :
-  x <: DataType ? "type"     :
+  x <: Module ? "module" :
+  x <: DataType ? "type" :
   x isa Type{<:Type} ? "type" :
   typeof(x) == UnionAll ? "type" :
   x <: Function ? "function" :
