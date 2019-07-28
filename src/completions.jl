@@ -85,6 +85,17 @@ function completionsummary(mod, c)
   description(b)
 end
 
+function completionsummary(mod, c::REPLCompletions.ModuleCompletion)
+  mod = c.parent
+  word = c.mod
+  (!Base.isbindingresolved(mod, Symbol(word)) || Base.isdeprecated(mod, Symbol(word))) && return ""
+  getdocs(string(mod), word) |> makedescription
+end
+
+function completionsummary(mod, c::REPLCompletions.KeywordCompletion)
+  getdocs(string(mod), c.keyword) |> makedescription
+end
+
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
   b = Docs.Binding(mod, Symbol(c.func))
   (!Base.isbindingresolved(mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
