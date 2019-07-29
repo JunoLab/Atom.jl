@@ -10,8 +10,7 @@ handle("datatip") do data
   docs = @errs getdocs(mod, word)
 
   docs isa EvalError && return Dict(:error => true)
-  # @FIXME: This is another horrible hack, may not be rubust to future documentation change.
-  match(nobinding_regex, string(docs)) isa RegexMatch && return Dict(:novariable => true)
+  occursin(nobinding_regex, string(docs)) && return Dict(:novariable => true)
 
   mtable = try getmethods(mod, word)
     catch e
