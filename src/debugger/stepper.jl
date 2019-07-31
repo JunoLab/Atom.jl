@@ -441,6 +441,10 @@ end
 function eval_code(frame::Frame, command::AbstractString)
     expr = Base.parse_input_line(command)
     isexpr(expr, :toplevel) && (expr = expr.args[end])
+
+    if isexpr(expr, :toplevel)
+      expr = Expr(:block, expr.args...)
+    end
     # see https://github.com/JuliaLang/julia/issues/31255 for the Symbol("") check
     vars = filter(v -> v.name != Symbol(""), JuliaInterpreter.locals(frame))
     res = gensym()
@@ -452,12 +456,22 @@ function eval_code(frame::Frame, command::AbstractString)
         ))
     eval_res, res = Core.eval(moduleof(frame), eval_expr)
     j = 1
+    code = frame.framecode
+    data = frame.framedata
     for (i, v) in enumerate(vars)
         if v.isparam
-            frame.framedata.sparams[j] = res[i]
+            data.sparams[j] = res[i]
             j += 1
         else
-            frame.framedata.locals[frame.framedata.last_reference[v.name]] = Some{Any}(res[i])
+            if :assignment_counter in fieldnames(Frame)
+                slot_indices = code.slotnamelists[v.name]
+                idx = argmax(data.last_reference[slot_indices])
+                slot_idx = slot_indices[idx]
+                data.last_reference[slot_idx] = (frame.assignment_counter += 1)
+                data.locals[slot_idx] = Some{Any}(res[i])
+            else
+                data.locals[data.last_reference[v.name]] = Some{Any}(res[i])
+            end
         end
     end
     eval_res
