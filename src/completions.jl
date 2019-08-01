@@ -77,33 +77,55 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
 end
 
 using Base.Docs
+
 function completionsummary(mod, c)
   ct = Symbol(REPLCompletions.completion_text(c))
-  (!Base.isbindingresolved(mod, ct) || Base.isdeprecated(mod, ct)) && return ""
+  !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
   description(b)
 end
 
+function completionsummary(mod, c::REPLCompletions.ModuleCompletion)
+  mod = c.parent
+  word = c.mod
+  !cangetdocs(mod, Symbol(word)) && return ""
+  getdocs(string(mod), word) |> makedescription
+end
+
 function completionsummary(mod, c::REPLCompletions.MethodCompletion)
-  b = Docs.Binding(mod, Symbol(c.func))
-  (!Base.isbindingresolved(mod, Symbol(c.func)) || Base.isdeprecated(mod, Symbol(c.func))) && return ""
+  ct = Symbol(c.func)
+  !cangetdocs(mod, ct) && return ""
+  b = Docs.Binding(mod, ct)
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 
-using Markdown
+function completionsummary(mod, c::REPLCompletions.KeywordCompletion)
+  getdocs(string(mod), c.keyword) |> makedescription
+end
+
+function cangetdocs(m, s)
+  Base.isbindingresolved(m, s) && !Base.isdeprecated(m, s)
+end
+
 function description(binding, sig = Union{})
   docs = try
     Docs.doc(binding, sig)
   catch err
     ""
   end
+  makedescription(docs)
+end
+
+using Markdown
+
+function makedescription(docs)
   docs isa Markdown.MD || return ""
   md = CodeTools.flatten(docs).content
   for part in md
     if part isa Markdown.Paragraph
       desc = Markdown.plain(part)
       occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, 100)
+      return strlimit(desc, 200)
     end
   end
 end
@@ -142,8 +164,8 @@ function completiontype(line, x, mod)
 end
 
 function completiontype(x, mod::Module, ct::AbstractString)
-  x <: Module   ? "module"   :
-  x <: DataType ? "type"     :
+  x <: Module ? "module" :
+  x <: DataType ? "type" :
   x isa Type{<:Type} ? "type" :
   typeof(x) == UnionAll ? "type" :
   x <: Function ? "function" :
