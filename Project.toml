@@ -27,7 +27,6 @@ REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Traceur = "37b6cedf-1f77-55f8-9503-c64b63398394"
 TreeViews = "a2a6695c-b41b-5b7d-aed9-dbfdeacea5d7"
 WebIO = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
@@ -46,3 +45,9 @@ MacroTools = "^0.5"
 TreeViews = "^0.3.0"
 WebIO = "^0.8.1"
 julia = "≥ 0.7.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
