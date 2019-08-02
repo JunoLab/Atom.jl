@@ -1,10 +1,8 @@
-using DocumentFormat: format
+using JuliaFormatter: format_text
 
 handle("format") do data
-  @destruct [text, indent || nothing] = data
+  @destruct [text, indent || 4, margin || 92] = data
 
-  # @TODO: `indent` is here since we can pass it to `format` function once
-  #        DocumentFormat.jl comes to be able to handle options to specify indents,
-  formattedtext = format(text)
-  d(:formattedtext => formattedtext)
+  formattedtext = format_text(text, indent = indent, margin = margin)
+  Dict(:formattedtext => formattedtext)
 end
