@@ -1,3 +1,10 @@
+#=
+@FIXME?
+If we come to be able to use our full-featured components in atom-julia-client
+for datatips, we may want to append method tables again.
+Ref: https://github.com/JunoLab/atom-julia-client/blob/master/lib/runtime/datatip.js#L3-L9
+=#
+
 handle("datatip") do data
   @destruct [mod || "Main", word] = data
   docs = @errs getdocs(mod, word)
@@ -17,10 +24,10 @@ Adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docv
 const nobinding_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
 
 function makedatatip(docs)
-  # @FIXME?: Separates code blocks from the other markdown texts in order to
-  #          render them as code snippet text by atom-ide-ui's datatip service.
-  #          Setting up functions to deconstruct each `Markdown.MD.content`
-  #          into an appropriate markdown string might be preferred.
+  # Separates code blocks from the other markdown texts in order to render  them
+  # as code snippet text by atom-ide-ui's datatip service.
+  # Setting up functions to deconstruct each `Markdown.MD.content` into
+  # an appropriate markdown string might be preferred.
   texts = split(string(docs), codeblock_regex)
   codes = searchcodeblocks(docs)
 
