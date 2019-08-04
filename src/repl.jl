@@ -47,7 +47,7 @@ handle("validatepath") do uri
   return isfile′(fullREPLpath(uri)[1])
 end
 
-juliaprompt = "julia> "
+const juliaprompt = "julia> "
 
 handle("resetprompt") do linebreak
   isREPL() || return
@@ -106,9 +106,13 @@ function changeREPLprompt(prompt; color = :green, write = true)
   main_mode = get_main_mode()
   main_mode.prompt = prompt
   main_mode.prompt_prefix = color isa Symbol ?
-    string(first(split(sprint(io -> printstyled(IOContext(io, :color => true), " ", color=color)), ' '))) :
+    sprint() do io
+      printstyled(IOContext(io, :color => true), " ", color=color)
+    end |> split |> first |> string :
     color
-  if Base.active_repl.mistate.current_mode == main_mode && write
+  if Base.active_repl.mistate isa REPL.LineEdit.MIState &&
+     Base.active_repl.mistate.current_mode == main_mode &&
+     write
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
   end
