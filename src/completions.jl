@@ -8,21 +8,28 @@ handle("completions") do data
     m = getthing(mod)
     m = isa(m, Module) ? m : Main
 
-    cs, pre = basecompletionadapter(line, m)
+    cs, pre = basecompletionadapter(line, m, force)
 
-    d(:completions => cs,
-      :prefix      => string(pre),
-      :mod         => string(mod))
+    d(:completions        => cs,
+      :prefix             => string(pre))
   end
 end
 
 using REPL.REPLCompletions
-function basecompletionadapter(line, mod)
+function basecompletionadapter(line, mod, force)
   comps, replace, shouldcomplete = try
     REPL.REPLCompletions.completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
     [], 1:0, false
+  end
+
+  # Suppress completions if there are too many of them
+  # @NOTE: `complete_symbol("", ffunc, context_module)` returns ≥1000 completions as of v1.1
+  # @TODO: Checking whether `line` is valid text to be completed in atom-julia-client
+  (!force && length(comps) > 500) && begin
+    comps = []
+    replace = 1:0
   end
 
   pre = line[replace]
