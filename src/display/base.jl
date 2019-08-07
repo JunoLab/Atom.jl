@@ -55,9 +55,9 @@ const inline_mime = "application/prs.juno.inline"
       Text(String(take!(io)))
     end
   elseif showmethod(typeof(x)) ≠ showmethod(Any)
-    Text(filter(isvalid, sprint(io -> show(IOContext(io, :limit => true, :color => true), x))))
+    Text(filter(isvalid, strlimit(sprint(io -> show(IOContext(io, :limit => true, :color => true), x)), 2000)))
   elseif showmethod(MIME"text/plain", typeof(x)) ≠ showmethod(MIME"text/plain", Any)
-    Text(filter(isvalid, sprint(io -> show(IOContext(io, :limit => true, :color => true), MIME"text/plain"(), x))))
+    Text(filter(isvalid, strlimit(sprint(io -> show(IOContext(io, :limit => true, :color => true), MIME"text/plain"(), x)), 2000)))
   else
     defaultrepr(x, true)
   end
