@@ -21,9 +21,9 @@ function basecompletionadapter(line, mod, force)
     [], 1:0, false
   end
 
-  # Suppress completions if there are too many of them
-  # @NOTE: `complete_symbol("", ffunc, context_module)` returns ≥1000 completions as of v1.1
-  # @TODO: Checking whether `line` is valid text to be completed in atom-julia-client
+  # Suppress completions if there are too many of them unless activated manually
+  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
+  #        in advance and drop this check
   (!force && length(comps) > 500) && begin
     comps = []
     replace = 1:0
@@ -47,10 +47,10 @@ function basecompletionadapter(line, mod, force)
 end
 
 function completion(mod, line, c)
-  return Dict(:type => completiontype(line, c, mod),
-              :rightLabel => completionmodule(mod, c),
-              :leftLabel => returntype(mod, line, c),
-              :text => completiontext(c),
+  return Dict(:type        => completiontype(line, c, mod),
+              :rightLabel  => completionmodule(mod, c),
+              :leftLabel   => returntype(mod, line, c),
+              :text        => completiontext(c),
               :description => completionsummary(mod, c))
 end
 
@@ -147,7 +147,7 @@ function completiontype(line, x, mod)
   if x isa REPLCompletions.ModuleCompletion
     ct == "Vararg" && return ""
     t, f = try
-      parsed = Meta.parse(ct, raise=false, depwarn=false)
+      parsed = Meta.parse(ct, raise = false, depwarn = false)
       REPLCompletions.get_type(parsed, x.parent)
     catch e
       @error e
@@ -169,12 +169,13 @@ end
 
 function completiontype(x, mod::Module, ct::AbstractString)
   x <: Module ? "module" :
-  x <: DataType ? "type" :
-  x isa Type{<:Type} ? "type" :
-  typeof(x) == UnionAll ? "type" :
-  x <: Function ? "function" :
-  x <: Tuple ? "tuple" :
-  isconst(mod, Symbol(ct)) ? "constant" : "object"
+    x <: DataType ? "type" :
+    x isa Type{<:Type} ? "type" :
+    typeof(x) == UnionAll ? "type" :
+    x <: Function ? "function" :
+    x <: Tuple ? "tuple" :
+    isconst(mod, Symbol(ct)) ? "constant" :
+    "object"
 end
 
 handle("cacheCompletions") do mod
