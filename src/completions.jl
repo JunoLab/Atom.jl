@@ -6,8 +6,8 @@ handle("completions") do data
 
     cs, pre = basecompletionadapter(line, m, force)
 
-    d(:completions        => cs,
-      :prefix             => string(pre))
+    d(:completions => cs,
+      :prefix      => string(pre))
   end
 end
 
@@ -57,14 +57,14 @@ end
 completiontext(x) = REPLCompletions.completion_text(x)
 completiontext(x::REPLCompletions.PathCompletion) = rstrip(REPLCompletions.completion_text(x), '"')
 completiontext(x::REPLCompletions.DictCompletion) = rstrip(REPLCompletions.completion_text(x), [']', '"'])
-function completiontext(x::REPLCompletions.MethodCompletion)
+completiontext(x::REPLCompletions.MethodCompletion) = begin
   ct = REPLCompletions.completion_text(x)
   ct = match(r"^(.*) in .*$", ct)
   ct isa Nothing ? ct : ct[1]
 end
 
 returntype(mod, line, c) = ""
-function returntype(mod, line, c::REPLCompletions.MethodCompletion)
+returntype(mod, line, c::REPLCompletions.MethodCompletion) = begin
   m = c.method
   atypes = m.sig
   sparams = m.sparam_syms
@@ -77,6 +77,11 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   inf in (nothing, Any, Union{}) && return ""
   typ = string(inf)
 
+  strlimit(typ, 20)
+end
+returntype(mod, line, c::REPLCompletions.PropertyCompletion) = begin
+  prop = getproperty(c.value, c.property)
+  typ = string(typeof(prop))
   strlimit(typ, 20)
 end
 
