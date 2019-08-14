@@ -135,7 +135,10 @@ function makedescription(docs)
 end
 
 function completionmodule(mod, c)
-  c isa REPLCompletions.ModuleCompletion ? string(c.parent) : string(mod)
+  c isa REPLCompletions.ModuleCompletion ? string(c.parent) :
+    c isa REPLCompletions.MethodCompletion ? string(c.method.module) :
+    c isa REPLCompletions.KeywordCompletion ? "Base" :
+    string(mod)
 end
 
 function completiontype(line, x, mod)
