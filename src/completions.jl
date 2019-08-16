@@ -47,6 +47,7 @@ end
 
 function completion(mod, line, c)
   return Dict(:type        => completiontype(line, c, mod),
+              :icon        => completionicon(c),
               :rightLabel  => completionmodule(mod, c),
               :leftLabel   => returntype(mod, line, c),
               :text        => completiontext(c),
@@ -83,6 +84,7 @@ returntype(mod, line, c::REPLCompletions.PropertyCompletion) = begin
   typ = string(typeof(prop))
   strlimit(typ, 20)
 end
+returntype(mod, line, ::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
 
@@ -141,47 +143,58 @@ end
 completionmodule(mod, c) = string(mod)
 completionmodule(mod, c::REPLCompletions.ModuleCompletion) = string(c.parent)
 completionmodule(mod, c::REPLCompletions.MethodCompletion) = string(c.method.module)
-completionmodule(mod, c::REPLCompletions.KeywordCompletion) = "Base"
+completionmodule(mod, ::REPLCompletions.KeywordCompletion) = "Base"
+completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
-function completiontype(line, x, mod)
-  ct = REPLCompletions.completion_text(x)
-  startswith(ct, '@') && return "macro"
-  startswith(ct, ':') && return "symbol"
-  endswith(ct, '"') && return "macro"
+function completiontype(line, c, mod)
+  ct = REPLCompletions.completion_text(c)
+  ismacro(ct) && return "function"
+  startswith(ct, ':') && return "tag"
 
-  if x isa REPLCompletions.ModuleCompletion
+  if c isa REPLCompletions.ModuleCompletion
     ct == "Vararg" && return ""
     t, f = try
       parsed = Meta.parse(ct, raise = false, depwarn = false)
-      REPLCompletions.get_type(parsed, x.parent)
+      REPLCompletions.get_type(parsed, c.parent)
     catch e
       @error e
       nothing, false
     end
 
-    if f
-      return completiontype(t, x.parent, ct)
-    end
+    return f ? completiontype(t, c.parent, ct) : "variable"
   end
-  x isa REPLCompletions.KeywordCompletion ? "keyword" :
-    x isa REPLCompletions.PathCompletion ? "path" :
-    x isa REPLCompletions.PackageCompletion ? "import" :
-    x isa REPLCompletions.PropertyCompletion ? "property" :
-    x isa REPLCompletions.FieldCompletion ? "attribute" :
-    x isa REPLCompletions.MethodCompletion ? "method" :
-    "object"
+  c isa REPLCompletions.KeywordCompletion ? "keyword" :
+    c isa REPLCompletions.PathCompletion ? "path" :
+    c isa REPLCompletions.PackageCompletion ? "import" :
+    c isa REPLCompletions.PropertyCompletion ? "property" :
+    c isa REPLCompletions.FieldCompletion ? "attribute" :
+    c isa REPLCompletions.MethodCompletion ? "method" :
+    "variable"
 end
 
-function completiontype(x, mod::Module, ct::AbstractString)
-  x <: Module ? "module" :
-    x <: DataType ? "type" :
-    x isa Type{<:Type} ? "type" :
-    typeof(x) == UnionAll ? "type" :
-    x <: Function ? "function" :
-    x <: Tuple ? "tuple" :
+function completiontype(t, mod::Module, ct::AbstractString)
+  t <: Function ? "function" :
+    t <: DataType ? "type" :
+    t isa Type{<:Type} ? "type" :
+    typeof(t) == UnionAll ? "type" :
+    t <: Module ? "module" :
+    t <: Expr ? "mixin" :
+    t <: Symbol ? "tag" :
+    t <: Exception ? "mixin" :
     isconst(mod, Symbol(ct)) ? "constant" :
-    "object"
+    "variable"
 end
+
+ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
+
+completionicon(c) = ""
+completionicon(c::REPLCompletions.ModuleCompletion) = begin
+  mod = c.parent
+  name = Symbol(c.mod)
+  val = getfield(mod, name)
+  wsicon(mod, name, val)
+end
+completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
 handle("cacheCompletions") do mod
   # m = getthing(mod)
