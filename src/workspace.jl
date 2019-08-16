@@ -10,12 +10,16 @@ handle("workspace") do data
   contexts
 end
 
-wsitem(mod::Module, name) = begin
+wsitem(mod, name) = begin
   val = getfield(mod, name)
-  d(:name  => name,
-    :value => render′(Inline(), val),
-    :type  => wstype(mod, name, val),
-    :icon  => wsicon(mod, name, val))
+  wsitem(mod, name, val)
+end
+wsitem(mod, name, val) = begin
+  d(:name       => name,
+    :value      => render′(Inline(), val),
+    :nativetype => DocSeeker.determinetype(mod, name),
+    :type       => wstype(mod, name, val),
+    :icon       => wsicon(mod, name, val))
 end
 
 wstype(mod, name, val) = begin
