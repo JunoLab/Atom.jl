@@ -23,38 +23,37 @@ handle("moduleinfo") do data
   Dict(:doc => view(d), :items => items)
 end
 
-handle("regenerateCache") do
-  DocSeeker.createdocsdb()
+getmoduleinfo(mod) = ispackage(mod) ? packageinfo(mod) : moduleinfo(mod)
+ispackage(mod) = Base.find_package(mod) ≠ nothing
+
+function packageinfo(mod)
+  path = DocSeeker.readmepath(mod)
+  readme = ispath(path) ? String(read(path)) : ""
+  description = Markdown.parse(mod ∈ values(Pkg.Types.stdlib()) ? "## Julia Standard Library `$(mod)`" : readme)
+
+  return  Hiccup.div(
+            renderMD(description),
+            renderMD("### Defined symbols:")
+          ), modulesymbols(mod)
 end
 
-ispackage(mod) = Base.find_package(mod) ≠ nothing
+function moduleinfo(mod)
+  header = if mod == "Core"
+    "## Julia `Core`"
+  elseif first(split(mod, '.')) == "Base"
+    "## Julia `Base` Library: `$(last(split(mod, '.')))`"
+  else
+    "## Module `$mod`"
+  end |> str -> str * "\n### Defined symbols:" |> renderMD
+
+  header, modulesymbols(mod)
+end
 
 function modulesymbols(mod)
   syms = filter(x -> x.mod == mod, DocSeeker.alldocs())
   sort(syms, by = x -> x.name)[1:min(100, length(syms))]
 end
 
-function packageinfo(mod)
-  path = DocSeeker.readmepath(mod)
-  readme = ispath(path) ? String(read(path)) : ""
-
-  return  Hiccup.div(
-            renderMD(Markdown.parse(readme)),
-            Hiccup.Node(:hr),
-            Hiccup.h2("defined symbols:")
-          ), modulesymbols(mod)
+handle("regenerateCache") do
+  DocSeeker.createdocsdb()
 end
-
-function moduleinfo(mod)
-  header = if mod == "Core"
-    renderMD("## Julia `Core`")
-  elseif first(split(mod, '.')) == "Base"
-    renderMD("## Julia Standard Library: `$mod`")
-  else
-    renderMD("## Module `$mod`")
-  end
-
-  header, modulesymbols(mod)
-end
-
-getmoduleinfo(mod) = ispackage(mod) ? packageinfo(mod) : moduleinfo(mod)
