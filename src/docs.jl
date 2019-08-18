@@ -13,6 +13,16 @@ end
 function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
   r[:html] = view(renderMD(x.html))
+
+  mod = getmodule′(x.mod)
+  name = Symbol(x.name)
+  r[:typ], r[:icon] = if name ∈ keys(Docs.keywords)
+    "keyword", "k"
+  else
+    val = getfield(mod, name)
+    wstype(mod, name, val), wsicon(mod, name, val)
+  end
+  r[:nativetype] = x.typ
   r
 end
 
