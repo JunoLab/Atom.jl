@@ -1,9 +1,8 @@
-handle("workspace") do data
-  @destruct [mod, hide || true] = data
+handle("workspace") do mod
   mod = getmodule′(mod)
   ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
   filter!(ns) do n
-    (!hide || !Base.isdeprecated(mod, n)) && isdefined(mod, n) && n != Symbol(mod)
+    !Base.isdeprecated(mod, n) && isdefined(mod, n) && n != Symbol(mod)
   end
   contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
   isdebugging() && prepend!(contexts, JunoDebugger.contexts())
