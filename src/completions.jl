@@ -1,28 +1,32 @@
-matchesprefix(c::AbstractString, pre::AbstractString) = isempty(pre) || lowercase(c[1]) == lowercase(pre[1])
-matchesprefix(c::Dict, pre::AbstractString) = matchesprefix(c[:text], pre)
-matchesprefix(c, ::Nothing) = true
-
 handle("completions") do data
   @destruct [path || nothing, mod || "Main", line, force] = data
   withpath(path) do
-    m = getthing(mod)
+    m = getmodule′(mod)
     m = isa(m, Module) ? m : Main
 
-    cs, pre = basecompletionadapter(line, m)
+    cs, pre = basecompletionadapter(line, m, force)
 
     d(:completions => cs,
-      :prefix      => string(pre),
-      :mod         => string(mod))
+      :prefix      => string(pre))
   end
 end
 
 using REPL.REPLCompletions
-function basecompletionadapter(line, mod)
+
+function basecompletionadapter(line, mod, force)
   comps, replace, shouldcomplete = try
     REPL.REPLCompletions.completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
     [], 1:0, false
+  end
+
+  # Suppress completions if there are too many of them unless activated manually
+  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
+  #        in advance and drop this check
+  (!force && length(comps) > 500) && begin
+    comps = []
+    replace = 1:0
   end
 
   pre = line[replace]
@@ -43,24 +47,24 @@ function basecompletionadapter(line, mod)
 end
 
 function completion(mod, line, c)
-  return Dict(:type => completiontype(line, c, mod),
-              :rightLabel => completionmodule(mod, c),
-              :leftLabel => returntype(mod, line, c),
-              :text => completiontext(c),
+  return Dict(:type        => completiontype(line, c, mod),
+              :rightLabel  => completionmodule(mod, c),
+              :leftLabel   => returntype(mod, line, c),
+              :text        => completiontext(c),
               :description => completionsummary(mod, c))
 end
 
 completiontext(x) = REPLCompletions.completion_text(x)
 completiontext(x::REPLCompletions.PathCompletion) = rstrip(REPLCompletions.completion_text(x), '"')
 completiontext(x::REPLCompletions.DictCompletion) = rstrip(REPLCompletions.completion_text(x), [']', '"'])
-function completiontext(x::REPLCompletions.MethodCompletion)
+completiontext(x::REPLCompletions.MethodCompletion) = begin
   ct = REPLCompletions.completion_text(x)
   ct = match(r"^(.*) in .*$", ct)
   ct isa Nothing ? ct : ct[1]
 end
 
 returntype(mod, line, c) = ""
-function returntype(mod, line, c::REPLCompletions.MethodCompletion)
+returntype(mod, line, c::REPLCompletions.MethodCompletion) = begin
   m = c.method
   atypes = m.sig
   sparams = m.sparam_syms
@@ -73,6 +77,11 @@ function returntype(mod, line, c::REPLCompletions.MethodCompletion)
   inf in (nothing, Any, Union{}) && return ""
   typ = string(inf)
 
+  strlimit(typ, 20)
+end
+returntype(mod, line, c::REPLCompletions.PropertyCompletion) = begin
+  prop = getproperty(c.value, c.property)
+  typ = string(typeof(prop))
   strlimit(typ, 20)
 end
 
@@ -130,9 +139,10 @@ function makedescription(docs)
   end
 end
 
-function completionmodule(mod, c)
-  c isa REPLCompletions.ModuleCompletion ? string(c.parent) : string(mod)
-end
+completionmodule(mod, c) = string(mod)
+completionmodule(mod, c::REPLCompletions.ModuleCompletion) = string(c.parent)
+completionmodule(mod, c::REPLCompletions.MethodCompletion) = string(c.method.module)
+completionmodule(mod, c::REPLCompletions.KeywordCompletion) = "Base"
 
 function completiontype(line, x, mod)
   ct = REPLCompletions.completion_text(x)
@@ -143,7 +153,7 @@ function completiontype(line, x, mod)
   if x isa REPLCompletions.ModuleCompletion
     ct == "Vararg" && return ""
     t, f = try
-      parsed = Meta.parse(ct, raise=false, depwarn=false)
+      parsed = Meta.parse(ct, raise = false, depwarn = false)
       REPLCompletions.get_type(parsed, x.parent)
     catch e
       @error e
@@ -165,12 +175,13 @@ end
 
 function completiontype(x, mod::Module, ct::AbstractString)
   x <: Module ? "module" :
-  x <: DataType ? "type" :
-  x isa Type{<:Type} ? "type" :
-  typeof(x) == UnionAll ? "type" :
-  x <: Function ? "function" :
-  x <: Tuple ? "tuple" :
-  isconst(mod, Symbol(ct)) ? "constant" : "object"
+    x <: DataType ? "type" :
+    x isa Type{<:Type} ? "type" :
+    typeof(x) == UnionAll ? "type" :
+    x <: Function ? "function" :
+    x <: Tuple ? "tuple" :
+    isconst(mod, Symbol(ct)) ? "constant" :
+    "object"
 end
 
 handle("cacheCompletions") do mod
