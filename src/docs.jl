@@ -67,6 +67,13 @@ function modulesymbols(mod)
   sort(syms, by = x -> x.name)[1:min(100, length(syms))]
 end
 
+using Logging: with_logger, current_logger
+using .Progress: JunoProgressLogger
+
 handle("regenerateCache") do
-  DocSeeker.createdocsdb()
+  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+    @errs begin
+      DocSeeker.createdocsdb()
+    end
+  end
 end
