@@ -172,6 +172,10 @@ function completiontype(line, c, mod)
     "variable"
 end
 
+completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # can be fallen into "macro" otherwise
+
+ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
+
 function completiontype(t, mod::Module, ct::AbstractString)
   t <: Function ? "function" :
     t <: DataType ? "type" :
@@ -184,8 +188,6 @@ function completiontype(t, mod::Module, ct::AbstractString)
     isconst(mod, Symbol(ct)) ? "constant" :
     "variable"
 end
-
-ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
 
 completionicon(c) = ""
 completionicon(c::REPLCompletions.ModuleCompletion) = begin
