@@ -88,28 +88,25 @@ returntype(mod, line, ::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
 
-function completionsummary(mod, c)
+completionsummary(mod, c) = begin
   ct = Symbol(REPLCompletions.completion_text(c))
   !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
   description(b)
 end
-
-function completionsummary(mod, c::REPLCompletions.ModuleCompletion)
+completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod = c.parent
   word = c.mod
   !cangetdocs(mod, Symbol(word)) && return ""
   getdocs(string(mod), word) |> makedescription
 end
-
-function completionsummary(mod, c::REPLCompletions.MethodCompletion)
+completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   ct = Symbol(c.func)
   !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
   description(b, Base.tuple_type_tail(c.method.sig))
 end
-
-function completionsummary(mod, c::REPLCompletions.KeywordCompletion)
+completionsummary(mod, c::REPLCompletions.KeywordCompletion) = begin
   getdocs(string(mod), c.keyword) |> makedescription
 end
 
@@ -146,22 +143,22 @@ completionmodule(mod, c::REPLCompletions.MethodCompletion) = string(c.method.mod
 completionmodule(mod, ::REPLCompletions.KeywordCompletion) = "Base"
 completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
-function completiontype(line, c, mod)
+completiontype(line, c, mod) = begin
   ct = REPLCompletions.completion_text(c)
   ismacro(ct) && return "function"
   startswith(ct, ':') && return "tag"
 
   if c isa REPLCompletions.ModuleCompletion
     ct == "Vararg" && return ""
-    t, f = try
+    mod = c.parent
+    val, found = try
       parsed = Meta.parse(ct, raise = false, depwarn = false)
-      REPLCompletions.get_type(parsed, c.parent)
+      REPLCompletions.get_value(parsed, mod)
     catch e
       @error e
       nothing, false
     end
-
-    return f ? completiontype(t, c.parent, ct) : "variable"
+    return found ? completiontype(val, mod, ct) : "variable"
   end
   c isa REPLCompletions.KeywordCompletion ? "keyword" :
     c isa REPLCompletions.PathCompletion ? "path" :
@@ -171,23 +168,10 @@ function completiontype(line, c, mod)
     c isa REPLCompletions.MethodCompletion ? "method" :
     "variable"
 end
-
-completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # can be fallen into "macro" otherwise
+completiontype(val, mod::Module, ct::AbstractString) = wstype(mod, Symbol(ct), val)
+completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # fallen into "macro" otherwise
 
 ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
-
-function completiontype(t, mod::Module, ct::AbstractString)
-  t <: Function ? "function" :
-    t <: DataType ? "type" :
-    t isa Type{<:Type} ? "type" :
-    typeof(t) == UnionAll ? "type" :
-    t <: Module ? "module" :
-    t <: Expr ? "mixin" :
-    t <: Symbol ? "tag" :
-    t <: Exception ? "mixin" :
-    isconst(mod, Symbol(ct)) ? "constant" :
-    "variable"
-end
 
 completionicon(c) = ""
 completionicon(c::REPLCompletions.ModuleCompletion) = begin

@@ -422,7 +422,7 @@ end
 
 struct Undefined end
 @render Inline u::Undefined span(".fade", "<undefined>")
-wsicon(name, ::Undefined) = "icon-circle-slash"
+wsicon(mod, name, ::Undefined) = "icon-circle-slash"
 
 handle("setStackLevel") do level
   with_error_message() do

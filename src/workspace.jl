@@ -21,14 +21,22 @@ wsitem(mod, name, val) = begin
     :icon       => wsicon(mod, name, val))
 end
 
+#=
+@NOTE: `wstype` and `wsicon` are also used for completions / docs
+=#
+
 wstype(mod, name, val) = begin
-  val isa Function ? "function" :
-    val isa Type ? "type" :
-    val isa Module ? "module" :
-    val isa Expr ? "mixin" :
-    val isa Symbol ? "tag" :
-    val isa Exception ? "mixin" :
-    isconst(mod, name) ? "constant" : "variable"
+  type = typeof(val)
+  type <: Function ? "function" :
+    type <: DataType ? "type" :
+    type isa Type{<:Type} ? "type" :
+    typeof(type) == UnionAll ? "type" :
+    type <: Module ? "module" :
+    type <: Expr ? "mixin" :
+    type <: Symbol ? "tag" :
+    type <: Exception ? "mixin" :
+    isconst(mod, name) ? "constant" :
+    "variable"
 end
 
 wsicon(mod, name, val) = begin
@@ -38,6 +46,7 @@ wsicon(mod, name, val) = begin
     val isa Number ? "n" :
     val isa AbstractVector ? "icon-list-ordered" :
     val isa AbstractArray ? "icon-file-binary" :
+    val isa AbstractDict ? "icon-list-unordered" :
     val isa AbstractString ? "icon-quote" :
     val isa Regex ? "icon-quote" :
     val isa Expr ? "icon-code" :
