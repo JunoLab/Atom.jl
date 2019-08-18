@@ -1,7 +1,7 @@
 handle("completions") do data
   @destruct [path || nothing, mod || "Main", line, force] = data
   withpath(path) do
-    m = getthing(mod)
+    m = getmodule′(mod)
     m = isa(m, Module) ? m : Main
 
     cs, pre = basecompletionadapter(line, m, force)
