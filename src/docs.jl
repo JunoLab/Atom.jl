@@ -16,13 +16,14 @@ function renderitem(x)
 
   mod = getmodule′(x.mod)
   name = Symbol(x.name)
-  r[:typ], r[:icon] = if name ∈ keys(Docs.keywords)
-    "keyword", "k"
-  else
+  r[:typ], r[:icon], r[:nativetype] = if name ∈ keys(Docs.keywords)
+    "keyword", "k", x.typ
+  elseif isdefined(mod, name)
     val = getfield(mod, name)
-    wstype(mod, name, val), wsicon(mod, name, val)
+    wstype(mod, name, val), wsicon(mod, name, val), x.typ
+  else # not loaded - DocSeeker can show docs for non-loaded packages via `createdocsdb()`
+    "ignored", "icon-circle-slash", "Not loaded"
   end
-  r[:nativetype] = x.typ
   r
 end
 
