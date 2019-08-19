@@ -434,31 +434,5 @@ end
 ## Evaluation
 function interpret(code::AbstractString, s::DebuggerState = STATE)
   s.frame === nothing && return
-  eval_code(active_frame(s), code)
-end
-
-# copied from https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
-function eval_code(frame::Frame, command::AbstractString)
-    expr = Base.parse_input_line(command)
-    isexpr(expr, :toplevel) && (expr = expr.args[end])
-    # see https://github.com/JuliaLang/julia/issues/31255 for the Symbol("") check
-    vars = filter(v -> v.name != Symbol(""), JuliaInterpreter.locals(frame))
-    res = gensym()
-    eval_expr = Expr(:let,
-        Expr(:block, map(x->Expr(:(=), x...), [(v.name, maybe_quote(v.value)) for v in vars])...),
-        Expr(:block,
-            Expr(:(=), res, expr),
-            Expr(:tuple, res, Expr(:tuple, [v.name for v in vars]...))
-        ))
-    eval_res, res = Core.eval(moduleof(frame), eval_expr)
-    j = 1
-    for (i, v) in enumerate(vars)
-        if v.isparam
-            frame.framedata.sparams[j] = res[i]
-            j += 1
-        else
-            frame.framedata.locals[frame.framedata.last_reference[v.name]] = Some{Any}(res[i])
-        end
-    end
-    eval_res
+  JuliaInterpreter.eval_code(active_frame(s), code)
 end
