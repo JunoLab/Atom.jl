@@ -72,8 +72,6 @@ using .Progress: JunoProgressLogger
 
 handle("regenerateCache") do
   Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
-    @errs begin
-      DocSeeker.createdocsdb()
-    end
+    @errs DocSeeker.createdocsdb()
   end
 end

@@ -1,7 +1,7 @@
 using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
                         root, caller, whereis, get_return, nstatements, @lookup, Frame
 import JuliaInterpreter
-import ..Atom: fullpath, handle, @msg, wsitem, Inline, wsicon, EvalError, Console, display_error
+import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
 import REPL
 using Media
@@ -419,10 +419,6 @@ function localvars(frame)
   end
   items
 end
-
-struct Undefined end
-@render Inline u::Undefined span(".fade", "<undefined>")
-wsicon(mod, name, ::Undefined) = "icon-circle-slash"
 
 handle("setStackLevel") do level
   with_error_message() do
