@@ -33,18 +33,20 @@ function packageinfo(mod)
 
   return  Hiccup.div(
             renderMD(description),
-            renderMD("### Defined symbols:")
+            renderMD("\n---\n## Defined symbols in `$(mod)`:")
           ), modulesymbols(mod)
 end
 
 function moduleinfo(mod)
   header = if mod == "Core"
     "## Julia `Core`"
+  elseif mod == "Base"
+    "## Julia `Base` Library"
   elseif first(split(mod, '.')) == "Base"
     "## Julia `Base` Library: `$(last(split(mod, '.')))`"
   else
     "## Module `$mod`"
-  end |> str -> str * "\n### Defined symbols:" |> renderMD
+  end * "\n---\n## Defined symbols:" |> renderMD
 
   header, modulesymbols(mod)
 end
