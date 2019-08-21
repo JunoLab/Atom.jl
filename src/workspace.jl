@@ -26,15 +26,12 @@ end
 =#
 
 wstype(mod, name, val) = begin
-  type = typeof(val)
-  type <: Function ? "function" :
-    type <: DataType ? "type" :
-    type isa Type{<:Type} ? "type" :
-    typeof(type) == UnionAll ? "type" :
-    type <: Module ? "module" :
-    type <: Expr ? "mixin" :
-    type <: Symbol ? "tag" :
-    type <: Exception ? "mixin" :
+  val isa Function ? "function" :
+    val isa Type ? "type" :
+    val isa Module ? "module" :
+    val isa Expr ? "mixin" :
+    val isa Symbol ? "tag" :
+    val isa Exception ? "mixin" :
     isconst(mod, name) ? "constant" :
     "variable"
 end
