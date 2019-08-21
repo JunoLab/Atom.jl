@@ -147,7 +147,7 @@ completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
 completiontype(line, c, mod) = begin
   ct = REPLCompletions.completion_text(c)
-  ismacro(ct) && return "function"
+  ismacro(ct) && return "snippet"
   startswith(ct, ':') && return "tag"
 
   if c isa REPLCompletions.ModuleCompletion

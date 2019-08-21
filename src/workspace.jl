@@ -25,31 +25,26 @@ end
 @NOTE: `wstype` and `wsicon` are also used for completions / docs
 =#
 
-wstype(mod, name, val) = begin
-  val isa Function ? "function" :
-    val isa Type ? "type" :
-    val isa Module ? "module" :
-    val isa Expr ? "mixin" :
-    val isa Symbol ? "tag" :
-    val isa Exception ? "mixin" :
-    isconst(mod, name) ? "constant" :
-    "variable"
-end
+wstype(mod, name, val) = isconst(mod, name) ? "constant" : "variable"
+wstype(mod, name, val::Function) = ismacro(val) ? "snippet" : "function"
+wstype(mod, name, ::Type) = "type"
+wstype(mod, name, ::Module) = "module"
+wstype(mod, name, ::Expr) = "mixin"
+wstyep(mod, name, ::Symbol) = "tag"
+wstype(mod, name, ::Exception) = "mixin"
 
-wsicon(mod, name, val) = begin
-  val isa Function ? (ismacro(val) ? "icon-mention" : "λ") :
-    val isa Type ? "T" :
-    val isa Module ? "icon-package" :
-    val isa Number ? "n" :
-    val isa AbstractVector ? "icon-list-ordered" :
-    val isa AbstractArray ? "icon-file-binary" :
-    val isa AbstractDict ? "icon-list-unordered" :
-    val isa AbstractString ? "icon-quote" :
-    val isa Regex ? "icon-quote" :
-    val isa Expr ? "icon-code" :
-    val isa Symbol ? "icon-code" :
-    val isa Exception ? "icon-bug" :
-    isconst(mod, name) ? "c" : "v"
-end
+wsicon(mod, name, val) = isconst(mod, name) ? "c" : "v"
+wsicon(mod, name, val::Function) = ismacro(val) ? "icon-mention" : "λ"
+wsicon(mod, name, ::Type) = "T"
+wsicon(mod, name, ::Module) = "icon-package"
+wsicon(mod, name, ::Number) = "n"
+wsicon(mod, name, ::AbstractVector) = "icon-list-ordered"
+wsicon(mod, name, ::AbstractArray) = "icon-file-binary"
+wsicon(mod, name, ::AbstractDict) = "icon-list-unordered"
+wsicon(mod, name, ::AbstractString) = "icon-quote"
+wsicon(mod, name, ::Regex) = "icon-quote"
+wsicon(mod, name, ::Expr) = "icon-code"
+wsicon(mod, name, ::Symbol) = "icon-code"
+wsicon(mod, name, ::Exception) = "icon-bug"
 
 ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
