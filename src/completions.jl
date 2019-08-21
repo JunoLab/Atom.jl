@@ -63,11 +63,13 @@ completiontext(x::REPLCompletions.MethodCompletion) = begin
   ct isa Nothing ? ct : ct[1]
 end
 
+using JuliaInterpreter: sparam_syms
+
 returntype(mod, line, c) = ""
 returntype(mod, line, c::REPLCompletions.MethodCompletion) = begin
   m = c.method
   atypes = m.sig
-  sparams = m.sparam_syms
+  sparams = Core.svec(sparam_syms(m)...)
   wa = Core.Compiler.Params(typemax(UInt))  # world age
   inf = try
     Core.Compiler.typeinf_type(m, atypes, sparams, wa)
