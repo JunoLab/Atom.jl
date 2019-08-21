@@ -13,6 +13,17 @@ end
 function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
   r[:html] = view(renderMD(x.html))
+
+  mod = getmodule′(x.mod)
+  name = Symbol(x.name)
+  r[:typ], r[:icon], r[:nativetype] = if name ∈ keys(Docs.keywords)
+    "keyword", "k", x.typ
+  elseif isdefined(mod, name)
+    val = getfield(mod, name)
+    wstype(mod, name, val), wsicon(mod, name, val), x.typ
+  else # not loaded - DocSeeker can show docs for non-loaded packages via `createdocsdb()`
+    "ignored", "icon-circle-slash", "Not loaded"
+  end
   r
 end
 
@@ -56,6 +67,11 @@ function modulesymbols(mod)
   sort(syms, by = x -> x.name)[1:min(100, length(syms))]
 end
 
+using Logging: with_logger, current_logger
+using .Progress: JunoProgressLogger
+
 handle("regenerateCache") do
-  DocSeeker.createdocsdb()
+  Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+    @errs DocSeeker.createdocsdb()
+  end
 end

@@ -411,16 +411,14 @@ end
 function localvars(frame)
   vars = JuliaInterpreter.locals(frame)
   items = []
+  scope = frame.framecode.scope
+  mod = scope isa Module ? scope : scope.module
   for v in vars
       v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-      push!(items, wsitem(String(v.name), v.value))
+      push!(items, wsitem(mod, v.name, v.value))
   end
-  return items
+  items
 end
-
-struct Undefined end
-@render Inline u::Undefined span(".fade", "<undefined>")
-Atom.wsicon(::Undefined) = "icon-circle-slash"
 
 handle("setStackLevel") do level
   with_error_message() do

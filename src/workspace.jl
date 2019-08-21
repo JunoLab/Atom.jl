@@ -1,48 +1,50 @@
-ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
-
-wstype(x) = ""
-wstype(::Module) = "module"
-wstype(f::Function) = "function"
-wstype(::Type) = "type"
-wstype(::Expr) = "mixin"
-wstype(::Symbol) = "tag"
-wstype(::AbstractString) = "property"
-wstype(::Number) = "constant"
-wstype(::Exception) = "tag"
-
-wsicon(x) = ""
-wsicon(f::Function) = ismacro(f) ? "icon-mention" : ""
-wsicon(::AbstractArray) = "icon-file-binary"
-wsicon(::AbstractVector) = "icon-list-ordered"
-wsicon(::AbstractString) = "icon-quote"
-wsicon(::Expr) = "icon-code"
-wsicon(::Symbol) = "icon-code"
-wsicon(::Exception) = "icon-bug"
-wsicon(::Number) = "n"
-
-wsnamed(name, val) = false
-wsnamed(name, f::Function) = name == methods(f).mt.name
-wsnamed(name, m::Module) = name == module_name(m)
-wsnamed(name, T::DataType) = name == Symbol(T.name)
-
-function wsitem(name, val)
-  d(:name  => name,
-    :value => render′(Inline(), val),
-    :type  => wstype(val),
-    :icon  => wsicon(val))
-end
-
-wsitem(mod::Module, name::Symbol) = wsitem(name, getfield(mod, name))
-
 handle("workspace") do mod
   mod = getmodule′(mod)
-  ns = filter!(x->!Base.isdeprecated(mod, x), Symbol.(CodeTools.filtervalid(names(mod, all=true))))
-  filter!(n -> isdefined(mod, n), ns)
-  # TODO: only filter out imported modules
-  filter!(n -> !isa(getfield(mod, n), Module), ns)
-  contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
-  if isdebugging()
-    prepend!(contexts, JunoDebugger.contexts())
+  ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
+  filter!(ns) do n
+    !Base.isdeprecated(mod, n) && isdefined(mod, n) && n != Symbol(mod)
   end
-  return contexts
+  contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
+  isdebugging() && prepend!(contexts, JunoDebugger.contexts())
+  contexts
 end
+
+wsitem(mod, name) = begin
+  val = getfield(mod, name)
+  wsitem(mod, name, val)
+end
+wsitem(mod, name, val) = begin
+  d(:name       => name,
+    :value      => render′(Inline(), val),
+    :nativetype => DocSeeker.determinetype(mod, name),
+    :type       => wstype(mod, name, val),
+    :icon       => wsicon(mod, name, val))
+end
+
+#=
+@NOTE: `wstype` and `wsicon` are also used for completions / docs
+=#
+
+wstype(mod, name, val) = isconst(mod, name) ? "constant" : "variable"
+wstype(mod, name, val::Function) = ismacro(val) ? "snippet" : "function"
+wstype(mod, name, ::Type) = "type"
+wstype(mod, name, ::Module) = "module"
+wstype(mod, name, ::Expr) = "mixin"
+wstyep(mod, name, ::Symbol) = "tag"
+wstype(mod, name, ::Exception) = "mixin"
+
+wsicon(mod, name, val) = isconst(mod, name) ? "c" : "v"
+wsicon(mod, name, val::Function) = ismacro(val) ? "icon-mention" : "λ"
+wsicon(mod, name, ::Type) = "T"
+wsicon(mod, name, ::Module) = "icon-package"
+wsicon(mod, name, ::Number) = "n"
+wsicon(mod, name, ::AbstractVector) = "icon-list-ordered"
+wsicon(mod, name, ::AbstractArray) = "icon-file-binary"
+wsicon(mod, name, ::AbstractDict) = "icon-list-unordered"
+wsicon(mod, name, ::AbstractString) = "icon-quote"
+wsicon(mod, name, ::Regex) = "icon-quote"
+wsicon(mod, name, ::Expr) = "icon-code"
+wsicon(mod, name, ::Symbol) = "icon-code"
+wsicon(mod, name, ::Exception) = "icon-bug"
+
+ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
