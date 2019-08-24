@@ -160,7 +160,7 @@ completiontype(line, c, mod) = begin
       @error e
       nothing, false
     end
-    return found ? completiontype(val, mod, ct) : "variable"
+    return found ? completiontype(val, mod, ct) : "ignored"
   end
   c isa REPLCompletions.KeywordCompletion ? "keyword" :
     c isa REPLCompletions.PathCompletion ? "path" :
@@ -177,9 +177,10 @@ ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
 
 completionicon(c) = ""
 completionicon(c::REPLCompletions.ModuleCompletion) = begin
+  ismacro(c.mod) && return "icon-mention"
   mod = c.parent
   name = Symbol(c.mod)
-  val = getfield(mod, name)
+  val = getfield′′(mod, name)
   wsicon(mod, name, val)
 end
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
