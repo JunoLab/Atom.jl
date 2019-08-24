@@ -1,4 +1,4 @@
-@testset "evaluation" begin
+@testset "evaluations" begin
     cb = 0  # callback count
     function handle(typ, args...)
         Atom.handlemsg(Dict("type"     => typ,
