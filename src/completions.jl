@@ -23,7 +23,7 @@ function basecompletionadapter(line, mod, force)
   # Suppress completions if there are too many of them unless activated manually
   # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
   #        in advance and drop this check
-  (!force && length(comps) > 500) && begin
+  (!force && length(comps) > MAX_COMPLETIONS) && begin
     comps = []
     replace = 1:0
   end
@@ -44,6 +44,8 @@ function basecompletionadapter(line, mod, force)
   end
   d, pre
 end
+
+const MAX_COMPLETIONS = 500
 
 function completion(mod, line, c)
   return Dict(:type        => completiontype(line, c, mod),
