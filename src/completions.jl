@@ -34,7 +34,9 @@ function basecompletionadapter(line, mod, force)
     # TODO: get local completions from CSTParser or similar
     # TODO: would be cool to provide `descriptionMoreURL` here to open the docpane
     if REPLCompletions.afterusing(line, first(replace))
-      c isa REPLCompletions.PackageCompletion || continue
+      (c isa REPLCompletions.PackageCompletion ||
+       (c isa REPLCompletions.ModuleCompletion && getfield′′(mod, Symbol(c.mod)) isa Module)
+      ) || continue
     end
     try
       push!(d, completion(mod, line, c))
