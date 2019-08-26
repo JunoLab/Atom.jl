@@ -82,6 +82,6 @@
         handle(troublemaker)
         @test length(readmsg()[3]["completions"]) == 0 # surpressed
         handle(troublemaker, force = true)
-        @test length(readmsg()[3]["completions"]) > 500 # invoked
+        @test length(readmsg()[3]["completions"]) > Atom.MAX_COMPLETIONS # invoked
     end
 end

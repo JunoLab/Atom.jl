@@ -16,11 +16,7 @@ handle("datatip") do data
        :strings => makedatatip(docs))
 end
 
-"""
-Regex that matches for a Julia documentation text when there is no binding exists
-for the target word.
-Adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152.
-"""
+# adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152
 const nobinding_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
 
 function makedatatip(docs)
@@ -41,9 +37,7 @@ function makedatatip(docs)
   datatips
 end
 
-"""
-Regex to match code blocks from markdown texts.
-"""
+# Regex to match code blocks from markdown texts
 const codeblock_regex = r"```((?!```).)*?```"s
 
 # Extract only code blocks from Markdown.MD
