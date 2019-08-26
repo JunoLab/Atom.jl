@@ -44,9 +44,23 @@
         comp["leftLabel"] == "String"
     end |> !isempty
 
-    @eval Main begin
-        dict = Dict(:a => 1, :b => 2)
-    end
+    @eval Main dict = Dict(:a => 1, :b => 2)
+
+    # package completion - on top level
+    line = "using B"
+    handle(line)
+    @test filter(readmsg()[3]["completions"]) do comp
+        comp["type"] ∈ ("package", "import", "module") &&
+        comp["text"] == "Base"
+    end |> !isempty
+
+    # package completion - on module level
+    line = "using C"
+    handle(line, mod = "Atom")
+    @test filter(readmsg()[3]["completions"]) do comp
+        comp["type"] ∈ ("package", "import", "module") &&
+        comp["text"] == "CodeTools"
+    end |> !isempty
 
     # property completion
     line = "dict."
