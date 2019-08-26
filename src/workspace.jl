@@ -30,7 +30,7 @@ wstype(mod, name, val::Function) = ismacro(val) ? "snippet" : "function"
 wstype(mod, name, ::Type) = "type"
 wstype(mod, name, ::Module) = "module"
 wstype(mod, name, ::Expr) = "mixin"
-wstyep(mod, name, ::Symbol) = "tag"
+wstype(mod, name, ::Symbol) = "tag"
 wstype(mod, name, ::Exception) = "mixin"
 
 wsicon(mod, name, val) = isconst(mod, name) ? "c" : "v"
