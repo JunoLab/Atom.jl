@@ -14,7 +14,7 @@ using REPL.REPLCompletions
 
 function basecompletionadapter(line, mod, force)
   comps, replace, shouldcomplete = try
-    REPL.REPLCompletions.completions(line, lastindex(line), mod)
+    completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
     [], 1:0, false
@@ -54,11 +54,11 @@ function completion(mod, line, c)
               :description => completionsummary(mod, c))
 end
 
-completiontext(x) = REPLCompletions.completion_text(x)
-completiontext(x::REPLCompletions.PathCompletion) = rstrip(REPLCompletions.completion_text(x), '"')
-completiontext(x::REPLCompletions.DictCompletion) = rstrip(REPLCompletions.completion_text(x), [']', '"'])
+completiontext(x) = completion_text(x)
+completiontext(x::REPLCompletions.PathCompletion) = rstrip(completion_text(x), '"')
+completiontext(x::REPLCompletions.DictCompletion) = rstrip(completion_text(x), [']', '"'])
 completiontext(x::REPLCompletions.MethodCompletion) = begin
-  ct = REPLCompletions.completion_text(x)
+  ct = completion_text(x)
   ct = match(r"^(.*) in .*$", ct)
   ct isa Nothing ? ct : ct[1]
 end
@@ -91,7 +91,7 @@ returntype(mod, line, ::REPLCompletions.PathCompletion) = "Path"
 using Base.Docs
 
 completionsummary(mod, c) = begin
-  ct = Symbol(REPLCompletions.completion_text(c))
+  ct = Symbol(completion_text(c))
   !cangetdocs(mod, ct) && return ""
   b = Docs.Binding(mod, ct)
   description(b)
@@ -146,7 +146,7 @@ completionmodule(mod, ::REPLCompletions.KeywordCompletion) = "Base"
 completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
 completiontype(line, c, mod) = begin
-  ct = REPLCompletions.completion_text(c)
+  ct = completion_text(c)
   ismacro(ct) && return "snippet"
   startswith(ct, ':') && return "tag"
 
@@ -160,7 +160,7 @@ completiontype(line, c, mod) = begin
       @error e
       nothing, false
     end
-    return found ? completiontype(val, mod, ct) : "variable"
+    return found ? completiontype(val, mod, ct) : "ignored"
   end
   c isa REPLCompletions.KeywordCompletion ? "keyword" :
     c isa REPLCompletions.PathCompletion ? "path" :
@@ -177,9 +177,10 @@ ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
 
 completionicon(c) = ""
 completionicon(c::REPLCompletions.ModuleCompletion) = begin
+  ismacro(c.mod) && return "icon-mention"
   mod = c.parent
   name = Symbol(c.mod)
-  val = getfield(mod, name)
+  val = getfield′′(mod, name)
   wsicon(mod, name, val)
 end
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
