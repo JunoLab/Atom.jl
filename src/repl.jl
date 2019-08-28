@@ -5,6 +5,8 @@ using REPL.LineEdit
 # FIXME: Find a way to reprint what's currently entered in the REPL after changing
 #        the module (or delete it in the buffer).
 
+using Logging: with_logger
+using .Progress: JunoProgressLogger
 
 function get_main_mode()
   mode = Base.active_repl.interface.modes[1]
@@ -149,7 +151,7 @@ function evalrepl(mod, line)
     fixjunodisplays()
     # this is slow:
     errored = false
-    Base.CoreLogging.with_logger(Atom.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+    with_logger(JunoProgressLogger()) do
       try
          line = Meta.parse(line)
       catch err

@@ -6,13 +6,12 @@ using Atom: msg
 const progs = Set()
 
 """
-    JunoProgressLogger(previous_logger<:AbstractLogger)
+    JunoProgressLogger()
 
 Logger that only handles messages with `progress` argument set and passes all
-others throught to the previously defined logger.
+others through to the `global_logger`.
 
-If the `progress` argument is set then a corresponding progress bar will be shown
-in the Juno frontend with it's name set to the logging message.
+If the `progress` argument is set, then a progress bar will be shown in the Juno frontend.
 
 Possible keyword arguments to logging messages consumed by this logger are:
   - `progress`:
@@ -23,9 +22,7 @@ Possible keyword arguments to logging messages consumed by this logger are:
   - `message`: Shown in a tooltip.
   - `_id`: The progress bars' ID. Should be set (to a symbol or string) in most cases.
 """
-struct JunoProgressLogger <: AbstractLogger
-  previous_logger
-end
+struct JunoProgressLogger <: AbstractLogger end
 
 function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
                                 group, id, file, line; kwargs...)
@@ -61,9 +58,11 @@ function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
       msg("progress", "message", id, kwargs[:message])
     end
   else
-    if (Logging.min_enabled_level(j.previous_logger) <= Logging.LogLevel(level) || Base.CoreLogging.env_override_minlevel(group, _module)) &&
-        Logging.shouldlog(j.previous_logger, level, _module, group, id)
-      Logging.handle_message(j.previous_logger, level, message, _module,
+    previous_logger = Logging.global_logger()
+    if (Logging.min_enabled_level(previous_logger) <= Logging.LogLevel(level) ||
+        Base.CoreLogging.env_override_minlevel(group, _module)) &&
+        Logging.shouldlog(previous_logger, level, _module, group, id)
+      Logging.handle_message(previous_logger, level, message, _module,
                              group, id, file, line; kwargs...)
     end
   end
@@ -73,5 +72,7 @@ Logging.shouldlog(::JunoProgressLogger, level, _module, group, id) = true
 
 Logging.catch_exceptions(::JunoProgressLogger) = true
 
-Logging.min_enabled_level(j::JunoProgressLogger) = min(Logging.min_enabled_level(j.previous_logger), Logging.LogLevel(-1))
-end
+Logging.min_enabled_level(j::JunoProgressLogger) =
+  min(Logging.min_enabled_level(Logging.global_logger()), Logging.LogLevel(-1))
+
+end # module
