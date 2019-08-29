@@ -2,7 +2,7 @@ using CodeTools, LNR, Media
 using CodeTools: getthing, getmodule
 import REPL
 
-using Logging: with_logger, current_logger
+using Logging: with_logger
 using .Progress: JunoProgressLogger
 
 ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
@@ -56,7 +56,7 @@ handle("evalshow") do data
 
     lock(evallock)
     result = hideprompt() do
-      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+      with_logger(JunoProgressLogger()) do
         withpath(path) do
           try
             res = include_string(mod, text, path, line)
@@ -89,7 +89,7 @@ handle("eval") do data
 
     lock(evallock)
     result = hideprompt() do
-      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+      with_logger(JunoProgressLogger()) do
         withpath(path) do
           @errs include_string(mod, text, path, line)
         end
@@ -118,7 +118,7 @@ handle("evalall") do data
 
     lock(evallock)
     hideprompt() do
-      Base.CoreLogging.with_logger(Atom.Progress.JunoProgressLogger(Base.CoreLogging.current_logger())) do
+      with_logger(JunoProgressLogger()) do
         withpath(path) do
           result = nothing
           try
