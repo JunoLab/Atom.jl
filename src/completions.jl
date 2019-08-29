@@ -144,7 +144,7 @@ end
 completionmodule(mod, c) = string(mod)
 completionmodule(mod, c::REPLCompletions.ModuleCompletion) = string(c.parent)
 completionmodule(mod, c::REPLCompletions.MethodCompletion) = string(c.method.module)
-completionmodule(mod, ::REPLCompletions.KeywordCompletion) = "Base"
+completionmodule(mod, ::REPLCompletions.KeywordCompletion) = ""
 completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
 completiontype(line, c, mod) = begin
