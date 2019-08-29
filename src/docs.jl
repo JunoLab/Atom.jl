@@ -40,7 +40,7 @@ ispackage(mod) = Base.find_package(mod) ≠ nothing
 function packageinfo(mod)
   path = DocSeeker.readmepath(mod)
   readme = ispath(path) ? String(read(path)) : ""
-  description = Markdown.parse(mod ∈ values(Pkg.Types.stdlib()) ? "## Julia Standard Library `$(mod)`" : readme)
+  description = Markdown.parse(mod ∈ values(Pkg.Types.stdlib()) ? "## Standard library package `$(mod)`" : readme)
 
   return  Hiccup.div(
             renderMD(description),
@@ -49,12 +49,8 @@ function packageinfo(mod)
 end
 
 function moduleinfo(mod)
-  header = if mod == "Core"
-    "## Julia `Core`"
-  elseif mod == "Base"
-    "## Julia `Base` Library"
-  elseif first(split(mod, '.')) == "Base"
-    "## Julia `Base` Library: `$(last(split(mod, '.')))`"
+  header = if mod ∈ ("Core", "Base", "Main") || first(split(mod, '.')) == "Base"
+    "## Standard module `$(mod)`"
   else
     "## Module `$mod`"
   end * "\n---\n## Defined symbols:" |> renderMD
