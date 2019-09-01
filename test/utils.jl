@@ -30,15 +30,6 @@ cd(dirname(@__FILE__))
     @test isfile(Atom.expandpath(Atom.view(first(methods(rand)))[2].file)[2])
 end
 
-@testset "methods and docs" begin
-    @test first(Atom.getmethods("Main", "Atom.getmethods")) == first(methods(Atom.getmethods))
-    @test !isempty(Atom.getmethods("Main", "@deprecate"))
-    @test !isempty(Atom.getmethods("Main", "Base.@deprecate"))
-
-    @test !isempty(Atom.getdocs("Main", "Atom.getmethods"))
-    @test !isempty(Atom.getdocs("Main", "@deprecate"))
-end
-
 @testset "REPL path finding" begin
     if Sys.iswindows()
         @test Atom.fullREPLpath(raw"@ Atom C:\Users\ads\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl", 25)

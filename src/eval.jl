@@ -197,16 +197,6 @@ handle("docs") do data
        :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
 end
 
-handle("methods") do data
-  @destruct [mod || "Main", word] = data
-  mtable = @errs getmethods(mod, word)
-  if mtable isa EvalError
-    Dict(:error => true, :items => sprint(showerror, mtable.err))
-  else
-    Dict(:items => [gotoitem(m) for m in mtable])
-  end
-end
-
 function getmethods(mod, word)
   methods(CodeTools.getthing(getmodule′(mod), word))
 end
@@ -218,6 +208,16 @@ function getdocs(mod, word)
     include_string(getmodule′(mod), "@doc $word")
   end
   return md_hlines(md)
+end
+
+handle("methods") do data
+  @destruct [mod || "Main", word] = data
+  mtable = @errs getmethods(mod, word)
+  if mtable isa EvalError
+    Dict(:error => true, :items => sprint(showerror, mtable.err))
+  else
+    Dict(:error => false, :items => [gotoitem(m) for m in mtable])
+  end
 end
 
 function gotoitem(m::Method)
