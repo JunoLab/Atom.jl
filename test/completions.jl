@@ -61,15 +61,6 @@
 
     @eval Main dict = Dict(:a => 1, :b => 2)
 
-    # property completion
-    let line = "dict."
-        handle(line)
-        @test map(readmsg()[3]["completions"]) do comp
-            comp["type"] == "property" &&
-            comp["text"] ∈ string.(propertynames(dict))
-        end |> all
-    end
-
     # dictionary completion
     let line = "dict["
         handle(line)
@@ -79,11 +70,20 @@
         end |> all
     end
 
+    # property completion
+    let line = "dict."
+        handle(line)
+        @test map(readmsg()[3]["completions"]) do comp
+            comp["type"] == "property" &&
+            comp["text"] ∈ string.(propertynames(dict))
+        end |> all
+    end
+
     # field completion
     let line = "split(\"im going to be split !\", \"to\")[1]."
         handle(line)
         @test map(readmsg()[3]["completions"]) do comp
-            comp["type"] == "attribute" &&
+            comp["type"] == "property" &&
             comp["text"] ∈ string.(fieldnames(SubString))
         end |> all
     end
