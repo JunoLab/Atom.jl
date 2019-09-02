@@ -32,7 +32,6 @@ function basecompletionadapter(line, mod, force)
   d = []
   for c in comps
     # TODO: get local completions from CSTParser or similar
-    # TODO: would be cool to provide `descriptionMoreURL` here to open the docpane
     if REPLCompletions.afterusing(line, first(replace))
       c isa REPLCompletions.PackageCompletion || continue
     end
@@ -48,12 +47,13 @@ end
 const MAX_COMPLETIONS = 500
 
 function completion(mod, line, c)
-  return Dict(:type        => completiontype(line, c, mod),
-              :icon        => completionicon(c),
-              :rightLabel  => completionmodule(mod, c),
-              :leftLabel   => returntype(mod, line, c),
-              :text        => completiontext(c),
-              :description => completionsummary(mod, c))
+  return Dict(:type               => completiontype(line, c, mod),
+              :icon               => completionicon(c),
+              :rightLabel         => completionmodule(mod, c),
+              :leftLabel          => returntype(mod, line, c),
+              :text               => completiontext(c),
+              :description        => completionsummary(mod, c),
+              :descriptionMoreURL => completionurl(mod, c))
 end
 
 completiontext(c) = completion_text(c)
@@ -96,7 +96,7 @@ returntype(mod, line, ::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
 
-completionsummary(mod, c::REPLCompletions.Completion) = "" # fallback
+completionsummary(mod, c) = "" # fallback
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod = c.parent
   word = c.mod
@@ -139,6 +139,24 @@ function makedescription(docs)
     end
   end
 end
+
+completionurl(mod, c) = ""
+completionurl(mod, c::REPLCompletions.PackageCompletion) =
+  "atom://julia-client/?moduleinfo=true&mod=$(c.package)"
+completionurl(mod, c::REPLCompletions.ModuleCompletion) = begin
+  val = getfield′′(c.parent, Symbol(c.mod))
+  if val isa Module # module info
+    parentmodule(val) == val || val ∈ (Main, Base, Core) ?
+      "atom://julia-client/?moduleinfo=true&mod=$(c.mod)" :
+      "atom://julia-client/?moduleinfo=true&mod=$(c.parent).$(c.mod)"
+  else
+    "atom://julia-client/?docs=true&mod=$(mod)&word=$(completion_text(c))"
+  end
+end
+completionurl(mod, c::REPLCompletions.MethodCompletion) =
+  "atom://julia-client/?docs=true&mod=$(c.method.module)&word=$(c.method.name)"
+completionurl(mod, c::REPLCompletions.KeywordCompletion) =
+  "atom://julia-client/?docs=true&mod=Main&word=$(completion_text(c))"
 
 completionmodule(mod, c) = string(mod)
 completionmodule(mod, c::REPLCompletions.ModuleCompletion) = string(c.parent)
