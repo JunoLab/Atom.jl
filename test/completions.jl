@@ -113,3 +113,75 @@
         @test length(readmsg()[3]["completions"]) > Atom.MAX_COMPLETIONS # invoked
     end
 end
+
+@testset "local completions" begin
+    let str = """
+        function local_bindings(expr, bindings = [], pos = 1)
+            bind = CSTParser.bindingof(expr)
+            scope = CSTParser.scopeof(expr)
+            if bind !== nothing && scope === nothing
+                push!(bindings, LocalBinding(bind.name, pos:pos+expr.span))
+            end
+            if scope !== nothing
+                range = pos:pos+expr.span
+                localbindings = []
+                if expr.args !== nothing
+                    for arg in expr.args
+                        local_bindings(arg, localbindings, pos)
+
+                        pos += arg.fullspan
+                    end
+                end
+                push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings))
+                return bindings
+            elseif expr.args !== nothing
+                for arg in expr.args
+                    local_bindings(arg, bindings, pos)
+                    pos += arg.fullspan
+                end
+            end
+            return bindings
+        end
+        """
+        @test Set(Atom.locals(str, 13, 1)) == Set([
+            "local_bindings",
+            "expr",
+            "bindings",
+            "pos",
+            "bind",
+            "scope",
+            "range",
+            "localbindings",
+            "arg"
+        ])
+        @test Set(Atom.locals(str, 19, 100)) == Set([
+            "local_bindings",
+            "expr",
+            "bindings",
+            "pos",
+            "bind",
+            "scope",
+            "range",
+            "localbindings",
+        ])
+    end
+
+    let str = """
+       const bar = 2
+       function f(x)
+         ff = function (x, xxx)
+           z = 3
+         end
+         y = x
+         return y+x
+       end
+       function foo(x)
+         asd = 3
+       end
+       """
+       @test Set(Atom.locals(str, 1, 1)) == Set(["foo", "f", "bar"])
+       @test Set(Atom.locals(str, 2, 100)) == Set(["foo", "f", "bar", "ff", "x", "y"])
+       @test Set(Atom.locals(str, 4, 100)) == Set(["foo", "f", "bar", "ff", "x", "y", "xxx", "z"])
+       @test Set(Atom.locals(str, 10, 100)) == Set(["foo", "f", "bar", "asd", "x"])
+    end
+end

@@ -1,4 +1,4 @@
-@testset "basic message handlings" begin
+@testset "basic message handling" begin
     cb = 0  # callback count
     function handle(type, args...)
         Atom.handlemsg(Dict("type"     => type,
@@ -30,4 +30,23 @@
     expect(2)
     handle("evalsimple", "sin(pi)")
     expect(sin(pi))
+end
+
+@testset "outline" begin
+    let str = """
+        module Foo
+        foo(x) = x
+        function bar(x)
+            2x
+        end
+        const sss = 3
+        end
+        """
+        @test Atom.outline(str) == Any[
+            ("Foo", 1:7),
+            ("foo", 2:2),
+            ("bar", 3:5),
+            ("sss", 6:6),
+        ]
+    end
 end

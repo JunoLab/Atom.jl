@@ -1,9 +1,16 @@
 handle("completions") do data
-  @destruct [path || nothing, mod || "Main", line, force] = data
+  @destruct [path || nothing,
+             mod || "Main",
+             editorContent || "",
+             lineNumber || 1,
+             startLine || 0,
+             column || 1,
+             line, force] = data
+
   withpath(path) do
     m = getmodule′(mod)
 
-    cs, pre = basecompletionadapter(line, m, force)
+    cs, pre = basecompletionadapter(line, m, force, lineNumber - startLine, column, editorContent)
 
     d(:completions => cs,
       :prefix      => string(pre))
@@ -12,7 +19,7 @@ end
 
 using REPL.REPLCompletions
 
-function basecompletionadapter(line, mod, force)
+function basecompletionadapter(line, mod, force, lineNumber, column, text)
   comps, replace, shouldcomplete = try
     completions(line, lastindex(line), mod)
   catch err
@@ -31,7 +38,6 @@ function basecompletionadapter(line, mod, force)
   pre = line[replace]
   d = []
   for c in comps
-    # TODO: get local completions from CSTParser or similar
     if REPLCompletions.afterusing(line, first(replace))
       c isa REPLCompletions.PackageCompletion || continue
     end
@@ -39,6 +45,20 @@ function basecompletionadapter(line, mod, force)
       push!(d, completion(mod, line, c))
     catch err
       continue
+    end
+  end
+
+  # completions from the local code block:
+  for c in locals(text, lineNumber, column)
+    if startswith(c, pre)
+      pushfirst!(d, Dict(
+                  :type        => "",
+                  :icon        => "l",
+                  :rightLabel  => "",
+                  :leftLabel   => "",
+                  :text        => c,
+                  :description => ""
+                ))
     end
   end
   d, pre
