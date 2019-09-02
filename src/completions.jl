@@ -49,7 +49,7 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
   end
 
   # completions from the local code block:
-  for c in locals(text, lineNumber, column)
+  for c in reverse!(locals(text, lineNumber, column))
     if (force || !isempty(pre)) && startswith(c[1], pre)
       pushfirst!(d, Dict(
                   :type        => "attribute",
@@ -120,6 +120,7 @@ completionsummary(mod, c) = "" # fallback
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod = c.parent
   word = c.mod
+
   !cangetdocs(mod, Symbol(word)) && return ""
   getdocs(string(mod), word) |> makedescription
 end

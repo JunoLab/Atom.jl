@@ -144,25 +144,26 @@ end
         end
         """
         @test Set(Atom.locals(str, 13, 1)) == Set([
-            "local_bindings",
-            "expr",
-            "bindings",
-            "pos",
-            "bind",
-            "scope",
-            "range",
-            "localbindings",
-            "arg"
+            ("arg", ""),
+            ("localbindings", "local_bindings"),
+            ("range", "local_bindings"),
+            ("scope", "local_bindings"),
+            ("bind", "local_bindings"),
+            ("pos", "local_bindings"),
+            ("bindings", "local_bindings"),
+            ("expr", "local_bindings"),
+            ("local_bindings", "")
         ])
         @test Set(Atom.locals(str, 19, 100)) == Set([
-            "local_bindings",
-            "expr",
-            "bindings",
-            "pos",
-            "bind",
-            "scope",
-            "range",
-            "localbindings",
+            ("localbindings", "local_bindings"),
+            ("pos", "local_bindings"),
+            ("scope", "local_bindings"),
+            ("bind", "local_bindings"),
+            ("bindings", "local_bindings"),
+            ("expr", "local_bindings"),
+            ("local_bindings", ""),
+            ("range", "local_bindings"),
+            ("local_bindings", "")
         ])
     end
 
@@ -179,10 +180,10 @@ end
          asd = 3
        end
        """
-       @test Set(Atom.locals(str, 1, 1)) == Set(["foo", "f", "bar"])
-       @test Set(Atom.locals(str, 2, 100)) == Set(["foo", "f", "bar", "ff", "x", "y"])
-       @test Set(Atom.locals(str, 4, 100)) == Set(["foo", "f", "bar", "ff", "x", "y", "xxx", "z"])
-       @test Set(Atom.locals(str, 10, 100)) == Set(["foo", "f", "bar", "asd", "x"])
+        @test Set(Atom.locals(str, 1, 1)) == Set([("f", ""), ("bar", ""), ("foo", "")])
+        @test Set(Atom.locals(str, 2, 100)) == Set([("f", ""), ("y", "f"), ("ff", "f"), ("x", "f"), ("bar", ""), ("foo", "")])
+        @test Set(Atom.locals(str, 4, 100)) == Set([("y", "f"), ("f", ""), ("x", ""), ("ff", "f"), ("bar", ""), ("z", ""), ("foo", ""), ("xxx", "")])
+        @test Set(Atom.locals(str, 10, 100)) == Set([("f", ""), ("x", "foo"), ("asd", "foo"), ("bar", ""), ("foo", "")])
     end
 
     # local completions ordered by proximity

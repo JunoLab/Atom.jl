@@ -83,10 +83,10 @@ function locals(text, line, col)
 
     bindings = local_bindings(parsed)
     bindings = filter_local_bindings(bindings, byteoffset)
-    bindings = sort(bindings, lt = (a,b) -> a[3] < b[3], rev = true) # `rev` doesn't make sense here
+    bindings = filter(x -> !isempty(x[1]), bindings)
+    bindings = sort(bindings, lt = (a,b) -> a[3] < b[3])
+    bindings = unique(x -> x[1], bindings)
     bindings = map(x -> x[1:2], bindings)
-
-    unique!(bindings)
 
     bindings
 end
