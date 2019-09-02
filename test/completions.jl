@@ -184,4 +184,20 @@ end
        @test Set(Atom.locals(str, 4, 100)) == Set(["foo", "f", "bar", "ff", "x", "y", "xxx", "z"])
        @test Set(Atom.locals(str, 10, 100)) == Set(["foo", "f", "bar", "asd", "x"])
     end
+
+    # local completions ordered by proximity
+    let str = """
+        function foo(x)
+            aaa = 3
+            a
+
+            foo = x
+
+            a
+            abc = 3
+        end
+        """
+        @test Atom.basecompletionadapter("a", Main, true, 3, 6, str)[1][1][:text] == "aaa"
+        @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "abc"
+    end
 end

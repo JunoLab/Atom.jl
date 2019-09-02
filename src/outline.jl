@@ -83,15 +83,19 @@ function locals(text, line, col)
 
     bindings = local_bindings(parsed)
     bindings = filter_local_bindings(bindings, byteoffset)
-    return filter!(!isempty, unique!(bindings))
+    bindings = sort(bindings, lt = (a,b) -> a[3] < b[3], rev = true) # `rev` doesn't make sense here
+    bindings = map(x -> x[1:2], bindings)
+
+    unique!(bindings)
+
+    bindings
 end
 
-function filter_local_bindings(bindings, byteoffset, actual_bindings = [])
-    # TODO: maybe filter by proximity?
+function filter_local_bindings(bindings, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
-        push!(actual_bindings, bind.name)
+        push!(actual_bindings, (bind.name, root, abs(bind.span[1] - byteoffset)))
         if bind isa LocalScope && byteoffset in bind.span
-            filter_local_bindings(bind.children, byteoffset, actual_bindings)
+            filter_local_bindings(bind.children, byteoffset, bind.name, actual_bindings)
         end
     end
     actual_bindings
