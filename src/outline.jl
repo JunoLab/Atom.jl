@@ -76,7 +76,7 @@ function locals(text, line, col)
             c === '\n' && break
         end
         current_char == col && break
-        byteoffset += ncodeunits(c)
+        byteoffset += VERSION >= v"1.1" ? ncodeunits(c) : ncodeunits(string(c))
         c === '\n' && (current_line += 1)
     end
     parsed = CSTParser.parse(text, true)
@@ -87,6 +87,7 @@ function locals(text, line, col)
 end
 
 function filter_local_bindings(bindings, byteoffset, actual_bindings = [])
+    # TODO: maybe filter by proximity?
     for bind in bindings
         push!(actual_bindings, bind.name)
         if bind isa LocalScope && byteoffset in bind.span
