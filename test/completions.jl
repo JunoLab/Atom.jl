@@ -113,3 +113,92 @@
         @test length(readmsg()[3]["completions"]) > Atom.MAX_COMPLETIONS # invoked
     end
 end
+
+@testset "local completions" begin
+    let str = """
+        function local_bindings(expr, bindings = [], pos = 1)
+            bind = CSTParser.bindingof(expr)
+            scope = CSTParser.scopeof(expr)
+            if bind !== nothing && scope === nothing
+                push!(bindings, LocalBinding(bind.name, pos:pos+expr.span))
+            end
+            if scope !== nothing
+                range = pos:pos+expr.span
+                localbindings = []
+                if expr.args !== nothing
+                    for arg in expr.args
+                        local_bindings(arg, localbindings, pos)
+
+                        pos += arg.fullspan
+                    end
+                end
+                push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings))
+                return bindings
+            elseif expr.args !== nothing
+                for arg in expr.args
+                    local_bindings(arg, bindings, pos)
+                    pos += arg.fullspan
+                end
+            end
+            return bindings
+        end
+        """
+        @test Set(Atom.locals(str, 13, 1)) == Set([
+            ("arg", ""),
+            ("localbindings", "local_bindings"),
+            ("range", "local_bindings"),
+            ("scope", "local_bindings"),
+            ("bind", "local_bindings"),
+            ("pos", "local_bindings"),
+            ("bindings", "local_bindings"),
+            ("expr", "local_bindings"),
+            ("local_bindings", "")
+        ])
+        @test Set(Atom.locals(str, 19, 100)) == Set([
+            ("localbindings", "local_bindings"),
+            ("pos", "local_bindings"),
+            ("scope", "local_bindings"),
+            ("bind", "local_bindings"),
+            ("bindings", "local_bindings"),
+            ("expr", "local_bindings"),
+            ("local_bindings", ""),
+            ("range", "local_bindings"),
+            ("local_bindings", "")
+        ])
+    end
+
+    let str = """
+       const bar = 2
+       function f(x)
+         ff = function (x, xxx)
+           z = 3
+         end
+         y = x
+         return y+x
+       end
+       function foo(x)
+         asd = 3
+       end
+       """
+        @test Set(Atom.locals(str, 1, 1)) == Set([("f", ""), ("bar", ""), ("foo", "")])
+        @test Set(Atom.locals(str, 2, 100)) == Set([("f", ""), ("y", "f"), ("ff", "f"), ("x", "f"), ("bar", ""), ("foo", "")])
+        @test Set(Atom.locals(str, 4, 100)) == Set([("y", "f"), ("f", ""), ("x", ""), ("ff", "f"), ("bar", ""), ("z", ""), ("foo", ""), ("xxx", "")])
+        @test Set(Atom.locals(str, 10, 100)) == Set([("f", ""), ("x", "foo"), ("asd", "foo"), ("bar", ""), ("foo", "")])
+    end
+
+    # local completions ordered by proximity
+    let str = """
+        function foo(x)
+            aaa = 3
+            a
+
+            foo = x
+
+            a
+            abc = 3
+        end
+        """
+        @test Atom.basecompletionadapter("a", Main, true, 3, 6, str)[1][1][:text] == "aaa"
+        @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "abc"
+    end
+end
