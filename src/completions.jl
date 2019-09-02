@@ -56,11 +56,11 @@ function completion(mod, line, c)
               :description => completionsummary(mod, c))
 end
 
-completiontext(x) = completion_text(x)
-completiontext(x::REPLCompletions.PathCompletion) = rstrip(completion_text(x), '"')
-completiontext(x::REPLCompletions.DictCompletion) = rstrip(completion_text(x), [']', '"'])
-completiontext(x::REPLCompletions.MethodCompletion) = begin
-  ct = completion_text(x)
+completiontext(c) = completion_text(c)
+completiontext(c::REPLCompletions.PathCompletion) = rstrip(completion_text(c), '"')
+completiontext(c::REPLCompletions.DictCompletion) = rstrip(completion_text(c), [']', '"'])
+completiontext(c::REPLCompletions.MethodCompletion) = begin
+  ct = completion_text(c)
   ct = match(r"^(.*) in .*$", ct)
   ct isa Nothing ? ct : ct[1]
 end
@@ -88,16 +88,15 @@ returntype(mod, line, c::REPLCompletions.PropertyCompletion) = begin
   typ = string(typeof(prop))
   strlimit(typ, 20)
 end
+returntype(mod, line, c::REPLCompletions.FieldCompletion) = begin
+  typ = string(fieldtype(c.typ, c.field))
+  strlimit(typ, 20)
+end
 returntype(mod, line, ::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
 
-completionsummary(mod, c) = begin
-  ct = Symbol(completion_text(c))
-  !cangetdocs(mod, ct) && return ""
-  b = Docs.Binding(mod, ct)
-  description(b)
-end
+completionsummary(mod, c::REPLCompletions.Completion) = "" # fallback
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod = c.parent
   word = c.mod
@@ -147,7 +146,7 @@ completionmodule(mod, c::REPLCompletions.MethodCompletion) = string(c.method.mod
 completionmodule(mod, ::REPLCompletions.KeywordCompletion) = ""
 completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
 
-completiontype(line, c, mod) = begin
+completiontype(line, c::REPLCompletions.Completion, mod) = begin # entry method
   ct = completion_text(c)
   ismacro(ct) && return "snippet"
   startswith(ct, ':') && return "tag"
@@ -164,16 +163,18 @@ completiontype(line, c, mod) = begin
     end
     return found ? completiontype(val, mod, ct) : "ignored"
   end
-  c isa REPLCompletions.KeywordCompletion ? "keyword" :
-    c isa REPLCompletions.PathCompletion ? "path" :
-    c isa REPLCompletions.PackageCompletion ? "import" :
-    c isa REPLCompletions.PropertyCompletion ? "property" :
-    c isa REPLCompletions.FieldCompletion ? "attribute" :
-    c isa REPLCompletions.MethodCompletion ? "method" :
-    "variable"
+  completiontype(c)
 end
-completiontype(val, mod::Module, ct::AbstractString) = wstype(mod, Symbol(ct), val)
-completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # fallen into "macro" otherwise
+
+completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # DictCompletion isn't dispatched for the entry method, otherwise fallen into "macro"
+completiontype(@nospecialize(val), mod::Module, ct::String) = wstype(mod, Symbol(ct), val) # ModuleCompletion
+completiontype(::REPLCompletions.Completion) = "variable" # may not happen
+completiontype(::REPLCompletions.PackageCompletion) = "import"
+completiontype(::REPLCompletions.MethodCompletion) = "method"
+completiontype(::REPLCompletions.PropertyCompletion) = "property"
+completiontype(::REPLCompletions.FieldCompletion) = "property"
+completiontype(::REPLCompletions.KeywordCompletion) = "keyword"
+completiontype(::REPLCompletions.PathCompletion) = "path"
 
 ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
 

@@ -2,80 +2,108 @@
     import REPL.REPLCompletions: completions
 
     cb = 0  # callback count
-    function handle(line; path = @__FILE__, mod = "Main", force = false)
+    handle(line; path = @__FILE__, mod = "Main", force = false) =
         Atom.handlemsg(Dict("type"     => "completions",
                             "callback" => (cb += 1)),
                        Dict("path"  => path,
                             "mod"   => mod,
                             "line"  => line,
                             "force" => force))
-    end
-
 
     # module completion
-    line = "@"
-    handle(line, path = joinpath(pathof(Atom), "src", "completions.jl"), mod = "Atom")
-    @test length(readmsg()[3]["completions"]) == length(completions(line, lastindex(line), Atom)[1])
-
-    # method completion
-    line = "push!("
-    handle(line)
-    @test length(readmsg()[3]["completions"]) == length(completions(line, lastindex(line))[1])
-
-    # method completion should show
-    # - module where the method defined in right label
-    # - the infered return type in left label
-    handle(line)
-    @test filter(readmsg()[3]["completions"]) do comp
-        comp["type"] == "method" &&
-        comp["rightLabel"] == "Atom" &&
-        comp["leftLabel"] == "String"
-    end |> isempty
-
-    @eval Atom begin
-        import Base: push!
-        push!(::Undefined) = "i'm a silly push!"
+    let line = "@"
+        handle(line, path = joinpath(pathof(Atom), "src", "completions.jl"), mod = "Atom")
+        comps = readmsg()[3]["completions"]
+        # test no error occurs in completion processing
+        @test length(comps) == length(completions(line, lastindex(line), Atom)[1])
+        # test detecting all the macros in Atom module
+        @test filter(comps) do comp
+            comp["icon"] == "icon-mention" &&
+            comp["rightLabel"] == "Atom"
+        end |> length == filter(names(Atom, all=true, imported=true)) do name
+            startswith(string(name), '@')
+        end |> length
     end
 
-    handle(line)
-    @test filter(readmsg()[3]["completions"]) do comp
-        comp["type"] == "method" &&
-        comp["rightLabel"] == "Atom" &&
-        comp["leftLabel"] == "String"
-    end |> !isempty
+    # method completion
+    let line = "push!("
+        # basic method completion
+        handle(line)
+        comps = readmsg()[3]["completions"]
+        # test no error occurs in completion processing
+        @test length(comps) == length(completions(line, lastindex(line))[1])
+        # test detecting all the `push!` methods available in Atom module
+        @test filter(comps) do comp
+            comp["type"] == "method"
+        end |> length == length(methods(push!))
 
-    @eval Main begin
-        dict = Dict(:a => 1, :b => 2)
+        # method completion should show
+        # - module where the method defined in right label
+        # - the infered return type in left label
+        @test filter(comps) do comp
+            comp["type"] == "method" &&
+            comp["rightLabel"] == "Atom" &&
+            comp["leftLabel"] == "String"
+        end |> isempty
+
+        @eval Atom begin
+            import Base: push!
+            push!(::Undefined) = "i'm a silly push!"
+        end
+
+        handle(line)
+        @test filter(readmsg()[3]["completions"]) do comp
+            comp["type"] == "method" &&
+            comp["rightLabel"] == "Atom" &&
+            comp["leftLabel"] == "String"
+        end |> !isempty
+    end
+
+    @eval Main dict = Dict(:a => 1, :b => 2)
+
+    # dictionary completion
+    let line = "dict["
+        handle(line)
+        @test map(readmsg()[3]["completions"]) do comp
+            comp["type"] == "key" &&
+            comp["text"] ∈ sprint.(show, keys(dict))
+        end |> all
     end
 
     # property completion
-    line = "dict."
-    handle(line)
-    @test map(readmsg()[3]["completions"]) do comp
-        comp["type"] == "property" &&
-        comp["text"] ∈ string.(propertynames(dict))
-    end |> all
+    let line = "dict."
+        handle(line)
+        @test map(readmsg()[3]["completions"]) do comp
+            comp["type"] == "property" &&
+            comp["text"] ∈ string.(propertynames(dict))
+        end |> all
+    end
 
-    # dictionary completion
-    line = "dict["
-    handle(line)
-    @test map(readmsg()[3]["completions"]) do comp
-        comp["type"] == "key" &&
-        comp["text"] ∈ sprint.(show, keys(dict))
-    end |> all
+    # field completion
+    let line = "split(\"im going to be split !\", \"to\")[1]."
+        handle(line)
+        @test map(readmsg()[3]["completions"]) do comp
+            comp["type"] == "property" &&
+            comp["text"] ∈ string.(fieldnames(SubString))
+        end |> all
+    end
 
     # keyword completion
-    line = "begin"
-    handle(line)
-    @test filter(readmsg()[3]["completions"]) do comp
-        comp["type"] == "keyword" &&
-        !isempty(comp["description"])
-    end |> !isempty
+    let line = "begin"
+        handle(line)
+        @test filter(readmsg()[3]["completions"]) do comp
+            comp["type"] == "keyword" &&
+            !isempty(comp["description"])
+        end |> !isempty
+    end
 
     # path completion
-    line = "\""
-    handle(line)
-    @test length(readmsg()[3]["completions"]) == length(completions(line, lastindex(line))[1]) == length(readdir(@__DIR__))
+    let line = "\""
+        handle(line)
+        @test length(readmsg()[3]["completions"]) ==
+              length(completions(line, lastindex(line))[1]) ==
+              length(readdir(@__DIR__))
+    end
 
     # completion suppressing
     @testset "suppressing: $(troublemaker)" for troublemaker ∈ [" ", "(", "[", "\$"]

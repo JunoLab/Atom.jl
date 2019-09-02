@@ -2,7 +2,8 @@ handle("workspace") do mod
   mod = getmodule′(mod)
   ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
   filter!(ns) do n
-    !Base.isdeprecated(mod, n) && n != Symbol(mod)
+    !Base.isdeprecated(mod, n) &&
+    string(n) != last(split(string(mod), '.'))
   end
   contexts = [d(:context => string(mod), :items => map(n -> wsitem(mod, n), ns))]
   isdebugging() && prepend!(contexts, JunoDebugger.contexts())
@@ -13,7 +14,7 @@ wsitem(mod, name) = begin
   val = getfield′′(mod, name)
   wsitem(mod, name, val)
 end
-wsitem(mod, name, val) = begin
+wsitem(mod, name, @nospecialize(val)) = begin
   d(:name       => name,
     :value      => render′(Inline(), val),
     :nativetype => nativetype(mod, name, val),
@@ -25,15 +26,15 @@ end
 struct Undefined end
 getfield′′(mod, name) = isdefined(mod, name) ? getfield(mod, name) : Undefined()
 @render Inline val::Undefined span(".fade", "<undefined>")
-nativetype(mod, name, val) = DocSeeker.determinetype(mod, name)
+nativetype(mod, name, @nospecialize(val)) = DocSeeker.determinetype(mod, name)
 nativetype(mod, name, ::Undefined) = "Undefined"
 
 #=
 @NOTE: `wstype` and `wsicon` are also used for completions / docs
 =#
 
-wstype(mod, name, val) = isconst(mod, name) ? "constant" : "variable"
-wstype(mod, name, val::Function) = ismacro(val) ? "snippet" : "function"
+wstype(mod, name, @nospecialize(val)) = isconst(mod, name) ? "constant" : "variable"
+wstype(mod, name, f::Function) = ismacro(f) ? "snippet" : "function"
 wstype(mod, name, ::Type) = "type"
 wstype(mod, name, ::Module) = "module"
 wstype(mod, name, ::Expr) = "mixin"
@@ -41,8 +42,8 @@ wstype(mod, name, ::Symbol) = "tag"
 wstype(mod, name, ::Exception) = "mixin"
 wstype(mod, name, ::Undefined) = "ignored"
 
-wsicon(mod, name, val) = isconst(mod, name) ? "c" : "v"
-wsicon(mod, name, val::Function) = ismacro(val) ? "icon-mention" : "λ"
+wsicon(mod, name, @nospecialize(val)) = isconst(mod, name) ? "c" : "v"
+wsicon(mod, name, f::Function) = ismacro(f) ? "icon-mention" : "λ"
 wsicon(mod, name, ::Type) = "T"
 wsicon(mod, name, ::Module) = "icon-package"
 wsicon(mod, name, ::Number) = "n"
