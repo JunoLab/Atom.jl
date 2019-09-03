@@ -3,7 +3,6 @@ using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_comma
 import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
-import REPL
 using Media
 using MacroTools
 
@@ -199,10 +198,10 @@ function debugprompt()
     panel = REPL.LineEdit.Prompt("debug> ";
               prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
               prompt_suffix = Base.text_colors[:normal],
+              complete = DebugCompletionProvider(),
               on_enter = s -> true)
 
     panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
-    panel.complete = REPL.LatexCompletions()
     REPL.history_reset_state(panel.hist)
 
     search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
@@ -243,6 +242,26 @@ function debugprompt()
     Atom.msg("updateWorkspace")
     e isa InterruptException || rethrow(e)
   end
+end
+
+# ref: https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
+
+struct DebugCompletionProvider <: REPL.CompletionProvider end
+
+function LineEdit.complete_line(c::DebugCompletionProvider, s)
+  partial = REPL.beforecursor(s.input_buffer)
+  full = LineEdit.input_string(s)
+  ret, range, should_complete = completions(c, full, lastindex(partial))
+  return unique!(map(REPLCompletions.completion_text, ret)), partial[range], should_complete
+end
+
+function completions(c::DebugCompletionProvider, full, partial)
+  global STATE
+  mod = moduleof(STATE.frame)
+  ret, range, should_complete = REPLCompletions.completions(full, partial, mod)
+
+  # TODO local variable completions
+  return ret, range, should_complete
 end
 
 # setup handlers for stepper commands
