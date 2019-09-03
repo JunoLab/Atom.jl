@@ -36,17 +36,37 @@ end
     let str = """
         module Foo
         foo(x) = x
-        function bar(x)
+        function bar(x::Int)
             2x
         end
         const sss = 3
         end
         """
         @test Atom.outline(str) == Any[
-            ("Foo", 1:7),
-            ("foo", 2:2),
-            ("bar", 3:5),
-            ("sss", 6:6),
+            Dict(
+                :type => "module",
+                :name => "Foo",
+                :icon => "icon-package",
+                :lines => [1, 7]
+            ),
+            Dict(
+                :type => "function",
+                :name => "foo(x)",
+                :icon => "λ",
+                :lines => [2, 2]
+            ),
+            Dict(
+                :type => "function",
+                :name => "bar(x::Int)",
+                :icon => "λ",
+                :lines => [3, 5]
+            ),
+            Dict(
+                :type => "variable",
+                :name => "sss",
+                :icon => "v",
+                :lines => [6, 6]
+            )
         ]
     end
 end
