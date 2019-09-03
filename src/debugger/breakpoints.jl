@@ -120,12 +120,14 @@ handle("getBreakpoints") do
   end
 end
 
+isCompileMode() = _compiledMode[] === JuliaInterpreter.Compiled()
+
 handle("toggleCompiled") do
   with_error_message() do
-    _compiledMode[] = (_compiledMode[] === JuliaInterpreter.finish_and_return! ?
-      (_compiledMode[] = JuliaInterpreter.Compiled()) :
-      (_compiledMode[] = JuliaInterpreter.finish_and_return!))
-    return _compiledMode[] === JuliaInterpreter.Compiled()
+    _compiledMode[] = (isCompileMode() ?
+      (_compiledMode[] = JuliaInterpreter.finish_and_return!) :
+      (_compiledMode[] = JuliaInterpreter.Compiled()))
+    return isCompileMode()
   end
 end
 

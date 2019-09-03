@@ -72,12 +72,6 @@ function _make_frame(mod, arg)
   end
 end
 
-const prompt_color = if Sys.iswindows()
-  "\e[33m"
-else
-  "\e[38;5;166m"
-end
-
 function add_breakpoint(bp)
   cond = bp["condition"]
   cond = cond === nothing ? cond : Meta.parse(cond)
@@ -195,11 +189,15 @@ end
 
 using REPL
 using REPL.LineEdit
+using REPL.REPLCompletions
+
+const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
+const compiled_prefix = "\e[96m"
 
 function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix = prompt_color,
+              prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
               prompt_suffix = Base.text_colors[:normal],
               on_enter = s -> true)
 
