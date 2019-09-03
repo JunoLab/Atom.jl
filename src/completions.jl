@@ -50,13 +50,15 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
 
   # completions from the local code block:
   for c in reverse!(locals(text, lineNumber, column))
-    if (force || !isempty(pre)) && startswith(c[1], pre)
+    if (force || !isempty(pre)) && startswith(c[:name], pre)
+      c[:type] == "variable" && (c[:type] = "attribute")
+      c[:icon] == "v" && (c[:icon] = "icon-chevron-right")
       pushfirst!(d, Dict(
-                  :type        => "attribute",
-                  :icon        => "icon-chevron-right",
-                  :rightLabel  => c[2],
+                  :type        => c[:type],
+                  :icon        => c[:icon],
+                  :rightLabel  => c[:root],
                   :leftLabel   => "",
-                  :text        => c[1],
+                  :text        => c[:name],
                   :description => ""
                 ))
     end

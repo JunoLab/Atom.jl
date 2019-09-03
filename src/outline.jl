@@ -81,18 +81,20 @@ struct LocalScope
     name
     span
     children
+    expr
 end
 
 struct LocalBinding
     name
     span
+    expr
 end
 
 function local_bindings(expr, bindings = [], pos = 1)
     bind = CSTParser.bindingof(expr)
     scope = CSTParser.scopeof(expr)
     if bind !== nothing && scope === nothing
-        push!(bindings, LocalBinding(bind.name, pos:pos+expr.span))
+        push!(bindings, LocalBinding(bind.name, pos:pos+expr.span, expr))
     end
     if scope !== nothing
         range = pos:pos+expr.span
@@ -104,7 +106,7 @@ function local_bindings(expr, bindings = [], pos = 1)
                 pos += arg.fullspan
             end
         end
-        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings))
+        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings, expr))
         return bindings
     elseif expr.args !== nothing
         for arg in expr.args
@@ -113,6 +115,7 @@ function local_bindings(expr, bindings = [], pos = 1)
         end
     end
     return bindings
+
 end
 
 function locals(text, line, col)
@@ -132,17 +135,22 @@ function locals(text, line, col)
 
     bindings = local_bindings(parsed)
     bindings = filter_local_bindings(bindings, byteoffset)
-    bindings = filter(x -> !isempty(x[1]), bindings)
-    bindings = sort(bindings, lt = (a,b) -> a[3] < b[3])
-    bindings = unique(x -> x[1], bindings)
-    bindings = map(x -> x[1:2], bindings)
+    bindings = filter(x -> !isempty(x[:name]), bindings)
+    bindings = sort(bindings, lt = (a,b) -> a[:locality] < b[:locality])
+    bindings = unique(x -> x[:name], bindings)
 
     bindings
 end
 
 function filter_local_bindings(bindings, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
-        push!(actual_bindings, (bind.name, root, abs(bind.span[1] - byteoffset)))
+        push!(actual_bindings, Dict(
+            :name => bind.name,
+            :root => root,
+            :locality => abs(bind.span[1] - byteoffset),
+            :icon => static_icon(bind.expr),
+            :type => static_type(bind.expr)
+        ))
         if bind isa LocalScope && byteoffset in bind.span
             filter_local_bindings(bind.children, byteoffset, bind.name, actual_bindings)
         end

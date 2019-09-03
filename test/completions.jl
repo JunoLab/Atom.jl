@@ -143,7 +143,7 @@ end
             return bindings
         end
         """
-        @test Set(Atom.locals(str, 13, 1)) == Set([
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 13, 1))) == Set([
             ("arg", ""),
             ("localbindings", "local_bindings"),
             ("range", "local_bindings"),
@@ -154,7 +154,7 @@ end
             ("expr", "local_bindings"),
             ("local_bindings", "")
         ])
-        @test Set(Atom.locals(str, 19, 100)) == Set([
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 19, 100))) == Set([
             ("localbindings", "local_bindings"),
             ("pos", "local_bindings"),
             ("scope", "local_bindings"),
@@ -180,10 +180,14 @@ end
          asd = 3
        end
        """
-        @test Set(Atom.locals(str, 1, 1)) == Set([("f", ""), ("bar", ""), ("foo", "")])
-        @test Set(Atom.locals(str, 2, 100)) == Set([("f", ""), ("y", "f"), ("ff", "f"), ("x", "f"), ("bar", ""), ("foo", "")])
-        @test Set(Atom.locals(str, 4, 100)) == Set([("y", "f"), ("f", ""), ("x", ""), ("ff", "f"), ("bar", ""), ("z", ""), ("foo", ""), ("xxx", "")])
-        @test Set(Atom.locals(str, 10, 100)) == Set([("f", ""), ("x", "foo"), ("asd", "foo"), ("bar", ""), ("foo", "")])
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1))) ==
+            Set([("f", ""), ("bar", ""), ("foo", "")])
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 100))) ==
+            Set([("f", ""), ("y", "f"), ("ff", "f"), ("x", "f"), ("bar", ""), ("foo", "")])
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100))) ==
+            Set([("y", "f"), ("f", ""), ("x", ""), ("ff", "f"), ("bar", ""), ("z", ""), ("foo", ""), ("xxx", "")])
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100))) ==
+            Set([("f", ""), ("x", "foo"), ("asd", "foo"), ("bar", ""), ("foo", "")])
     end
 
     # local completions ordered by proximity
