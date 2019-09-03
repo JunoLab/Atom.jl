@@ -9,10 +9,57 @@ function outline(text)
     toplevel_bindings(parsed, text)
 end
 
+static_type(bind::CSTParser.Binding) = static_type(bind.val)
+function static_type(val::CSTParser.EXPR)
+    if CSTParser.defines_function(val)
+        "function"
+    elseif CSTParser.defines_macro(val)
+        "snippet"
+    elseif CSTParser.defines_module(val)
+        "module"
+    elseif CSTParser.defines_struct(val) ||
+           CSTParser.defines_abstract(val) ||
+           CSTParser.defines_mutable(val) ||
+           CSTParser.defines_primitive(val)
+        "type"
+    else
+        "variable"
+    end
+end
+
+static_icon(bind::CSTParser.Binding) = static_icon(bind.val)
+function static_icon(val::CSTParser.EXPR)
+    if CSTParser.defines_function(val)
+        "λ"
+    elseif CSTParser.defines_macro(val)
+        "icon-mention"
+    elseif CSTParser.defines_module(val)
+        "icon-package"
+    elseif CSTParser.defines_struct(val) ||
+           CSTParser.defines_abstract(val) ||
+           CSTParser.defines_mutable(val) ||
+           CSTParser.defines_primitive(val)
+        "T"
+    else
+        "v"
+    end
+end
+
 function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
     bind = CSTParser.bindingof(expr)
     if bind !== nothing
-        push!(bindings, (bind.name, line:(line + count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + expr.span)]))))
+        name = bind.name
+        if CSTParser.has_sig(bind.val)
+            sig = CSTParser.get_sig(bind.val)
+            name = str_value(sig)
+        end
+        push!(bindings, Dict(
+                :name => name,
+                :type => static_type(bind),
+                :icon => static_icon(bind),
+                :lines => [line, line + count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + expr.span)])]
+                )
+             )
     end
     scope = CSTParser.scopeof(expr)
     if scope !== nothing && !(expr.typ === CSTParser.FileH || expr.typ === CSTParser.ModuleH || expr.typ === CSTParser.BareModule)
@@ -99,4 +146,29 @@ function filter_local_bindings(bindings, byteoffset, root = "", actual_bindings 
         end
     end
     actual_bindings
+end
+
+# https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
+function str_value(x)
+    if x.typ === CSTParser.PUNCTUATION
+        x.kind == CSTParser.Tokens.LPAREN && return "("
+        x.kind == CSTParser.Tokens.LBRACE && return "{"
+        x.kind == CSTParser.Tokens.LSQUARE && return "["
+        x.kind == CSTParser.Tokens.RPAREN && return ")"
+        x.kind == CSTParser.Tokens.RBRACE && return "}"
+        x.kind == CSTParser.Tokens.RSQUARE && return "]"
+        x.kind == CSTParser.Tokens.COMMA && return ","
+        x.kind == CSTParser.Tokens.SEMICOLON && return ";"
+        x.kind == CSTParser.Tokens.AT_SIGN && return "@"
+        x.kind == CSTParser.Tokens.DOT && return "."
+        return ""
+    elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
+        return CSTParser.str_value(x)
+    else
+        s = ""
+        for a in x
+            s *= str_value(a)
+        end
+        return s
+    end
 end
