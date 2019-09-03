@@ -124,9 +124,7 @@ isCompileMode() = _compiledMode[] === JuliaInterpreter.Compiled()
 
 handle("toggleCompiled") do
   with_error_message() do
-    _compiledMode[] = (isCompileMode() ?
-      (_compiledMode[] = JuliaInterpreter.finish_and_return!) :
-      (_compiledMode[] = JuliaInterpreter.Compiled()))
+    _compiledMode[] = isCompileMode() ? JuliaInterpreter.finish_and_return! : JuliaInterpreter.Compiled()
     return isCompileMode()
   end
 end
