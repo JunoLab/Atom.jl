@@ -9,6 +9,7 @@ function outline(text)
     toplevel_bindings(parsed, text)
 end
 
+# need to keep this consistent with wstype
 static_type(bind::CSTParser.Binding) = static_type(bind.val)
 function static_type(val::CSTParser.EXPR)
     if CSTParser.defines_function(val)
@@ -27,6 +28,7 @@ function static_type(val::CSTParser.EXPR)
     end
 end
 
+# need to keep this consistent with wsicon
 static_icon(bind::CSTParser.Binding) = static_icon(bind.val)
 function static_icon(val::CSTParser.EXPR)
     if CSTParser.defines_function(val)
