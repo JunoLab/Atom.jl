@@ -244,24 +244,25 @@ function debugprompt()
   end
 end
 
-# ref: https://github.com/JuliaDebug/Debugger.jl/blob/master/src/repl.jl
-
 struct DebugCompletionProvider <: REPL.CompletionProvider end
 
 function LineEdit.complete_line(c::DebugCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
-  ret, range, should_complete = completions(c, full, lastindex(partial))
-  return unique!(map(REPLCompletions.completion_text, ret)), partial[range], should_complete
-end
 
-function completions(c::DebugCompletionProvider, full, partial)
   global STATE
   mod = moduleof(STATE.frame)
-  ret, range, should_complete = REPLCompletions.completions(full, partial, mod)
 
-  # TODO local variable completions
-  return ret, range, should_complete
+  # repl backend completions
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), mod)
+  ret = map(REPLCompletions.completion_text, comps) |> unique!
+
+  # local completions
+  vars = map(i -> string(i[:name]), localvars(STATE.frame))
+  filter!(v -> startswith(v, partial), vars)
+  pushfirst!(ret, vars...)
+
+  return ret, partial[range], should_complete
 end
 
 # setup handlers for stepper commands
