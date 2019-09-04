@@ -10,8 +10,8 @@ function structure(x)
 end
 
 structure(xs::Vector) =
-  Tree(Row(eltype(xs), fade("[$(length(xs))]")),
-       [isassigned(xs, i) ? structure(xs[i]) : UNDEF for i = 1:length(xs)])
+  LazyTree(Row(eltype(xs), fade("[$(length(xs))]")),
+       () -> [isassigned(xs, i) ? structure(xs[i]) : UNDEF for i = 1:length(xs)])
 
 structure(s::Symbol) = s
 structure(s::Ptr) = s

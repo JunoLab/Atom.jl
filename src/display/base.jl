@@ -112,11 +112,11 @@ trim(xs, len = 25) =
                     [undefs(xs[1:10]); fade("..."); undefs(xs[end-9:end])]
 
 @render i::Inline xs::Vector begin
-    Tree(span(c(render(i, eltype(xs)), Atom.fade("[$(length(xs))]"))), trim(xs))
+    LazyTree(span(c(render(i, eltype(xs)), Atom.fade("[$(length(xs))]"))), () -> trim(xs))
 end
 
 @render i::Inline xs::Set begin
-    Tree(span(c(render(i, typeof(xs)), Atom.fade("[$(length(xs))]"))), trim(collect(xs)))
+    LazyTree(span(c(render(i, typeof(xs)), Atom.fade("[$(length(xs))]"))), () -> trim(collect(xs)))
 end
 
 @render Inline xs::AbstractArray begin
