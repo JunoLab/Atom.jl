@@ -5,9 +5,25 @@ handle("searchdocs") do data
   @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
   items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
                                      loaded = !allPackages, name_only = nameOnly)
-  items isa EvalError ?
-    Dict(:error => true, :errmsg => sprint(showerror, items.err)) :
-    Dict(:error => false, :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items])
+
+  if items isa EvalError
+    errstr = sprint(showerror, items.err)
+    err = startswith(errstr, "Please regenerate the") ?
+            """
+            Please regenerate the documentation cache with the button above.
+            Note that this might take a few minutes. You can track the progress with the progress bar
+            in the lower left corner, and should be able to use Juno during normally during that time.
+            """ : errstr
+    Dict(
+      :error => true,
+      :errmsg => err
+    )
+  else
+    Dict(
+      :error => false,
+      :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items]
+    )
+  end
 end
 
 function renderitem(x)
