@@ -3,7 +3,6 @@ using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_comma
 import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
 import Juno: Row, Tree
-import REPL
 using Media
 using MacroTools
 
@@ -70,12 +69,6 @@ function _make_frame(mod, arg)
       end
     end
   end
-end
-
-const prompt_color = if Sys.iswindows()
-  "\e[33m"
-else
-  "\e[38;5;166m"
 end
 
 function add_breakpoint(bp)
@@ -195,16 +188,20 @@ end
 
 using REPL
 using REPL.LineEdit
+using REPL.REPLCompletions
+
+const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
+const compiled_prefix = "\e[96m"
 
 function debugprompt()
   try
     panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix = prompt_color,
+              prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
               prompt_suffix = Base.text_colors[:normal],
+              complete = DebugCompletionProvider(),
               on_enter = s -> true)
 
     panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
-    panel.complete = REPL.LatexCompletions()
     REPL.history_reset_state(panel.hist)
 
     search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
@@ -245,6 +242,33 @@ function debugprompt()
     Atom.msg("updateWorkspace")
     e isa InterruptException || rethrow(e)
   end
+end
+
+struct DebugCompletionProvider <: REPL.CompletionProvider end
+
+function LineEdit.complete_line(c::DebugCompletionProvider, s)
+  partial = REPL.beforecursor(s.input_buffer)
+  full = LineEdit.input_string(s)
+
+  global STATE
+  frame = STATE.frame
+
+  # repl backend completions
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
+  ret = map(REPLCompletions.completion_text, comps) |> unique!
+
+  # local completions
+  vars = filter!(JuliaInterpreter.locals(frame)) do v
+    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
+    if v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0)
+      return false
+    else
+      return startswith(string(v.name), partial)
+    end
+  end |> vars -> map(v -> string(v.name), vars)
+  pushfirst!(ret, vars...)
+
+  return ret, partial[range], should_complete
 end
 
 # setup handlers for stepper commands
@@ -414,8 +438,9 @@ function localvars(frame)
   scope = frame.framecode.scope
   mod = scope isa Module ? scope : scope.module
   for v in vars
-      v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-      push!(items, wsitem(mod, v.name, v.value))
+    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
+    v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
+    push!(items, wsitem(mod, v.name, v.value))
   end
   items
 end
