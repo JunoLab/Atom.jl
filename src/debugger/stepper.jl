@@ -251,15 +251,21 @@ function LineEdit.complete_line(c::DebugCompletionProvider, s)
   full = LineEdit.input_string(s)
 
   global STATE
-  mod = moduleof(STATE.frame)
+  frame = STATE.frame
 
   # repl backend completions
-  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), mod)
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
   ret = map(REPLCompletions.completion_text, comps) |> unique!
 
   # local completions
-  vars = map(i -> string(i[:name]), localvars(STATE.frame))
-  filter!(v -> startswith(v, partial), vars)
+  vars = filter!(JuliaInterpreter.locals(frame)) do v
+    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
+    if v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0)
+      return false
+    else
+      return startswith(string(v.name), partial)
+    end
+  end |> vars -> map(v -> string(v.name), vars)
   pushfirst!(ret, vars...)
 
   return ret, partial[range], should_complete
@@ -432,8 +438,9 @@ function localvars(frame)
   scope = frame.framecode.scope
   mod = scope isa Module ? scope : scope.module
   for v in vars
-      v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-      push!(items, wsitem(mod, v.name, v.value))
+    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
+    v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
+    push!(items, wsitem(mod, v.name, v.value))
   end
   items
 end
