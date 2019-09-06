@@ -27,9 +27,8 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
     [], 1:0, false
   end
 
-  # Suppress completions if there are too many of them unless activated manually
-  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
-  #        in advance and drop this check
+  # suppress completions if there are too many of them unless activated manually
+  # checking if `line` is a valid text to be completed in atom-julia-client beforehand would be better
   (!force && length(comps) > MAX_COMPLETIONS) && begin
     comps = []
     replace = 1:0
