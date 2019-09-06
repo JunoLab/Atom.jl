@@ -75,7 +75,7 @@ function completion(mod, line, c)
               :leftLabel          => returntype(mod, line, c),
               :text               => completiontext(c),
               :description        => completionsummary(mod, c),
-              :descriptionMoreURL => completionurl(mod, c))
+              :descriptionMoreURL => completionurl(c))
 end
 
 completiontext(c) = completion_text(c)
@@ -163,23 +163,24 @@ function makedescription(docs)
   end
 end
 
-completionurl(mod, c) = ""
-completionurl(mod, c::REPLCompletions.PackageCompletion) =
+completionurl(c) = ""
+completionurl(c::REPLCompletions.PackageCompletion) =
   "atom://julia-client/?moduleinfo=true&mod=$(c.package)"
-completionurl(mod, c::REPLCompletions.ModuleCompletion) = begin
-  val = getfield′′(c.parent, Symbol(c.mod))
+completionurl(c::REPLCompletions.ModuleCompletion) = begin
+  mod, name = c.parent, c.mod
+  val = getfield′′(mod, Symbol(name))
   if val isa Module # module info
     parentmodule(val) == val || val ∈ (Main, Base, Core) ?
-      "atom://julia-client/?moduleinfo=true&mod=$(c.mod)" :
-      "atom://julia-client/?moduleinfo=true&mod=$(c.parent).$(c.mod)"
+      "atom://julia-client/?moduleinfo=true&mod=$(name)" :
+      "atom://julia-client/?moduleinfo=true&mod=$(mod).$(name)"
   else
-    "atom://julia-client/?docs=true&mod=$(mod)&word=$(completion_text(c))"
+    "atom://julia-client/?docs=true&mod=$(mod)&word=$(name)"
   end
 end
-completionurl(mod, c::REPLCompletions.MethodCompletion) =
+completionurl(c::REPLCompletions.MethodCompletion) =
   "atom://julia-client/?docs=true&mod=$(c.method.module)&word=$(c.method.name)"
-completionurl(mod, c::REPLCompletions.KeywordCompletion) =
-  "atom://julia-client/?docs=true&mod=Main&word=$(completion_text(c))"
+completionurl(c::REPLCompletions.KeywordCompletion) =
+  "atom://julia-client/?docs=true&mod=Main&word=$(c.keyword)"
 
 completionmodule(mod, c) = string(mod)
 completionmodule(mod, c::REPLCompletions.ModuleCompletion) = string(c.parent)
@@ -192,24 +193,25 @@ completiontype(line, c::REPLCompletions.Completion, mod) = begin # entry method
   ismacro(ct) && return "snippet"
   startswith(ct, ':') && return "tag"
 
-  if c isa REPLCompletions.ModuleCompletion
-    ct == "Vararg" && return ""
-    mod = c.parent
-    val, found = try
-      parsed = Meta.parse(ct, raise = false, depwarn = false)
-      REPLCompletions.get_value(parsed, mod)
-    catch e
-      @error e
-      nothing, false
-    end
-    return found ? completiontype(val, mod, ct) : "ignored"
-  end
   completiontype(c)
 end
+# DictCompletion isn't dispatched for the entry method, otherwise fallen into "macro"
+completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key"
 
-completiontype(line, ::REPLCompletions.DictCompletion, mod) = "key" # DictCompletion isn't dispatched for the entry method, otherwise fallen into "macro"
-completiontype(@nospecialize(val), mod::Module, ct::String) = wstype(mod, Symbol(ct), val) # ModuleCompletion
-completiontype(::REPLCompletions.Completion) = "variable" # may not happen
+completiontype(c) = "variable" # fallback
+completiontype(c::REPLCompletions.ModuleCompletion) = begin
+  ct = completion_text(c)
+  ct == "Vararg" && return ""
+  mod = c.parent
+  val, found = try
+    parsed = Meta.parse(ct, raise = false, depwarn = false)
+    REPLCompletions.get_value(parsed, mod)
+  catch e
+    @error e
+    nothing, false
+  end
+  found ? wstype(mod, Symbol(ct), val) : "ignored"
+end
 completiontype(::REPLCompletions.PackageCompletion) = "import"
 completiontype(::REPLCompletions.MethodCompletion) = "method"
 completiontype(::REPLCompletions.PropertyCompletion) = "property"
