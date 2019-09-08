@@ -77,28 +77,29 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
     return bindings
 end
 
-struct LocalScope
-    name
-    span
-    children
-    expr
-end
-
 struct LocalBinding
-    name
-    span
-    expr
+    name::String
+    span::UnitRange{Int}
+    expr::CSTParser.EXPR
 end
 
-function local_bindings(expr, bindings = [], pos = 1)
+struct LocalScope
+    name::String
+    span::UnitRange{Int}
+    children::Vector{Union{LocalBinding, LocalScope}}
+    expr::CSTParser.EXPR
+end
+
+function local_bindings(expr, bindings = Vector{Union{LocalBinding, LocalScope}}([]), pos = 1)
     bind = CSTParser.bindingof(expr)
     scope = CSTParser.scopeof(expr)
     if bind !== nothing && scope === nothing
         push!(bindings, LocalBinding(bind.name, pos:pos+expr.span, expr))
     end
+
     if scope !== nothing
         range = pos:pos+expr.span
-        localbindings = []
+        localbindings = Vector{Union{LocalBinding, LocalScope}}([])
         if expr.args !== nothing
             for arg in expr.args
                 local_bindings(arg, localbindings, pos)
@@ -114,8 +115,8 @@ function local_bindings(expr, bindings = [], pos = 1)
             pos += arg.fullspan
         end
     end
-    return bindings
 
+    return bindings
 end
 
 function locals(text, line, col)

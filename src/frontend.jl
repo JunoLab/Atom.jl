@@ -23,7 +23,7 @@ plotsize() = (@rpc plotsize()) .- 1
 ploturl(url::String) = @msg ploturl(url)
 
 
-SELECTORS = Dict(
+const SELECTORS = Dict(
   "number" => ["syntax--constant", "syntax--numeric", "syntax--julia"],
   "symbol" => ["syntax--constant", "syntax--other", "syntax--symbol", "syntax--julia"],
   "string" => ["syntax--string", "syntax--quoted", "syntax--double", "syntax--julia"],
