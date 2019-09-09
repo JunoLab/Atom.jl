@@ -8,12 +8,11 @@ using MacroTools
 
 mutable struct DebuggerState
   frame::Union{Nothing, Frame}
-  result
   broke_on_error::Bool
   level::Int
 end
-DebuggerState(frame::Frame) = DebuggerState(frame, nothing, false, 1)
-DebuggerState() = DebuggerState(nothing, nothing, false, 1)
+DebuggerState(frame::Frame) = DebuggerState(frame, false, 1)
+DebuggerState() = DebuggerState(nothing, false, 1)
 
 function active_frame(state::DebuggerState)
   frame = state.frame
@@ -97,8 +96,7 @@ function startdebugging(frame, initial_continue = false)
       if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
         ret = debug_command(_compiledMode[], frame, :c, true)
         if ret === nothing
-          STATE.result = res = JuliaInterpreter.get_return(root(frame))
-          return res
+          return res = JuliaInterpreter.get_return(root(frame))
         end
         STATE.frame = frame = ret[1]
         pc = ret[2]
@@ -157,7 +155,7 @@ function startdebugging(frame, initial_continue = false)
         end
 
         if ret === nothing
-          STATE.result = res = JuliaInterpreter.get_return(root(frame))
+          res = JuliaInterpreter.get_return(root(frame))
           break
         else
           STATE.frame = frame = ret[1]

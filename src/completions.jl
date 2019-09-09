@@ -160,6 +160,7 @@ function makedescription(docs)
       return strlimit(desc, 200)
     end
   end
+  return ""
 end
 
 completionurl(c) = ""
