@@ -169,13 +169,14 @@ end
 
     let str = """
        const bar = 2
-       function f(x)
+       function f(x=2) # `x` should show up in completions
          ff = function (x, xxx)
            z = 3
          end
          y = x
          return y+x
        end
+       kwfun(kw = 3) # `kw` should not show up in completions
        function foo(x)
          asd = 3
        end
@@ -197,12 +198,13 @@ end
             a
 
             foo = x
-
             a
             abc = 3
+            a
         end
         """
         @test Atom.basecompletionadapter("a", Main, true, 3, 6, str)[1][1][:text] == "aaa"
-        @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "abc"
+        @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "aaa"
+        @test Atom.basecompletionadapter("a", Main, true, 8, 6, str)[1][1][:text] == "abc"
     end
 end
