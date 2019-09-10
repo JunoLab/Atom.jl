@@ -12,8 +12,8 @@ handle("completions") do data
 
     cs, pre = basecompletionadapter(line, m, force, lineNumber - startLine, column, editorContent)
 
-    d(:completions => cs,
-      :prefix      => string(pre))
+    Dict(:completions => cs,
+         :prefix      => string(pre))
   end
 end
 
@@ -27,9 +27,10 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
     [], 1:0, false
   end
 
-  # suppress completions if there are too many of them unless activated manually
-  # checking if `line` is a valid text to be completed in atom-julia-client beforehand would be better
-  (!force && length(comps) > MAX_COMPLETIONS) && begin
+  # Suppress completions if there are too many of them unless activated manually
+  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
+  #        in advance and drop this check
+  if !force && length(comps) > MAX_COMPLETIONS
     comps = []
     replace = 1:0
   end

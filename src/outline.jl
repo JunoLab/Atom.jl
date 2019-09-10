@@ -1,7 +1,11 @@
 using CSTParser
 
 handle("outline") do text
-    return outline(text)
+    try
+        outline(text)
+    catch err
+        []
+    end
 end
 
 function outline(text)
@@ -49,12 +53,14 @@ end
 
 function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
     bind = CSTParser.bindingof(expr)
+
     if bind !== nothing
         name = bind.name
-        if CSTParser.has_sig(bind.val)
-            sig = CSTParser.get_sig(bind.val)
+        if CSTParser.has_sig(expr)
+            sig = CSTParser.get_sig(expr)
             name = str_value(sig)
         end
+
         push!(bindings, Dict(
                 :name => name,
                 :type => static_type(bind),
@@ -63,7 +69,7 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
                 )
              )
     end
-    scope = CSTParser.scopeof(expr)
+    scope = scopeof(expr)
     if scope !== nothing && !(expr.typ === CSTParser.FileH || expr.typ === CSTParser.ModuleH || expr.typ === CSTParser.BareModule)
         return bindings
     end
@@ -79,39 +85,62 @@ end
 
 struct LocalBinding
     name::String
-    span::UnitRange{Int}
+    span::UnitRange{Int64}
+    line::Int
     expr::CSTParser.EXPR
 end
 
 struct LocalScope
     name::String
-    span::UnitRange{Int}
+    span::UnitRange{Int64}
+    line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
     expr::CSTParser.EXPR
 end
 
-function local_bindings(expr, bindings = Vector{Union{LocalBinding, LocalScope}}([]), pos = 1)
-    bind = CSTParser.bindingof(expr)
+function scopeof(expr)
     scope = CSTParser.scopeof(expr)
+    if scope ≠ nothing
+        return scope
+    else
+        # can remove this with CSTParser 0.6.3
+        if expr.typ == CSTParser.BinaryOpCall && expr.args[2].kind == CSTParser.Tokens.ANON_FUNC
+            return :anon
+        end
+
+        if expr.typ == CSTParser.Call && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
+            return :call
+        end
+    end
+    return nothing
+end
+
+function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
+    bind = CSTParser.bindingof(expr)
+    scope = scopeof(expr)
     if bind !== nothing && scope === nothing
-        push!(bindings, LocalBinding(bind.name, pos:pos+expr.span, expr))
+        push!(bindings, LocalBinding(bind.name, pos:pos+expr.span, line, expr))
     end
 
     if scope !== nothing
         range = pos:pos+expr.span
-        localbindings = Vector{Union{LocalBinding, LocalScope}}([])
+        localbindings = []
+        if expr.typ == CSTParser.Kw
+            return bindings
+        end
         if expr.args !== nothing
             for arg in expr.args
-                local_bindings(arg, localbindings, pos)
-
+                local_bindings(arg, text, localbindings, pos, line)
+                line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
                 pos += arg.fullspan
             end
         end
-        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings, expr))
+        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
         return bindings
     elseif expr.args !== nothing
         for arg in expr.args
-            local_bindings(arg, bindings, pos)
+            local_bindings(arg, text, bindings, pos, line)
+            line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
             pos += arg.fullspan
         end
     end
@@ -133,9 +162,8 @@ function locals(text, line, col)
         c === '\n' && (current_line += 1)
     end
     parsed = CSTParser.parse(text, true)
-
-    bindings = local_bindings(parsed)
-    bindings = filter_local_bindings(bindings, byteoffset)
+    bindings = local_bindings(parsed, text)
+    bindings = filter_local_bindings(bindings, line, byteoffset)
     bindings = filter(x -> !isempty(x[:name]), bindings)
     bindings = sort(bindings, lt = (a,b) -> a[:locality] < b[:locality])
     bindings = unique(x -> x[:name], bindings)
@@ -143,23 +171,37 @@ function locals(text, line, col)
     bindings
 end
 
-function filter_local_bindings(bindings, byteoffset, root = "", actual_bindings = [])
+function distance(line, byteoffset, defline, defspan)
+    abslinediff = abs(line - defline)
+    absbytediff = abs(byteoffset - defspan[1]) # tiebreaker for bindings on the same line
+    diff = if byteoffset in defspan
+        Inf
+    elseif line < defline
+        (defline - line)*10 # bindings defined *after* the current line have a lower priority
+    else
+        line - defline
+    end
+    diff + absbytediff*1e-6
+end
+
+function filter_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
         push!(actual_bindings, Dict(
             :name => bind.name,
             :root => root,
-            :locality => abs(bind.span[1] - byteoffset),
+            :locality => distance(line, byteoffset, bind.line, bind.span),
             :icon => static_icon(bind.expr),
             :type => static_type(bind.expr)
         ))
         if bind isa LocalScope && byteoffset in bind.span
-            filter_local_bindings(bind.children, byteoffset, bind.name, actual_bindings)
+            filter_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
         end
     end
+
     actual_bindings
 end
 
-# https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
+# adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
 function str_value(x)
     if x.typ === CSTParser.PUNCTUATION
         x.kind == CSTParser.Tokens.LPAREN && return "("
@@ -173,6 +215,10 @@ function str_value(x)
         x.kind == CSTParser.Tokens.AT_SIGN && return "@"
         x.kind == CSTParser.Tokens.DOT && return "."
         return ""
+    elseif x.kind === CSTParser.Tokens.TRIPLE_STRING
+        return string("\"\"\"", x.val, "\"\"\"")
+    elseif x.kind === CSTParser.Tokens.STRING
+        return string("\"", x.val, "\"")
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
     else
