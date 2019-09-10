@@ -4,7 +4,6 @@ handle("outline") do text
     try
         outline(text)
     catch err
-        @error err
         []
     end
 end
@@ -75,9 +74,6 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
         return bindings
     end
     if expr.args !== nothing
-        if expr.typ == CSTParser.Kw
-            return bindings
-        end
         for arg in expr.args
             toplevel_bindings(arg, text, bindings, line, pos)
             line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
@@ -107,6 +103,7 @@ function scopeof(expr)
     if scope ≠ nothing
         return scope
     else
+        # can remove this with CSTParser 0.6.3
         if expr.typ == CSTParser.BinaryOpCall && expr.args[2].kind == CSTParser.Tokens.ANON_FUNC
             return :anon
         end
@@ -222,8 +219,6 @@ function str_value(x)
         return string("\"\"\"", x.val, "\"\"\"")
     elseif x.kind === CSTParser.Tokens.STRING
         return string("\"", x.val, "\"")
-    elseif x.kind === CSTParser.Tokens.CHAR
-        return string("\'", x.val, "\'")
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
     else
