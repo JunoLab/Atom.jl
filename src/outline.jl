@@ -83,19 +83,19 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
     return bindings
 end
 
-struct LocalScope
-    name
-    span
-    line
-    children
-    expr
+struct LocalBinding
+    name::String
+    span::UnitRange{Int64}
+    line::Int
+    expr::CSTParser.EXPR
 end
 
-struct LocalBinding
-    name
-    span
-    line
-    expr
+struct LocalScope
+    name::String
+    span::UnitRange{Int64}
+    line::Int
+    children::Vector{Union{LocalBinding, LocalScope}}
+    expr::CSTParser.EXPR
 end
 
 function scopeof(expr)
