@@ -32,7 +32,7 @@ function renderitem(x)
 
   mod = getmodule′(x.mod)
   name = Symbol(x.name)
-  r[:typ], r[:icon], r[:nativetype] = if name ∈ keys(Docs.keywords)
+  r[:typ], r[:icon], r[:nativetype] = if (name !== :ans || mod === Base) && name ∈ keys(Docs.keywords)
     "keyword", "k", x.typ
   else
     val = getfield′′(mod, name)
