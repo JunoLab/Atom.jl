@@ -5,7 +5,7 @@ function structure(x)
       Row(typeof(x), Text(" "), x) :
       Row(typeof(x), Text("()"))
   else
-    LazyTree(typeof(x), () -> [SubTree(Text("$f → "), structure(getfield′(x, f))) for f in fields])
+    LazyTree(typeof(x), () -> [SubTree(Text("$f → "), structure(getfield′(x, f, UNDEF))) for f in fields])
   end
 end
 

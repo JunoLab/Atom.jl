@@ -1,5 +1,4 @@
 using CodeTools, LNR, Media
-using CodeTools: getthing, getmodule
 import REPL
 
 using Logging: with_logger
@@ -18,11 +17,6 @@ function modulenames(data, pos)
   main == "" && (main = "Main")
   sub = CodeTools.codemodule(data["code"], pos)
   main, sub
-end
-
-function getmodule′(args...)
-  m = getmodule(args...)
-  return m == nothing ? Main : m
 end
 
 handle("module") do data
@@ -195,19 +189,6 @@ handle("docs") do data
        :type     => :dom,
        :tag      => :div,
        :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
-end
-
-function getmethods(mod, word)
-  methods(CodeTools.getthing(getmodule′(mod), word))
-end
-
-function getdocs(mod, word)
-  md = if Symbol(word) in keys(Docs.keywords)
-    Core.eval(Main, :(@doc($(Symbol(word)))))
-  else
-    include_string(getmodule′(mod), "@doc $word")
-  end
-  return md_hlines(md)
 end
 
 handle("methods") do data

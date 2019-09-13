@@ -11,7 +11,7 @@ handle("workspace") do mod
 end
 
 wsitem(mod, name) = begin
-  val = getfield′′(mod, name)
+  val = getfield′(mod, name)
   wsitem(mod, name, val)
 end
 wsitem(mod, name, @nospecialize(val)) = begin
@@ -22,10 +22,6 @@ wsitem(mod, name, @nospecialize(val)) = begin
     :icon       => wsicon(mod, name, val))
 end
 
-# handle undefineds
-struct Undefined end
-getfield′′(mod, name) = isdefined(mod, name) ? getfield(mod, name) : Undefined()
-@render Inline val::Undefined span(".fade", "<undefined>")
 nativetype(mod, name, @nospecialize(val)) = DocSeeker.determinetype(mod, name)
 nativetype(mod, name, ::Undefined) = "Undefined"
 

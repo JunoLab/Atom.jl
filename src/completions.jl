@@ -124,7 +124,7 @@ completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   word = c.mod
 
   !cangetdocs(mod, Symbol(word)) && return ""
-  getdocs(string(mod), word) |> makedescription
+  getdocs(mod, word) |> makedescription
 end
 completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   ct = Symbol(c.func)
@@ -133,7 +133,7 @@ completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 completionsummary(mod, c::REPLCompletions.KeywordCompletion) = begin
-  getdocs(string(mod), c.keyword) |> makedescription
+  getdocs(mod, c.keyword) |> makedescription
 end
 
 function cangetdocs(m, s)
@@ -169,7 +169,7 @@ completionurl(c::REPLCompletions.PackageCompletion) =
   "atom://julia-client/?moduleinfo=true&mod=$(c.package)"
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
   mod, name = c.parent, c.mod
-  val = getfield′′(mod, Symbol(name))
+  val = getfield′(mod, name)
   if val isa Module # module info
     parentmodule(val) == val || val ∈ (Main, Base, Core) ?
       "atom://julia-client/?moduleinfo=true&mod=$(name)" :
@@ -227,7 +227,7 @@ completionicon(c::REPLCompletions.ModuleCompletion) = begin
   ismacro(c.mod) && return "icon-mention"
   mod = c.parent
   name = Symbol(c.mod)
-  val = getfield′′(mod, name)
+  val = getfield′(mod, name)
   wsicon(mod, name, val)
 end
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"

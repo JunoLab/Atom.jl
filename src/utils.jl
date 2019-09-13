@@ -103,3 +103,55 @@ function strlimit(str::AbstractString, limit = 30)
   str = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
   filter(isvalid, str)
 end
+
+# singleton type for undefined values
+struct Undefined end
+
+# get utilities
+using CodeTools: getthing, getmodule
+
+@doc """
+    getfield′(mod::Module, name::Symbol, default = Undefined())
+    getfield′(mod::Module, name::String, default = Undefined())
+    getfield′(object, name::Symbol, default = Undefined())
+
+Returns the specified field of a given `Module` or some arbitrary `object`,
+or `default` if no such a field is found.
+"""
+function getfield′(mod::Module, name::Symbol, default = Undefined())
+  return getthing(mod, string(name), default)
+end
+function getfield′(mod::Module, name::String, default = Undefined())
+  return getthing(mod, name, default)
+end
+function getfield′(@nospecialize(object), name::Symbol, default = Undefined())
+  return isdefined(mod, name) ? getfield(mod, name) : Undefined()
+end
+
+@doc """
+    getmodule′(mod::String)
+    getmodule′(parent::Union{Nothing, Module}, mod::String)
+    getmodule′(code::AbstractString, pos; filemod)
+
+Calls [`CodeTools.getmodule`](@ref), but returns `Main` instead of `nothing` in a fallback case.
+"""
+function getmodule′(args...)
+  m = getmodule(args...)
+  return m == nothing ? Main : m
+end
+
+function getmethods(mod::String, word::String)
+  return methods(getthing(getmodule′(mod), word))
+end
+
+function getdocs(mod::String, word::String)
+  md = if Symbol(word) in keys(Docs.keywords)
+    Core.eval(Main, :(@doc($(Symbol(word)))))
+  else
+    include_string(getmodule′(mod), "@doc $word")
+  end
+  return md_hlines(md)
+end
+function getdocs(mod::Module, word::String)
+  getdocs(string(mod), word)
+end
