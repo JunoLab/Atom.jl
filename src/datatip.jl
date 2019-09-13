@@ -5,7 +5,17 @@ Once we can come to handle links within datatips, we may want to append method t
 =#
 
 handle("datatip") do data
-  @destruct [mod || "Main", word] = data
+  @destruct [
+    word,
+    mod || "Main",
+    path || nothing,
+    row || 1,
+    column || 1
+  ] = data
+
+  if isdebugging() && (datatip = JunoDebugger.datatip(word, path, row, column)) !== nothing
+    return Dict(:error => false, :strings => datatip)
+  end
 
   docs = @errs getdocs(mod, word)
   docs isa EvalError && return Dict(:error => true)

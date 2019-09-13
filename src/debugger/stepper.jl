@@ -1,7 +1,7 @@
 using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
                         root, caller, whereis, get_return, nstatements, @lookup, Frame
 import JuliaInterpreter
-import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error
+import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error, strlimit
 import Juno: Row, Tree
 using Media
 using MacroTools
@@ -449,6 +449,33 @@ handle("setStackLevel") do level
     STATE.level = level
     stepto(active_frame(STATE), level)
     nothing
+  end
+end
+
+## Datatip
+
+using CodeTracking
+
+function datatip(word, path, row, column, s::DebuggerState = STATE)
+  frame = s.frame
+
+  # frame validation & only work for methods
+  scope = frame.framecode.scope
+  if frame === nothing || scope isa Module
+    return nothing
+  end
+
+  # path identity check
+  path != JuliaInterpreter.getfile(frame) && return nothing
+
+  # line number check
+  defstr, startline = definition(String, scope)
+  endline = startline + sum(c === '\n' for c in defstr)
+  startline <= row <= endline || return nothing
+
+  # local bindings
+  for v in JuliaInterpreter.locals(frame)
+    string(v.name) === word && return [Dict(:type => :snippet, :value => strlimit(sprint(show, v.value), 1000))]
   end
 end
 
