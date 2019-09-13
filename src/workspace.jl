@@ -1,5 +1,5 @@
 handle("workspace") do mod
-  mod = getmodule′(mod)
+  mod = getmodule(mod)
   ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
   filter!(ns) do n
     !Base.isdeprecated(mod, n) &&

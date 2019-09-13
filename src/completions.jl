@@ -8,7 +8,7 @@ handle("completions") do data
              line, force] = data
 
   withpath(path) do
-    m = getmodule′(mod)
+    m = getmodule(mod)
 
     cs, pre = basecompletionadapter(line, m, force, lineNumber - startLine, column, editorContent)
 

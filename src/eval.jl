@@ -22,8 +22,8 @@ end
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
 
-  mod = getmodule(main)
-  smod = getmodule(mod, sub)
+  mod = CodeTools.getmodule(main)
+  smod = CodeTools.getmodule(mod, sub)
 
   return d(:main => main,
            :sub  => sub,
@@ -46,7 +46,7 @@ handle("evalshow") do data
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod] = data
-    mod = getmodule′(mod)
+    mod = getmodule(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -79,7 +79,7 @@ handle("eval") do data
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     @destruct [text, line, path, mod, displaymode || "editor"] = data
-    mod = getmodule′(mod)
+    mod = getmodule(mod)
 
     lock(evallock)
     result = hideprompt() do
@@ -103,9 +103,9 @@ handle("evalall") do data
   @dynamic let Media.input = Editor()
     @destruct [setmod = :module || nothing, path || "untitled", code] = data
     mod = if setmod ≠ nothing
-       getmodule′(setmod)
+       getmodule(setmod)
     elseif isabspath(path)
-      getmodule′(CodeTools.filemodule(path))
+      getmodule(CodeTools.filemodule(path))
     else
       Main
     end
@@ -154,7 +154,7 @@ handle("evalrepl") do data
       render′(@errs getdocs(mod, code))
       return
     end
-    mod = getmodule′(mod)
+    mod = getmodule(mod)
     if isdebugging()
       render(Console(), @errs Debugger.interpret(code))
     else
