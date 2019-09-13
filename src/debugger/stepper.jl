@@ -477,6 +477,8 @@ function datatip(word, path, row, column, s::DebuggerState = STATE)
   for v in JuliaInterpreter.locals(frame)
     string(v.name) === word && return [Dict(:type => :snippet, :value => strlimit(sprint(show, v.value), 1000))]
   end
+
+  return nothing # when no local binding exists
 end
 
 ## Evaluation
