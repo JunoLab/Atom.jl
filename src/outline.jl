@@ -111,6 +111,10 @@ function scopeof(expr)
         if expr.typ == CSTParser.Call && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
             return :call
         end
+
+        if expr.typ == CSTParser.TupleH && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
+            return :tupleh
+        end
     end
     return nothing
 end

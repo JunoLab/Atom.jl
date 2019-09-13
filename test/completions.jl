@@ -173,7 +173,7 @@ end
          ff = function (x, xxx)
            z = 3
          end
-         y = x
+         y = (foo = 3, bar = 4) # named tuple elements shouldn't show up in completions
          return y+x
        end
        kwfun(kw = 3) # `kw` should not show up in completions
