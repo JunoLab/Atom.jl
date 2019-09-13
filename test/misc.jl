@@ -75,6 +75,7 @@ end
             2x
         end
         const foo = (a,b) -> a+b
+        const bar = (asd=3, bsd=4)
         """
         @test Atom.outline(str) == Any[
             Dict(
@@ -88,6 +89,12 @@ end
                 :name => "foo",
                 :icon => "v",
                 :lines => [4, 4]
+            ),
+            Dict(
+                :type => "variable",
+                :name => "bar",
+                :icon => "v",
+                :lines => [5, 5]
             ),
         ]
     end
