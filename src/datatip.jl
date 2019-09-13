@@ -72,11 +72,14 @@ function searchcodeblocks(docs, codeblocks)
   end
 end
 
-function processval!(@nospecialize(val), docstr, datatip)
+processval!(@nospecialize(val), docstr, datatip) = begin
   # don't show value info when it's going to be described in `docstr` (might be not so robust)
-  occursin(string(val), docstr) && return
   valstr = strlimit(sprint(show, val), 1000)
-  pushsnippet!(datatip, valstr)
+  occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
+end
+processval!(val::Function, docstr, datatip) = begin
+  valstr = string(val) # this would get rid of the unnecessary module prefix
+  occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
 end
 processval!(::Undefined, docstr, datatip) = nothing
 
