@@ -100,7 +100,7 @@ function md_hlines(md)
 end
 
 function strlimit(str::AbstractString, limit = 30)
-  str = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
+  str = lastindex(str) > limit ? str[1:prevind(str, limit)]*" ..." : str
   filter(isvalid, str)
 end
 
