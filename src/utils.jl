@@ -120,7 +120,7 @@ or `default` if no such a field is found.
 """
 getfield′(mod::Module, name::String, default = Undefined()) = CodeTools.getthing(mod, name, default)
 getfield′(mod::Module, name::Symbol, default = Undefined()) = getfield′(mod, string(name), default)
-getfield′(@nospecialize(object), name::Symbol, default = Undefined()) = isdefined(mod, name) ? getfield(mod, name) : Undefined()
+getfield′(@nospecialize(object), name::Symbol, default = Undefined()) = isdefined(object, name) ? getfield(object, name) : default
 
 """
     getmodule(mod::String)
