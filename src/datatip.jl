@@ -73,8 +73,7 @@ function searchcodeblocks(docs, codeblocks)
 end
 
 processval!(@nospecialize(val), docstr, datatip) = begin
-  # don't show value info when it's going to be described in `docstr` (might be not so robust)
-  valstr = strlimit(sprint(show, val), 1000)
+  valstr = @> repr(MIME("text/plain"), val, context = :limit => true) strlimit(1000)
   occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
 end
 processval!(val::Function, docstr, datatip) = begin
