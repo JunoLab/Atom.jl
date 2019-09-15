@@ -166,7 +166,9 @@ handle("methods") do data
   if mtable isa EvalError
     Dict(:error => true, :items => sprint(showerror, mtable.err))
   else
-    Dict(:error => false, :items => [gotoitem(m) for m in mtable])
+    # only show the method with full default arguments
+    aggregated = @>> mtable collect sort(by = m -> m.nargs, rev = true) unique(m -> (m.file, m.line))
+    Dict(:error => false, :items => [gotoitem(m) for m in aggregated])
   end
 end
 
