@@ -1,46 +1,62 @@
 #=
-@FIXME?
-If we come to be able to use our full-featured components in atom-julia-client
-for datatips, we may want to append method tables again.
-Ref: https://github.com/JunoLab/atom-julia-client/blob/master/lib/runtime/datatip.js#L3-L9
+@TODO:
+Use our own UI components for this: atom-ide-ui is already deprecated, ugly, not fully functional, and and...
+Once we can come to handle links within datatips, we may want to append method tables as well
 =#
 
 handle("datatip") do data
-  @destruct [mod || "Main", word] = data
-  docs = @errs getdocs(mod, word)
+  @destruct [
+    word,
+    mod || "Main",
+    path || nothing,
+    row || 1,
+    column || 1
+  ] = data
 
-  docs isa EvalError && return Dict(:error => true)
-  occursin(nobinding_regex, string(docs)) && return Dict(:novariable => true)
-
-  Dict(:error   => false,
-       :strings => makedatatip(docs))
-end
-
-# adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/docview.jl#L152
-const nobinding_regex = r"No documentation found.\n\nBinding `.*` does not exist.\n"
-
-function makedatatip(docs)
-  # Separates code blocks from the other markdown texts in order to render  them
-  # as code snippet text by atom-ide-ui's datatip service.
-  # Setting up functions to deconstruct each `Markdown.MD.content` into
-  # an appropriate markdown string might be preferred.
-  texts = split(string(docs), codeblock_regex)
-  codes = searchcodeblocks(docs)
-
-  datatips = []
-  processmdtext!(texts[1], datatips)
-  for (code, text) in zip(codes, texts[2:end])
-    processmdcode!(code, datatips)
-    processmdtext!(text, datatips)
+  if isdebugging() && (datatip = JunoDebugger.datatip(word, path, row, column)) !== nothing
+    return Dict(:error => false, :strings => datatip)
   end
 
-  datatips
+  docs = @errs getdocs(mod, word)
+  docs isa EvalError && return Dict(:error => true)
+
+  # don't show verbose stuff
+  docstr = replace(string(docs), nodoc_regex => "")
+  occursin(nobinding_regex, docstr) && return Dict(:error => true)
+
+  datatip = []
+
+  val = getfield′(getmodule(mod), Symbol(word))
+  processval!(val, docstr, datatip)
+
+  processdoc!(docs, docstr, datatip)
+
+  return Dict(:error => false, :strings => datatip)
 end
 
-# Regex to match code blocks from markdown texts
+# adapted from `REPL.summarize(binding::Binding, sig)`
+const nodoc_regex = r"^No documentation found."
+const nobinding_regex = r"Binding `.*` does not exist.\n"
+
+function processdoc!(docs, docstr, datatip)
+  # Separate code blocks from the other markdown texts in order to render them
+  # as code snippets in atom-ide-ui's datatip service.
+  # Setting up functions to deconstruct each `Markdown.MD.content` into
+  # an appropriate markdown string would be more robust.
+  texts = split(docstr, codeblock_regex)
+  codes = searchcodeblocks(docs)
+
+  pushmarkdown!(datatip, texts[1])
+  for (code, text) in zip(codes, texts[2:end])
+    pushsnippet!(datatip, code)
+    pushmarkdown!(datatip, text)
+  end
+end
+
+# will match code blocks within a markdown text
 const codeblock_regex = r"```((?!```).)*?```"s
 
-# Extract only code blocks from Markdown.MD
+# extract only code blocks from Markdown.MD
 function searchcodeblocks(docs)
   codeblocks = []
   searchcodeblocks(docs, codeblocks)
@@ -56,13 +72,21 @@ function searchcodeblocks(docs, codeblocks)
   end
 end
 
-function processmdtext!(text, datatips)
-  (text == "" || text == "\n") && return
-  push!(datatips, Dict(:type  => :markdown,
-                       :value => text))
+processval!(@nospecialize(val), docstr, datatip) = begin
+  valstr = @> repr(MIME("text/plain"), val, context = :limit => true) strlimit(1000, " ...")
+  occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
+end
+processval!(val::Function, docstr, datatip) = begin
+  valstr = string(val) # this would get rid of the unnecessary module prefix
+  occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
+end
+processval!(::Undefined, docstr, datatip) = nothing
+
+function pushmarkdown!(datatip, markdown)
+  (markdown == "" || markdown == "\n") && return
+  push!(datatip, Dict(:type => :markdown, :value => markdown))
 end
 
-function processmdcode!(code, datatips)
-  push!(datatips, Dict(:type  => :snippet,
-                       :value => code))
+function pushsnippet!(datatip, snippet)
+  push!(datatip, Dict(:type => :snippet, :value => snippet))
 end

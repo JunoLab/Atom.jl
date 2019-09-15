@@ -99,9 +99,21 @@ function md_hlines(md)
   return MD(v)
 end
 
-function strlimit(str::AbstractString, limit = 30)
-  str = lastindex(str) > limit ?  str[1:prevind(str, limit)]*"…" : str
-  filter(isvalid, str)
+function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
+  will_append = length(str) > limit
+
+  io = IOBuffer()
+  i = 1
+  for c in str
+    will_append && i > limit - length(ellipsis) && break
+    isvalid(c) || continue
+
+    print(io, c)
+    i += 1
+  end
+  will_append && print(io, ellipsis)
+
+  return String(take!(io))
 end
 
 # singleton type for undefined values
