@@ -143,7 +143,8 @@ Calls `CodeTools.getmodule(args...)`, but returns `Main` instead of `nothing` in
 """
 getmodule(args...) = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
 
-getmethods(mod::String, word::String) = methods(CodeTools.getthing(getmodule(mod), word))
+getmethods(mod::Module, word::String) = methods(CodeTools.getthing(mod, word))
+getmethods(mod::String, word::String) = getmethods(getmodule(mod), word)
 
 getdocs(mod::Module, word::String) = begin
   md = if Symbol(word) in keys(Docs.keywords)

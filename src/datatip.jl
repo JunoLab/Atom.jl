@@ -26,7 +26,7 @@ handle("datatip") do data
 
   datatip = []
 
-  val = getfield′(getmodule(mod), Symbol(word))
+  val = getfield′(getmodule(mod), word)
   processval!(val, docstr, datatip)
 
   processdoc!(docs, docstr, datatip)

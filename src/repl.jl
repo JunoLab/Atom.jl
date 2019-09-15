@@ -187,7 +187,7 @@ end
 function changeREPLmodule(mod)
   islocked(evallock) && return nothing
 
-  mod = getmodule′(mod)
+  mod = getmodule(mod)
 
   main_mode = get_main_mode()
   main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
