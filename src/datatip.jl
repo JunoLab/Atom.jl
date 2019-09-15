@@ -73,7 +73,7 @@ function searchcodeblocks(docs, codeblocks)
 end
 
 processval!(@nospecialize(val), docstr, datatip) = begin
-  valstr = @> repr(MIME("text/plain"), val, context = :limit => true) strlimit(1000)
+  valstr = @> repr(MIME("text/plain"), val, context = :limit => true) strlimit(1000, " ...")
   occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
 end
 processval!(val::Function, docstr, datatip) = begin

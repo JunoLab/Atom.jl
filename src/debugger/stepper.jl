@@ -476,7 +476,7 @@ function datatip(word, path, row, column, s::DebuggerState = STATE)
   # local bindings
   for v in JuliaInterpreter.locals(frame)
     if string(v.name) === word
-      valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000)
+      valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000, " ...")
       return [Dict(:type  => :snippet, :value => valstr)]
     end
   end
