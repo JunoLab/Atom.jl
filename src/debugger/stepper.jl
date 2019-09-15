@@ -399,7 +399,7 @@ function stepview(ex)
   else
     Text(repr(ex))
   end
-  render(Inline(), out)
+  Atom.render′(Atom.Inline(), out)
 end
 
 function evalscope(f)

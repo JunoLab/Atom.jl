@@ -143,37 +143,6 @@ handle("evalall") do data
   return
 end
 
-
-handle("evalrepl") do data
-  fixjunodisplays()
-  @dynamic let Media.input = Console()
-    @destruct [mode || nothing, code, mod || "Main"] = data
-    if mode == "shell"
-      code = "Base.repl_cmd(`$code`, STDOUT)"
-    elseif mode == "help"
-      render′(@errs getdocs(mod, code))
-      return
-    end
-    mod = getmodule(mod)
-    if isdebugging()
-      render(Console(), @errs Debugger.interpret(code))
-    else
-      try
-        lock(evallock)
-        withpath(nothing) do
-          result = @errs Core.eval(mod, :(ans = include_string($mod, $code, "console")))
-          !isa(result,EvalError) && ends_with_semicolon(code) && (result = nothing)
-          Base.invokelatest(render′, result)
-        end
-        unlock(evallock)
-      catch e
-        showerror(stderr, e, catch_stacktrace())
-      end
-    end
-  end
-  return
-end
-
 handle("docs") do data
   @destruct [mod || "Main", word] = data
   docstring = @errs getdocs(mod, word)
