@@ -30,12 +30,12 @@ function renderitem(x)
   r = Dict(f => getfield(x, f) for f in fieldnames(DocSeeker.DocObj))
   r[:html] = view(renderMD(x.html))
 
-  mod = getmodule′(x.mod)
+  mod = getmodule(x.mod)
   name = Symbol(x.name)
   r[:typ], r[:icon], r[:nativetype] = if (name !== :ans || mod === Base) && name ∈ keys(Docs.keywords)
     "keyword", "k", x.typ
   else
-    val = getfield′′(mod, name)
+    val = getfield′(mod, name)
     # @NOTE: DocSeeker can show docs for non-loaded packages via `createdocsdb()`
     nativetype = val isa Undefined ? "Undefined or not loaded yet" : x.typ
     wstype(mod, name, val), wsicon(mod, name, val), nativetype

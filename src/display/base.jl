@@ -28,8 +28,6 @@ render(::Console, x::Expr) =
     span(ls[1])
 end
 
-getfield′(x, f) = isdefined(x, f) ? getfield(x, f) : UNDEF
-
 showmethod(args...) = which(show, (IO, args...))
 
 const inline_mime = "application/prs.juno.inline"
@@ -68,8 +66,8 @@ function defaultrepr(x, lazy = false)
   if isempty(fields)
     span(c(render(Inline(), typeof(x)), "()"))
   else
-    lazy ? LazyTree(typeof(x), () -> [SubTree(Text("$f → "), getfield′(x, f)) for f in fields]) :
-           Tree(typeof(x), [SubTree(Text("$f → "), getfield′(x, f)) for f in fields])
+    lazy ? LazyTree(typeof(x), () -> [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]) :
+           Tree(typeof(x), [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields])
   end
 end
 
@@ -95,6 +93,8 @@ end
 @render Inline x::VersionNumber span(".syntax--string.syntax--quoted.syntax--other", sprint(show, x))
 
 @render Inline _::Nothing span(".syntax--constant", "nothing")
+
+@render Inline _::Undefined span(".fade", "<undefined>")
 
 import Base.Docs: doc
 
