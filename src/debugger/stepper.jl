@@ -423,11 +423,11 @@ function contexts(s::DebuggerState = STATE)
     trace = string(trace, "/", frame.framecode.scope isa Method ?
                                 frame.framecode.scope.name : "???")
     c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
-    push!(ctx, c)
+    pushfirst!(ctx, c)
 
     frame = frame.callee
   end
-  reverse(ctx)
+  ctx
 end
 
 function localvars(frame)
@@ -438,7 +438,7 @@ function localvars(frame)
   for v in vars
     # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
     v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-    push!(items, wsitem(mod, v.name, v.value))
+    pushfirst!(items, wsitem(mod, v.name, v.value))
   end
   items
 end
