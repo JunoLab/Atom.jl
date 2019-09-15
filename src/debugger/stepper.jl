@@ -438,7 +438,7 @@ function localvars(frame)
   for v in vars
     # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
     v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-    pushfirst!(items, wsitem(mod, v.name, v.value))
+    push!(items, wsitem(mod, v.name, v.value))
   end
   items
 end
