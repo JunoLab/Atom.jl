@@ -1,9 +1,8 @@
 using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
                         root, caller, whereis, get_return, nstatements, @lookup, Frame
 import JuliaInterpreter
-import ..Atom: fullpath, handle, @msg, wsitem, Inline, EvalError, Console, display_error, strlimit
-import Juno: Row, Tree
-using Media
+import ..Atom: fullpath, handle, @msg, Inline, display_error
+import Juno: Row
 using MacroTools
 
 mutable struct DebuggerState
@@ -184,91 +183,6 @@ function startdebugging(frame, initial_continue = false)
   res
 end
 
-using REPL
-using REPL.LineEdit
-using REPL.REPLCompletions
-
-const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
-const compiled_prefix = "\e[96m"
-
-function debugprompt()
-  try
-    panel = REPL.LineEdit.Prompt("debug> ";
-              prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
-              prompt_suffix = Base.text_colors[:normal],
-              complete = DebugCompletionProvider(),
-              on_enter = s -> true)
-
-    panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
-    REPL.history_reset_state(panel.hist)
-
-    search_prompt, skeymap = LineEdit.setup_search_keymap(panel.hist)
-    search_prompt.complete = REPL.LatexCompletions()
-
-    panel.on_done = (s, buf, ok) -> begin
-      if !ok
-        LineEdit.transition(s, :abort)
-        REPL.LineEdit.reset_state(s)
-        return false
-      end
-      Atom.msg("working")
-
-      line = String(take!(buf))
-
-      isempty(line) && return true
-
-      try
-        r = Atom.JunoDebugger.interpret(line)
-        r ≠ nothing && display(r)
-      catch err
-        display_error(stderr, err, stacktrace(catch_backtrace()))
-      end
-      println()
-      LineEdit.reset_state(s)
-
-      Atom.msg("doneWorking")
-      Atom.msg("updateWorkspace")
-
-      return true
-    end
-
-    panel.keymap_dict = LineEdit.keymap(Dict{Any,Any}[skeymap, LineEdit.history_keymap, LineEdit.default_keymap, LineEdit.escape_defaults])
-
-    REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel, search_prompt]))
-  catch e
-    Atom.msg("doneWorking")
-    Atom.msg("updateWorkspace")
-    e isa InterruptException || rethrow(e)
-  end
-end
-
-struct DebugCompletionProvider <: REPL.CompletionProvider end
-
-function LineEdit.complete_line(c::DebugCompletionProvider, s)
-  partial = REPL.beforecursor(s.input_buffer)
-  full = LineEdit.input_string(s)
-
-  global STATE
-  frame = STATE.frame
-
-  # repl backend completions
-  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
-  ret = map(REPLCompletions.completion_text, comps) |> unique!
-
-  # local completions
-  vars = filter!(JuliaInterpreter.locals(frame)) do v
-    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
-    if v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0)
-      return false
-    else
-      return startswith(string(v.name), partial)
-    end
-  end |> vars -> map(v -> string(v.name), vars)
-  pushfirst!(ret, vars...)
-
-  return ret, partial[range], should_complete
-end
-
 # setup handlers for stepper commands
 for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
   handle(()->put!(chan[], cmd), string(cmd))
@@ -332,7 +246,6 @@ function stack(frame)
   end
   reverse(ctx)
 end
-
 
 """
     get_code_around(file, line, frame; around = 3)
@@ -411,77 +324,6 @@ function evalscope(f)
     lock(Atom.evallock)
     @msg working()
   end
-end
-
-## Workspace
-function contexts(s::DebuggerState = STATE)
-  s.frame === nothing && return []
-  ctx = []
-  trace = ""
-  frame = root(s.frame)
-  while frame ≠ nothing
-    trace = string(trace, "/", frame.framecode.scope isa Method ?
-                                frame.framecode.scope.name : "???")
-    c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
-    pushfirst!(ctx, c)
-
-    frame = frame.callee
-  end
-  ctx
-end
-
-function localvars(frame)
-  vars = JuliaInterpreter.locals(frame)
-  items = []
-  scope = frame.framecode.scope
-  mod = scope isa Module ? scope : scope.module
-  for v in vars
-    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
-    v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue
-    push!(items, wsitem(mod, v.name, v.value))
-  end
-  items
-end
-
-handle("setStackLevel") do level
-  with_error_message() do
-    level = level isa String ? parseInt(level) : level
-    STATE.level = level
-    stepto(active_frame(STATE), level)
-    nothing
-  end
-end
-
-## Datatip
-
-using CodeTracking
-
-function datatip(word, path, row, column, s::DebuggerState = STATE)
-  frame = s.frame
-
-  # frame validation & only work for methods
-  scope = frame.framecode.scope
-  if frame === nothing || scope isa Module
-    return nothing
-  end
-
-  # path identity check
-  path != JuliaInterpreter.getfile(frame) && return nothing
-
-  # line number check
-  defstr, startline = definition(String, scope)
-  endline = startline + sum(c === '\n' for c in defstr)
-  startline <= row <= endline || return nothing
-
-  # local bindings
-  for v in JuliaInterpreter.locals(frame)
-    if string(v.name) === word
-      valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000, " ...")
-      return [Dict(:type  => :snippet, :value => valstr)]
-    end
-  end
-
-  return nothing # when no local binding exists
 end
 
 ## Evaluation

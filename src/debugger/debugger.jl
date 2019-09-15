@@ -12,10 +12,15 @@ end
 
 isdebugging() = JunoDebugger.isdebugging()
 
+
 module JunoDebugger
+
 using ..Atom, MacroTools, Lazy, Hiccup
 
 include("breakpoints.jl")
+include("repl.jl")
 include("stepper.jl")
+include("workspace.jl")
+include("datatip.jl")
 
 end # module
