@@ -1,4 +1,4 @@
-old_pwd = pwd()
+let old_pwd = pwd()
 cd(dirname(@__FILE__))
 
 @testset "path utilities" begin
@@ -51,3 +51,23 @@ end
 #TODO: baselink, edit
 
 cd(old_pwd)
+end
+
+@testset "limiting excessive strings" begin
+    using Atom: strlimit
+
+    # only including ASCII
+    @test strlimit("julia", 5) == "julia"
+    @test strlimit("julia", 4) == "jul…"
+    @test strlimit("Julia in the Nutshell", 21, " ...") == "Julia in the Nutshell"
+    @test strlimit("Julia in the Nutshell", 20, " ...") == "Julia in the Nut ..."
+
+    # including Unicode: should respect _length_ of strings, not code units
+    @test strlimit("jμλια", 5) == "jμλια"
+    @test strlimit("jμλια", 4) == "jμλ…"
+    @test strlimit("Jμλια in the Nutshell", 21, " ...") == "Jμλια in the Nutshell"
+    @test strlimit("Jμλια in the Nutshell", 20, " ...") == "Jμλια in the Nut ..."
+
+    # should not discard too many characters when a string includes invalid characters
+    @test 100 === @> rand(UInt8, 1000) String strlimit(100) length
+end

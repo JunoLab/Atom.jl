@@ -100,13 +100,19 @@ function md_hlines(md)
 end
 
 function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
+  will_append = length(str) > limit
+
   io = IOBuffer()
-  for (i, c) in enumerate(str)
-    i > limit - length(ellipsis) && break
+  i = 1
+  for c in str
+    will_append && i > limit - length(ellipsis) && break
     isvalid(c) || continue
+
     print(io, c)
+    i += 1
   end
-  length(str) >= limit && print(io, ellipsis)
+  will_append && print(io, ellipsis)
+
   return String(take!(io))
 end
 

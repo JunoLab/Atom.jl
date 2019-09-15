@@ -1,5 +1,6 @@
 using Atom
 using Test
+using Lazy
 import JSON
 
 
