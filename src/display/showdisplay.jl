@@ -15,8 +15,6 @@ const plain_mimes = [
 const plotpane_mime = "application/prs.juno.plotpane+html"
 const jlpane_mime = "application/prs.juno.jlpane"
 
-
-
 function displayinplotpane(x)
   # allow openening a new pane in Atom
   if showable("application/prs.juno.jlpane", x)
@@ -124,7 +122,7 @@ function displayandrender(res)
   if hastreeview(res)
     res = generateTreeView(res)
   end
-  Juno.render(Juno.Editor(), res)
+  render′(Editor(), res)
 end
 
 function customdisplaystack()
