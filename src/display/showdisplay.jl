@@ -2,7 +2,19 @@ using REPL, Base64
 
 struct JunoDisplay <: AbstractDisplay end
 
-plotpane_io_ctx(io::IO) = IOContext(io, :juno_plotsize => plotsize(), :juno_colors => syntaxcolors())
+function plotpane_io_ctx(io::IO)
+  info = @rpc plotsize()
+  if info isa Array
+    size = info
+    dpi = 1
+  else
+    size = info["size"]
+    dpi = info["ratio"]
+  end
+  size .-= 1
+
+  IOContext(io, :juno_plotsize => size, :juno_dpi_ratio => dpi, :juno_colors => syntaxcolors())
+end
 
 const plain_mimes = [
   "image/png",
