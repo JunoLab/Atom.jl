@@ -207,17 +207,15 @@ function reset_repl_history()
   replc = mode.complete
 
   if Base.active_repl.history_file
-      try
-          hist_path = REPL.find_hist_file()
-          mkpath(dirname(hist_path))
-          f = open(hist_path, read=true, write=true, create=true)
-          finalizer(replc) do replc
-              close(f)
-          end
-          REPL.hist_from_file(hp, f, hist_path)
-          REPL.history_reset_state(hp)
-      catch e
-      end
+    try
+      hist_path = REPL.find_hist_file()
+      mkpath(dirname(hist_path))
+      f = open(hist_path, read=true, write=true, create=true)
+      atexit(() -> close(f))
+      REPL.hist_from_file(hp, f, hist_path)
+      REPL.history_reset_state(hp)
+    catch e
+    end
   end
 end
 
