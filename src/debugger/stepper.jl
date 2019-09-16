@@ -423,11 +423,11 @@ function contexts(s::DebuggerState = STATE)
     trace = string(trace, "/", frame.framecode.scope isa Method ?
                                 frame.framecode.scope.name : "???")
     c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
-    push!(ctx, c)
+    pushfirst!(ctx, c)
 
     frame = frame.callee
   end
-  reverse(ctx)
+  ctx
 end
 
 function localvars(frame)
