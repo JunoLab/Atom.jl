@@ -189,6 +189,7 @@ function changeREPLmodule(mod)
 
   mod = getmodule(mod)
 
+  # change the repl module in the context of both evaluation and completions
   main_mode = get_main_mode()
   main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
     if !isempty(line)
@@ -197,6 +198,7 @@ function changeREPLmodule(mod)
       end
     end
   end
+  main_mode.complete = JunoREPLCompletionProvider(mod)
 end
 
 function reset_repl_history()
@@ -234,4 +236,21 @@ function fixjunodisplays()
     end
   end
   pushdisplay(JunoDisplay())
+end
+
+# completions
+
+struct JunoREPLCompletionProvider <: REPL.CompletionProvider
+  mod::Module
+end
+
+function LineEdit.complete_line(c::JunoREPLCompletionProvider, s)
+  partial = REPL.beforecursor(s.input_buffer)
+  full = LineEdit.input_string(s)
+
+  # module-aware repl backend completions
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), c.mod)
+  ret = map(REPLCompletions.completion_text, comps) |> unique!
+
+  return ret, partial[range], should_complete
 end
