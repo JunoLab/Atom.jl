@@ -1,6 +1,7 @@
 using REPL
 using REPL.LineEdit
 using REPL.REPLCompletions
+using JuliaInterpreter: locals
 
 const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
@@ -10,7 +11,7 @@ function debugprompt()
     panel = REPL.LineEdit.Prompt("debug> ";
               prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
               prompt_suffix = Base.text_colors[:normal],
-              complete = DebugCompletionProvider(),
+              complete = JunoDebuggerRPELCompletionProvider(),
               on_enter = s -> true)
 
     panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
@@ -56,30 +57,35 @@ function debugprompt()
   end
 end
 
-# repl completions
+# completions
 
-struct DebugCompletionProvider <: REPL.CompletionProvider end
+struct JunoDebuggerRPELCompletionProvider <: REPL.CompletionProvider end
 
-function LineEdit.complete_line(c::DebugCompletionProvider, s)
+function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
   global STATE
   frame = STATE.frame
 
-  # repl backend completions
+  # module-aware repl backend completions
   comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
   ret = map(REPLCompletions.completion_text, comps) |> unique!
 
-  # local completions
-  @>> filter!(JuliaInterpreter.locals(frame)) do v
-    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
-    if v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0)
-      return false
-    else
-      return startswith(string(v.name), partial)
+  # make local completions appear first: verbose ?
+  vars = @>> filter!(locals(frame)) do v
+    return !(v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0))
+  end map(v -> string(v.name))
+  inds = []
+  comps = []
+  for (i, c) ∈ enumerate(ret)
+    if c ∈ vars
+      push!(inds, i)
+      push!(comps, c)
     end
-  end map(v -> string(v.name)) vars -> pushfirst!(ret, vars...)
+  end
+  deleteat!(ret, inds)
+  pushfirst!(ret, comps...)
 
   return ret, partial[range], should_complete
 end
