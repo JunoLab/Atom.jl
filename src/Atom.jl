@@ -11,7 +11,9 @@ import Media: @dynamic
 function __init__()
   Juno.activate()
 
-  atreplinit(i -> fixdisplayorder())
+  atreplinit() do repl
+    fixdisplayorder()
+  end
 
   Atom.handle("connected") do
     if isREPL()

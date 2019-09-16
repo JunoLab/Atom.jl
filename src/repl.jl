@@ -58,10 +58,10 @@ handle("resetprompt") do linebreak
   nothing
 end
 
-current_prompt = juliaprompt
+const current_prompt = Ref{String}(juliaprompt)
 
 function hideprompt(f)
-  isREPL() || return f()
+  (isREPL() && Base.active_repl.mistate isa REPL.LineEdit.MIState) || return f()
 
   repl = Base.active_repl
   mistate = repl.mistate
@@ -89,7 +89,7 @@ function hideprompt(f)
   elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
     LineEdit.write_prompt(stdout, mode.parent_prompt)
   else
-    printstyled(stdout, current_prompt, color=:green)
+    printstyled(stdout, current_prompt[], color=:green)
   end
 
   truncate(LineEdit.buffer(mistate), 0)
@@ -101,7 +101,7 @@ function hideprompt(f)
 end
 
 function changeREPLprompt(prompt; color = :green, write = true)
-  if strip(prompt) == strip(current_prompt)
+  if strip(prompt) == strip(current_prompt[])
     return nothing
   end
 
@@ -118,7 +118,7 @@ function changeREPLprompt(prompt; color = :green, write = true)
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
   end
-  global current_prompt = prompt
+  global current_prompt[] = prompt
   nothing
 end
 
@@ -190,6 +190,8 @@ function changeREPLmodule(mod)
   mod = getmodule(mod)
 
   # change the repl module in the context of both evaluation and completions
+  # NOTE: help_mode doesn't allow custom provider yet:
+  # https://github.com/JuliaLang/julia/pull/33102 may help with them all
   main_mode = get_main_mode()
   main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
     if !isempty(line)
