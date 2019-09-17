@@ -33,10 +33,17 @@
 
     # aggregate methods with default params
     @eval Main function funcwithdefaultargs(args, defarg = "default") end
-    handle("methods", "funcwithdefaultargs") # should be handled as an unique method
-    @test length(readmsg()[3]["items"]) === 1
+    handle("methods", "funcwithdefaultargs")
+    items = readmsg()[3]["items"]
+    @test length(items) === 1 # should be handled as an unique method
+    # show a method with full arguments
+    @test "funcwithdefaultargs(args, defarg)" ∈ map(i -> i["text"], items)
 
-    @eval Main function funcwithdefaultargs(args::Vector, defarg = "default") end
-    handle("methods", "funcwithdefaultargs") # should be handled as a different method
-    @test length(readmsg()[3]["items"]) === 2
+    @eval Main function funcwithdefaultargs(args::String, defarg = "default") end
+    handle("methods", "funcwithdefaultargs")
+    items = readmsg()[3]["items"]
+    @test length(items) === 2 # should be handled as different methods
+    # show methods with full arguments
+    @test "funcwithdefaultargs(args, defarg)" ∈ map(i -> i["text"], items)
+    @test "funcwithdefaultargs(args::String, defarg)" ∈ map(i -> i["text"], items)
 end

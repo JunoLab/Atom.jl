@@ -67,7 +67,4 @@ end
     @test strlimit("jμλια", 4) == "jμλ…"
     @test strlimit("Jμλια in the Nutshell", 21, " ...") == "Jμλια in the Nutshell"
     @test strlimit("Jμλια in the Nutshell", 20, " ...") == "Jμλια in the Nut ..."
-
-    # should not discard too many characters when a string includes invalid characters
-    @test 100 === @> rand(UInt8, 1000) String strlimit(100) length
 end
