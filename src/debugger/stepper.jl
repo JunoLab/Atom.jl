@@ -1,5 +1,6 @@
-using JuliaInterpreter: pc_expr, moduleof, linenumber, extract_args, debug_command,
-                        root, caller, whereis, get_return, nstatements, @lookup, Frame
+using JuliaInterpreter: pc_expr, extract_args, debug_command, root, caller,
+                        whereis, get_return, @lookup, locals,
+                        Frame, Variable
 import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, Inline, display_error
 import Juno: Row
@@ -7,11 +8,12 @@ using MacroTools
 
 mutable struct DebuggerState
   frame::Union{Nothing, Frame}
+  locals::Vector{Variable} # better to be kept here to avoid duplicated computations for the same frame
   broke_on_error::Bool
   level::Int
 end
-DebuggerState(frame::Frame) = DebuggerState(frame, false, 1)
-DebuggerState() = DebuggerState(nothing, false, 1)
+DebuggerState(frame::Frame) = DebuggerState(frame, locals(frame), false, 1)
+DebuggerState() = DebuggerState(nothing, [], false, 1)
 
 function active_frame(state::DebuggerState)
   frame = state.frame
@@ -97,6 +99,7 @@ function startdebugging(frame, initial_continue = false)
           return res = JuliaInterpreter.get_return(root(frame))
         end
         STATE.frame = frame = ret[1]
+        STATE.locals = locals(frame)
         pc = ret[2]
         if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
           STATE.broke_on_error = true
@@ -157,6 +160,7 @@ function startdebugging(frame, initial_continue = false)
           break
         else
           STATE.frame = frame = ret[1]
+          STATE.locals = locals(frame)
           STATE.level = stacklength(STATE) - 1
           pc = ret[2]
           if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing

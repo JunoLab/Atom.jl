@@ -36,9 +36,7 @@ function __init__()
 
       # enables `MethodCompletion`, `PropertyCompletion`, `FieldCompletion` including local bindings
       if isdebugging()
-        global STATE
-        vars = locals(STATE.frame)
-        for var in vars
+        for var in STATE.locals
           sym === var.name && return var.value, true
         end
       end
@@ -54,7 +52,7 @@ function __init__()
 
       # inject local names for `ModuleCompletion`s
       if isdebugging()
-        @>> locals(STATE.frame) map(v -> string(v.name)) append!(syms)
+        @>> map(v -> string(v.name), STATE.locals) append!(syms)
       end
 
       macros =  filter(x -> startswith(x, "@" * name), syms)

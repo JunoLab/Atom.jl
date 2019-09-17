@@ -1,4 +1,4 @@
-using JuliaInterpreter: root, locals
+using JuliaInterpreter: root, locals, moduleof
 import ..Atom: wsitem, handle
 
 function contexts(s::DebuggerState = STATE)
@@ -20,8 +20,7 @@ end
 function localvars(frame)
   vars = locals(frame)
   items = []
-  scope = frame.framecode.scope
-  mod = scope isa Module ? scope : scope.module
+  mod = moduleof(frame)
   for v in vars
     # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
     v.name == Symbol("#self#") && (isa(v.value, Type) || sizeof(v.value) == 0) && continue

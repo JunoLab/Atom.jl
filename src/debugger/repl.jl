@@ -1,7 +1,7 @@
 using REPL
 using REPL.LineEdit
 using REPL.REPLCompletions
-using JuliaInterpreter: locals
+using JuliaInterpreter: moduleof
 
 const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
@@ -65,14 +65,12 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
-  frame = STATE.frame
-
   # module-aware repl backend completions
-  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(STATE.frame))
   ret = map(REPLCompletions.completion_text, comps) |> unique!
 
   # make local completions appear first: verbose ?
-  vars = @>> locals(frame) map(v -> string(v.name))
+  vars = map(v -> string(v.name), STATE.locals)
   inds = []
   comps = []
   for (i, c) ∈ enumerate(ret)

@@ -20,7 +20,7 @@ function datatip(word, path, row, column, s::DebuggerState = STATE)
   startline <= row <= endline || return nothing
 
   # local bindings
-  for v in locals(frame)
+  for v in s.locals
     if string(v.name) === word
       valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000)
       return [Dict(:type  => :snippet, :value => valstr)]
