@@ -54,7 +54,6 @@ function __init__()
 
       # inject local names for `ModuleCompletion`s
       if isdebugging()
-        global STATE
         @>> locals(STATE.frame) map(v -> string(v.name)) append!(syms)
       end
 

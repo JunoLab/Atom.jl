@@ -80,10 +80,9 @@ function startdebugging(frame, initial_continue = false)
   if frame === nothing
     error("failed to enter the function, perhaps it is set to run in compiled mode")
   end
-  global STATE
   STATE.frame = frame
   STATE.broke_on_error = false
-  global chan[] = Channel(0)
+  chan[] = Channel(0)
 
   temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 

@@ -65,7 +65,6 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
-  global STATE
   frame = STATE.frame
 
   # module-aware repl backend completions
@@ -73,9 +72,7 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   ret = map(REPLCompletions.completion_text, comps) |> unique!
 
   # make local completions appear first: verbose ?
-  vars = @>> filter!(locals(frame)) do v
-    return !(v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0))
-  end map(v -> string(v.name))
+  vars = @>> locals(frame) map(v -> string(v.name))
   inds = []
   comps = []
   for (i, c) ∈ enumerate(ret)
