@@ -14,9 +14,17 @@ function get_main_mode()
   mode
 end
 
-isREPL() = isdefined(Base, :active_repl) &&
-           isdefined(Base.active_repl, :interface) &&
-           isdefined(Base.active_repl.interface, :modes)
+function isREPL(; before_run_repl = false)
+  isdefined(Base, :active_repl) &&
+  isdefined(Base.active_repl, :interface) &&
+  isdefined(Base.active_repl.interface, :modes) &&
+  if before_run_repl
+    true
+  else
+    isdefined(Base.active_repl, :mistate) &&
+    isa(Base.active_repl.mistate, REPL.LineEdit.MIState)
+  end
+end
 
 handle("changeprompt") do prompt
   isREPL() || return
@@ -58,7 +66,7 @@ handle("resetprompt") do linebreak
   nothing
 end
 
-current_prompt = juliaprompt
+const current_prompt = Ref{String}(juliaprompt)
 
 function hideprompt(f)
   isREPL() || return f()
@@ -89,7 +97,7 @@ function hideprompt(f)
   elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
     LineEdit.write_prompt(stdout, mode.parent_prompt)
   else
-    printstyled(stdout, current_prompt, color=:green)
+    printstyled(stdout, current_prompt[], color=:green)
   end
 
   truncate(LineEdit.buffer(mistate), 0)
@@ -101,7 +109,7 @@ function hideprompt(f)
 end
 
 function changeREPLprompt(prompt; color = :green, write = true)
-  if strip(prompt) == strip(current_prompt)
+  if strip(prompt) == strip(current_prompt[])
     return nothing
   end
 
@@ -118,7 +126,7 @@ function changeREPLprompt(prompt; color = :green, write = true)
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
   end
-  global current_prompt = prompt
+  current_prompt[] = prompt
   nothing
 end
 
@@ -189,6 +197,9 @@ function changeREPLmodule(mod)
 
   mod = getmodule(mod)
 
+  # change the repl module in the context of both evaluation and completions
+  # NOTE: help_mode doesn't allow custom provider yet:
+  # https://github.com/JuliaLang/julia/pull/33102 may help with them all
   main_mode = get_main_mode()
   main_mode.on_done = REPL.respond(Base.active_repl, main_mode; pass_empty = false) do line
     if !isempty(line)
@@ -197,6 +208,7 @@ function changeREPLmodule(mod)
       end
     end
   end
+  main_mode.complete = JunoREPLCompletionProvider(mod)
 end
 
 function reset_repl_history()
@@ -205,17 +217,15 @@ function reset_repl_history()
   replc = mode.complete
 
   if Base.active_repl.history_file
-      try
-          hist_path = REPL.find_hist_file()
-          mkpath(dirname(hist_path))
-          f = open(hist_path, read=true, write=true, create=true)
-          finalizer(replc) do replc
-              close(f)
-          end
-          REPL.hist_from_file(hp, f, hist_path)
-          REPL.history_reset_state(hp)
-      catch e
-      end
+    try
+      hist_path = REPL.find_hist_file()
+      mkpath(dirname(hist_path))
+      f = open(hist_path, read=true, write=true, create=true)
+      atexit(() -> close(f))
+      REPL.hist_from_file(hp, f, hist_path)
+      REPL.history_reset_state(hp)
+    catch e
+    end
   end
 end
 
@@ -234,4 +244,21 @@ function fixjunodisplays()
     end
   end
   pushdisplay(JunoDisplay())
+end
+
+# completions
+
+struct JunoREPLCompletionProvider <: REPL.CompletionProvider
+  mod::Module
+end
+
+function LineEdit.complete_line(c::JunoREPLCompletionProvider, s)
+  partial = REPL.beforecursor(s.input_buffer)
+  full = LineEdit.input_string(s)
+
+  # module-aware repl backend completions
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), c.mod)
+  ret = map(REPLCompletions.completion_text, comps) |> unique!
+
+  return ret, partial[range], should_complete
 end
