@@ -16,7 +16,7 @@ function __init__()
   end
 
   Atom.handle("connected") do
-    if isREPL()
+    if isREPL(before_run_repl = true)
       reset_repl_history()
       fixdisplayorder()
 

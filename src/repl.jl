@@ -14,9 +14,17 @@ function get_main_mode()
   mode
 end
 
-isREPL() = isdefined(Base, :active_repl) &&
-           isdefined(Base.active_repl, :interface) &&
-           isdefined(Base.active_repl.interface, :modes)
+function isREPL(; before_run_repl = false)
+  isdefined(Base, :active_repl) &&
+  isdefined(Base.active_repl, :interface) &&
+  isdefined(Base.active_repl.interface, :modes) &&
+  if before_run_repl
+    true
+  else
+    isdefined(Base.active_repl, :mistate) &&
+    isa(Base.active_repl.mistate, REPL.LineEdit.MIState)
+  end
+end
 
 handle("changeprompt") do prompt
   isREPL() || return
@@ -61,7 +69,7 @@ end
 const current_prompt = Ref{String}(juliaprompt)
 
 function hideprompt(f)
-  (isREPL() && Base.active_repl.mistate isa REPL.LineEdit.MIState) || return f()
+  isREPL() || return f()
 
   repl = Base.active_repl
   mistate = repl.mistate
@@ -118,7 +126,7 @@ function changeREPLprompt(prompt; color = :green, write = true)
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
   end
-  global current_prompt[] = prompt
+  current_prompt[] = prompt
   nothing
 end
 
