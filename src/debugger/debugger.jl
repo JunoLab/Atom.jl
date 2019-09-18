@@ -31,20 +31,19 @@ function __init__()
     using JuliaInterpreter: locals
 
     # adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/REPLCompletions.jl#L348
+    # enables `MethodCompletion`, `PropertyCompletion`, `FieldCompletion` including local bindings
     function get_value(sym::Symbol, fn)
-      isdefined(fn, sym) && return getfield(fn, sym), true
-
-      # enables `MethodCompletion`, `PropertyCompletion`, `FieldCompletion` including local bindings
+      # first look up local bindings
       if isdebugging()
         for var in STATE.locals
           sym === var.name && return var.value, true
         end
       end
-
-      return (nothing, false)
+      return isdefined(fn, sym) ? (getfield(fn, sym), true) : (nothing, false)
     end
 
     # adapted from https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/src/REPLCompletions.jl#L86-L95
+    # enables `ModuleCompletion` for local bindings
     function filtered_mod_names(ffunc::Function, mod::Module, name::AbstractString, all::Bool = false, imported::Bool = false)
       ssyms = names(mod, all = all, imported = imported)
       filter!(ffunc, ssyms)
