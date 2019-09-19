@@ -18,7 +18,17 @@ end
 
 clearconsole() = @rpc clearconsole()
 
-plotsize() = (@rpc plotsize()) .- 1
+function plotsize()
+  info = @rpc plotsize()
+  size = if info isa Array
+    info
+  elseif haskey(info, "size")
+    info["size"]
+  else
+    [401, 501]
+  end
+  size .- 1
+end
 
 ploturl(url::String) = @msg ploturl(url)
 
