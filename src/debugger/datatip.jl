@@ -2,14 +2,12 @@ using CodeTracking
 using JuliaInterpreter: getfile, locals
 import ..Atom: strlimit
 
-function datatip(word, path, row, column, s::DebuggerState = STATE)
-  frame = s.frame
+function datatip(word, path, row, column, state::DebuggerState = STATE)
+  frame = state.frame
+  scope = frame.framecode.scope
 
   # frame validation & only work for methods
-  scope = frame.framecode.scope
-  if frame === nothing || scope isa Module
-    return nothing
-  end
+  (frame === nothing || scope isa Module) && return nothing
 
   # path identity check
   path != getfile(frame) && return nothing
@@ -20,10 +18,10 @@ function datatip(word, path, row, column, s::DebuggerState = STATE)
   startline <= row <= endline || return nothing
 
   # local bindings
-  for v in s.locals
-    if string(v.name) === word
+  for v in locals(frame)
+    if string(v.name) == word
       valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000)
-      return [Dict(:type  => :snippet, :value => valstr)]
+      return [Dict(:type => :snippet, :value => valstr)]
     end
   end
 

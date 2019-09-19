@@ -1,7 +1,7 @@
 using REPL
 using REPL.LineEdit
 using REPL.REPLCompletions
-using JuliaInterpreter: moduleof
+using JuliaInterpreter: moduleof, locals
 
 const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
@@ -65,22 +65,21 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
-  # module-aware repl backend completions
-  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(STATE.frame))
-  ret = map(REPLCompletions.completion_text, comps) |> unique!
+  frame = STATE.frame
 
-  # make local completions appear first: verbose ?
-  vars = map(v -> string(v.name), STATE.locals)
-  inds = []
-  comps = []
-  for (i, c) ∈ enumerate(ret)
-    if c ∈ vars
-      push!(inds, i)
-      push!(comps, c)
+  # module-aware repl backend completions
+  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))
+  ret = map(REPLCompletions.completion_text, comps)
+
+  # local completions -- should be shown first
+  @>> locals(frame) filter!(v -> begin
+    # ref: https://github.com/JuliaDebug/JuliaInterpreter.jl/blob/master/src/utils.jl#L365-L370
+    if v.name == Symbol("#self") && (v.value isa Type || sizeof(v.value) == 0)
+      return false
+    else
+      return startswith(string(v.name), partial)
     end
-  end
-  deleteat!(ret, inds)
-  pushfirst!(ret, comps...)
+  end) map(v -> string(v.name)) prepend!(ret) unique!
 
   return ret, partial[range], should_complete
 end

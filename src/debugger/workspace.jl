@@ -1,11 +1,11 @@
 using JuliaInterpreter: root, locals, moduleof
 import ..Atom: wsitem, handle
 
-function contexts(s::DebuggerState = STATE)
-  s.frame === nothing && return []
+function contexts(state::DebuggerState = STATE)
+  state.frame === nothing && return []
   ctx = []
   trace = ""
-  frame = root(s.frame)
+  frame = root(state.frame)
   while frame ≠ nothing
     trace = string(trace, "/", frame.framecode.scope isa Method ?
                                 frame.framecode.scope.name : "???")
