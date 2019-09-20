@@ -1,6 +1,6 @@
 using CodeTracking
 using JuliaInterpreter: getfile, locals
-import ..Atom: strlimit
+import ..Atom: fullpath, strlimit
 
 function datatip(word, path, row, column, state::DebuggerState = STATE)
   frame = state.frame
@@ -10,7 +10,7 @@ function datatip(word, path, row, column, state::DebuggerState = STATE)
   (frame === nothing || scope isa Module) && return nothing
 
   # path identity check
-  path != getfile(frame) && return nothing
+  path != fullpath(getfile(frame)) && return nothing
 
   # line number check
   defstr, startline = definition(String, scope)
