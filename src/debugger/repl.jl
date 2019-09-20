@@ -2,6 +2,7 @@ using REPL
 using REPL.LineEdit
 using REPL.REPLCompletions
 using JuliaInterpreter: moduleof, locals, eval_code
+import ..Atom: @msg
 
 const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
@@ -26,12 +27,12 @@ function debugprompt()
         REPL.LineEdit.reset_state(s)
         return false
       end
-      Atom.msg("working")
+      @msg working()
 
       line = String(take!(buf))
 
       if isempty(line)
-        Atom.msg("doneWorking")
+        @msg doneWorking()
         return true
       end
 
@@ -44,8 +45,8 @@ function debugprompt()
       println()
       LineEdit.reset_state(s)
 
-      Atom.msg("doneWorking")
-      Atom.msg("updateWorkspace")
+      @msg doneWorking()
+      @msg updateWorkspace()
 
       return true
     end
@@ -54,8 +55,8 @@ function debugprompt()
 
     REPL.run_interface(Base.active_repl.t, REPL.LineEdit.ModalInterface([panel, search_prompt]))
   catch e
-    Atom.msg("doneWorking")
-    Atom.msg("updateWorkspace")
+    @msg doneWorking()
+    @msg updateWorkspace()
     e isa InterruptException || rethrow(e)
   end
 end
@@ -64,11 +65,11 @@ end
 
 struct JunoDebuggerRPELCompletionProvider <: REPL.CompletionProvider end
 
-function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
+function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s, state::DebuggerState = STATE)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
-  frame = STATE.frame
+  frame = active_frame(state)
 
   # module-aware repl backend completions
   comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), moduleof(frame))

@@ -1,4 +1,4 @@
-using JuliaInterpreter: root, locals, moduleof
+using JuliaInterpreter: root, locals, moduleof, callee
 import ..Atom: wsitem, handle
 
 function contexts(state::DebuggerState = STATE)
@@ -6,7 +6,8 @@ function contexts(state::DebuggerState = STATE)
   ctx = []
   trace = ""
   frame = root(state.frame)
-  while frame ≠ nothing
+  active_callee = callee(active_frame(state))
+  while frame ≠ nothing && frame ≠ active_callee
     trace = string(trace, "/", frame.framecode.scope isa Method ?
                                 frame.framecode.scope.name : "???")
     c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
@@ -31,13 +32,4 @@ function localvars(frame)
     push!(items, item)
   end
   items
-end
-
-handle("setStackLevel") do level
-  with_error_message() do
-    level = level isa String ? parseInt(level) : level
-    STATE.level = level
-    stepto(active_frame(STATE), level)
-    nothing
-  end
 end

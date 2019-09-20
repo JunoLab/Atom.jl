@@ -21,6 +21,7 @@ function active_frame(state::DebuggerState)
   @assert frame !== nothing
   return frame
 end
+
 stacklength(state::DebuggerState) = stacklength(state.frame)
 stacklength(::Nothing) = 0
 function stacklength(frame::Frame)
@@ -186,13 +187,12 @@ end
 for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
   handle(()->put!(chan[], cmd), string(cmd))
 end
-
 handle((line)->put!(chan[], (:toline, line)), "toline")
 
 # notify the frontend that we start debugging now
 function debugmode(on)
   @msg debugmode(on)
-  Atom.msg("doneWorking")
+  @msg doneWorking()
 end
 
 ## Stepping
@@ -206,6 +206,15 @@ function stepto(frame::Frame, level = stacklength(STATE)-1)
 end
 stepto(state::DebuggerState) = stepto(state.frame, state.level)
 stepto(::Nothing) = debugmode(false)
+
+handle("setStackLevel") do level
+  with_error_message() do
+    level = level isa String ? parseInt(level) : level
+    STATE.level = level
+    stepto(active_frame(STATE), level)
+    nothing
+  end
+end
 
 function moreinfo(file, line, frame, level)
   info = Dict()
@@ -238,12 +247,11 @@ function stack(frame)
       :file => file,
       :shortpath => shortpath
     )
-    push!(ctx, c)
-
+    pushfirst!(ctx, c)
     level += 1
     frame = frame.callee
   end
-  reverse(ctx)
+  ctx
 end
 
 """

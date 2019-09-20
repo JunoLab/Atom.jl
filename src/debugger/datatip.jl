@@ -3,11 +3,14 @@ using JuliaInterpreter: getfile, locals
 import ..Atom: fullpath, strlimit
 
 function datatip(word, path, row, column, state::DebuggerState = STATE)
-  frame = state.frame
+  # frame validation
+  state.frame === nothing && return nothing
+
+  frame = active_frame(state)
   scope = frame.framecode.scope
 
-  # frame validation & only work for methods
-  (frame === nothing || scope isa Module) && return nothing
+  # only work for methods
+  scope isa Module && return nothing
 
   # path identity check
   path != fullpath(getfile(frame)) && return nothing
