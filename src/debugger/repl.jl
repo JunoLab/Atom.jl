@@ -1,7 +1,7 @@
 using REPL
 using REPL.LineEdit
 using REPL.REPLCompletions
-using JuliaInterpreter: moduleof, locals
+using JuliaInterpreter: moduleof, locals, eval_code
 
 const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
@@ -30,10 +30,13 @@ function debugprompt()
 
       line = String(take!(buf))
 
-      isempty(line) && return true
+      if isempty(line)
+        Atom.msg("doneWorking")
+        return true
+      end
 
       try
-        r = Atom.JunoDebugger.interpret(line)
+        r = interpret(line)
         r ≠ nothing && display(r)
       catch err
         display_error(stderr, err, stacktrace(catch_backtrace()))
@@ -82,4 +85,10 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s)
   end) map(v -> string(v.name)) prepend!(ret) unique!
 
   return ret, partial[range], should_complete
+end
+
+# Evaluation
+function interpret(code::AbstractString, state::DebuggerState = STATE)
+  state.frame === nothing && return
+  eval_code(active_frame(state), code)
 end

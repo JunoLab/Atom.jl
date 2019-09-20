@@ -324,9 +324,3 @@ function evalscope(f)
     @msg working()
   end
 end
-
-## Evaluation
-function interpret(code::AbstractString, s::DebuggerState = STATE)
-  s.frame === nothing && return
-  JuliaInterpreter.eval_code(active_frame(s), code)
-end
