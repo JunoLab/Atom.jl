@@ -128,14 +128,14 @@ end
     j = 0
     st = Array{Atom.SubTree}(undef, 0)
     for (key, val) in d
-      push!(st, SubTree(span(c(render(i, key), " → ")), val))
+      push!(st, SubTree(span(c(render(i, key), " => ")), val))
       j += 1
-      j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
+      j > 25 && (push!(st, SubTree(span("... => "), span("..."))); break)
     end
     return st
   end
-  LazyTree(span(c(String(nameof(typeof(d))),
-            "{$(eltype(d).parameters[1]), $(eltype(d).parameters[2])}", Atom.fade(" with $(length(d)) entries"))), cs)
+  LazyTree(span(c(typ(string(nameof(typeof(d)),
+            "{$(eltype(d).parameters[1]), $(eltype(d).parameters[2])}")), Atom.fade(" with $(length(d)) entries"))), cs)
 end
 
 @render Inline x::Number span(".syntax--constant.syntax--numeric", sprint(show, x))
