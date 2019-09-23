@@ -112,11 +112,11 @@ trim(xs, len = 25) =
                     [undefs(xs[1:10]); fade("..."); undefs(xs[end-9:end])]
 
 @render i::Inline xs::Vector begin
-    LazyTree(span(c(render(i, eltype(xs)), Atom.fade("[$(length(xs))]"))), () -> trim(xs))
+    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(length(xs)) elements"))), () -> trim(xs))
 end
 
 @render i::Inline xs::Set begin
-    LazyTree(span(c(render(i, typeof(xs)), Atom.fade("[$(length(xs))]"))), () -> trim(collect(xs)))
+    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(length(xs)) elements"))), () -> trim(collect(xs)))
 end
 
 @render Inline xs::AbstractArray begin
@@ -128,14 +128,14 @@ end
     j = 0
     st = Array{Atom.SubTree}(undef, 0)
     for (key, val) in d
-      push!(st, SubTree(span(c(render(i, key), " → ")), val))
+      push!(st, SubTree(span(c(render(i, key), " => ")), val))
       j += 1
-      j > 25 && (push!(st, SubTree(span("... → "), span("..."))); break)
+      j > 25 && (push!(st, SubTree(span("... => "), span("..."))); break)
     end
     return st
   end
-  LazyTree(span(c(strong(String(nameof(typeof(d)))),
-            Atom.fade(" $(eltype(d).parameters[1]) → $(eltype(d).parameters[2]) with $(length(d)) entries"))), cs)
+  LazyTree(span(c(typ(string(nameof(typeof(d)),
+            "{$(eltype(d).parameters[1]), $(eltype(d).parameters[2])}")), Atom.fade(" with $(length(d)) entries"))), cs)
 end
 
 @render Inline x::Number span(".syntax--constant.syntax--numeric", sprint(show, x))
