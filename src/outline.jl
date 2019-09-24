@@ -127,11 +127,11 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     end
 
     if scope !== nothing
-        range = pos:pos+expr.span
-        localbindings = []
         if expr.typ == CSTParser.Kw
             return bindings
         end
+        range = pos:pos+expr.span
+        localbindings = []
         if expr.args !== nothing
             for arg in expr.args
                 local_bindings(arg, text, localbindings, pos, line)
@@ -139,7 +139,14 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
                 pos += arg.fullspan
             end
         end
-        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+        if expr.typ === CSTParser.TupleH && # destructure multiple return expression
+           any(CSTParser.bindingof(a) !== nothing for a in expr.args)
+            for leftsidebind in localbindings
+                push!(bindings, leftsidebind)
+            end
+        else
+            push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+        end
         return bindings
     elseif expr.args !== nothing
         for arg in expr.args

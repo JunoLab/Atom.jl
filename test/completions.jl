@@ -143,16 +143,27 @@ end
                 push!(bindings, LocalBinding(bind.name, pos:pos+expr.span))
             end
             if scope !== nothing
+                if expr.typ == CSTParser.Kw
+                    return bindings
+                end
                 range = pos:pos+expr.span
                 localbindings = []
                 if expr.args !== nothing
-                    for arg in expr.args
-                        local_bindings(arg, localbindings, pos)
-
+                    for (i, arg) in expr.args
+                        ### L15 -- FOR THE FIRST TEST ###
+                        local_bindings(arg, text, localbindings, pos, line)
+                        line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
                         pos += arg.fullspan
                     end
                 end
-                push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, localbindings))
+                if expr.typ == CSTParser.TupleH # deconstruct tuple expression
+                    ### L21 - FOR THE SECOND TEST ###
+                    for leftbind in localbindings
+                        push!(bindings, leftbind)
+                    end
+                else
+                    push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+                end
                 return bindings
             elseif expr.args !== nothing
                 for arg in expr.args
@@ -163,7 +174,8 @@ end
             return bindings
         end
         """
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 13, 1))) == Set([
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 15, 1))) == Set([
+            ("i", ""),
             ("arg", ""),
             ("localbindings", "local_bindings"),
             ("range", "local_bindings"),
@@ -174,7 +186,7 @@ end
             ("expr", "local_bindings"),
             ("local_bindings", "")
         ])
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 19, 100))) == Set([
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 21, 100))) == Set([
             ("localbindings", "local_bindings"),
             ("pos", "local_bindings"),
             ("scope", "local_bindings"),
@@ -188,27 +200,33 @@ end
     end
 
     let str = """
-       const bar = 2
-       function f(x=2) # `x` should show up in completions
-         ff = function (x, xxx)
-           z = 3
-         end
-         y = (foo = 3, bar = 4) # named tuple elements shouldn't show up in completions
-         return y+x
-       end
-       kwfun(kw = 3) # `kw` should not show up in completions
-       function foo(x)
-         asd = 3
-       end
-       """
+        const bar = 2
+        function f(x=2) # `x` should show up in completions
+            ff = function (x, xxx)
+                z = 3
+            end
+            y = (foo = 3, bar = 4) # named tuple elements shouldn't show up in completions
+            return y+x
+        end
+        kwfun(kw = 3) # `kw` should not show up in completions
+        function foo(x)
+            asd = 3
+        end
+        function baz(x) # should destructure multiple return values
+           shown1, shown2 = (notshown1 = 1, notshown2 = 2) # should n't leak named tuple names
+        end
+        """
+        outers = (("bar", ""), ("f", ""), ("foo", ""), ("baz", ""))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1))) ==
-            Set([("f", ""), ("bar", ""), ("foo", "")])
+            Set(outers)
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 100))) ==
-            Set([("f", ""), ("y", "f"), ("ff", "f"), ("x", "f"), ("bar", ""), ("foo", "")])
+            Set((("x", "f"), ("ff", "f"), ("y", "f"), outers...))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100))) ==
-            Set([("y", "f"), ("f", ""), ("x", ""), ("ff", "f"), ("bar", ""), ("z", ""), ("foo", ""), ("xxx", "")])
+            Set((("ff", "f"), ("x", ""), ("xxx", ""), ("z", ""), ("y", "f"), outers...))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100))) ==
-            Set([("f", ""), ("x", "foo"), ("asd", "foo"), ("bar", ""), ("foo", "")])
+            Set((("x", "foo"), ("asd", "foo"), outers...))
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 13, 100))) ==
+            Set((("x", "baz"), ("shown1", "baz"), ("shown2", "baz"), outers...))
     end
 
     # local completions ordered by proximity
