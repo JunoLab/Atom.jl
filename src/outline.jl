@@ -65,22 +65,37 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
                 :name => name,
                 :type => static_type(bind),
                 :icon => static_icon(bind),
-                :lines => [line, line + count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + expr.span)])]
+                :lines => [line, line + countlines(expr, text, pos, false)]
                 )
              )
     end
     scope = scopeof(expr)
     if scope !== nothing && !(expr.typ === CSTParser.FileH || expr.typ === CSTParser.ModuleH || expr.typ === CSTParser.BareModule)
+        if expr.typ === CSTParser.TupleH # destructure multiple return expression
+            name = join((str_value(a) for a in expr.args if CSTParser.bindingof(a) !== nothing), ',')
+            !isempty(name) && push!(bindings, Dict(
+                :name => name,
+                :type => "variable",
+                :icon => "v",
+                :lines => [line, line + countlines(expr, text, pos)]
+            ))
+        end
         return bindings
     end
     if expr.args !== nothing
         for arg in expr.args
             toplevel_bindings(arg, text, bindings, line, pos)
-            line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
+            line += countlines(arg, text, pos)
             pos += arg.fullspan
         end
     end
     return bindings
+end
+
+function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
+    startind = nextind(text, pos - 1)
+    endind = prevind(text, pos + (full ? expr.fullspan : expr.span))
+    count(c -> c === eol, text[startind:endind])
 end
 
 struct LocalBinding
@@ -127,24 +142,31 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     end
 
     if scope !== nothing
-        range = pos:pos+expr.span
-        localbindings = []
         if expr.typ == CSTParser.Kw
             return bindings
         end
+        range = pos:pos+expr.span
+        localbindings = []
         if expr.args !== nothing
             for arg in expr.args
                 local_bindings(arg, text, localbindings, pos, line)
-                line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
+                line += countlines(arg, text, pos)
                 pos += arg.fullspan
             end
         end
-        push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+        if expr.typ === CSTParser.TupleH && # destructure multiple return expression
+           any(CSTParser.bindingof(a) !== nothing for a in expr.args)
+            for leftsidebind in localbindings
+                push!(bindings, leftsidebind)
+            end
+        else
+            push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+        end
         return bindings
     elseif expr.args !== nothing
         for arg in expr.args
             local_bindings(arg, text, bindings, pos, line)
-            line += count(c -> c === '\n', text[nextind(text, pos - 1):prevind(text, pos + arg.fullspan)])
+            line += countlines(arg, text, pos)
             pos += arg.fullspan
         end
     end

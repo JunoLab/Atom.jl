@@ -10,8 +10,9 @@ readmsg() = JSON.parse(String(take!(Atom.sock)))
 
 
 include("./misc.jl") # basics
-include("./eval.jl")
-include("./workspace.jl")
-include("./completions.jl")
 include("./utils.jl")
+include("./eval.jl")
+include("./outline.jl")
+include("./completions.jl")
+include("./workspace.jl")
 include("./display.jl")
