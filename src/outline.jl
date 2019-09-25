@@ -93,9 +93,9 @@ function toplevel_bindings(expr, text, bindings = [], line = 1, pos = 1)
 end
 
 function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
-    startind = nextind(text, pos - 1)
-    endind = prevind(text, pos + (full ? expr.fullspan : expr.span))
-    count(c -> c === eol, text[startind:endind])
+    s = nextind(text, pos - 1)
+    e = prevind(text, pos + (full ? expr.fullspan : expr.span))
+    count(c -> c === eol, text[s:e])
 end
 
 struct LocalBinding
@@ -245,13 +245,11 @@ function str_value(x)
         return string("\"\"\"", x.val, "\"\"\"")
     elseif x.kind === CSTParser.Tokens.STRING
         return string("\"", x.val, "\"")
+    elseif x.typ === CSTParser.Parameters
+        return ";" * join(str_value(a) for a in x)
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
     else
-        s = ""
-        for a in x
-            s *= str_value(a)
-        end
-        return s
+        return join(str_value(a) for a in x)
     end
 end

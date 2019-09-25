@@ -182,4 +182,16 @@ end
             )
         ]
     end
+
+    # should stringify method signatures correctly
+    let str = """
+        withstrings(single = \"1\", triple = \"\"\"3\"\"\") = single * triple
+        withchar(char = 'c') = char
+        withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2) = defarg * kwarg
+        """
+        topbinds = map(b -> b[:name], Atom.outline(str))
+        topbinds[1] == "withstrings(single=\"1\",triple=\"\"\"\"3\"\")"
+        topbinds[2] == "withchar(char='c')"
+        topbinds[3] == "withkwarg(arg,defarg=0;kwarg1=1,kwarg2=2)"
+    end
 end
