@@ -116,6 +116,8 @@ function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString
   return String(take!(io))
 end
 
+shortstr(val) = strlimit(string(val), 20)
+
 # singleton type for undefined values
 struct Undefined end
 
@@ -155,3 +157,6 @@ getdocs(mod::Module, word::String) = begin
   md_hlines(md)
 end
 getdocs(mod::String, word::String) = getdocs(getmodule(mod), word)
+
+cangetdocs(mod::Module, word::Symbol) = Base.isbindingresolved(mod, word) && !Base.isdeprecated(mod, word)
+cangetdocs(mod::Module, word::String) = cangetdocs(mod, Symbol(word))
