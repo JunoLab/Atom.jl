@@ -104,11 +104,11 @@ completionreturntype(c::REPLCompletions.MethodCompletion) = begin
   shortstr(inf)
 end
 completionreturntype(c::REPLCompletions.PropertyCompletion) =
-  getproperty(c.value, c.property) |> typeof |> shortstr
+  shortstr(typeof(getproperty(c.value, c.property)))
 completionreturntype(c::REPLCompletions.FieldCompletion) =
-  fieldtype(c.typ, c.field) |> shortstr
+  shortstr(fieldtype(c.typ, c.field))
 completionreturntype(c::REPLCompletions.DictCompletion) =
-  valtype(c.dict) |> shortstr
+  shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
@@ -117,7 +117,7 @@ completionsummary(mod, c) = ""
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod, word = c.parent, c.mod
   cangetdocs(mod, word) || return ""
-  getdocs(mod, word) |> makedescription
+  makedescription(getdocs(mod, word))
 end
 completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   ct = Symbol(c.func)
@@ -126,7 +126,7 @@ completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   description(b, Base.tuple_type_tail(c.method.sig))
 end
 completionsummary(mod, c::REPLCompletions.KeywordCompletion) =
-  getdocs(mod, c.keyword) |> makedescription
+  makedescription(getdocs(mod, c.keyword))
 
 function description(binding, sig = Union{})
   try
