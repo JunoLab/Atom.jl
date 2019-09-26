@@ -2,7 +2,7 @@ __precompile__()
 
 module Atom
 
-using Juno, Lazy, JSON, MacroTools, Reexport, Media, Base.StackTraces
+using Juno, Lazy, JSON, MacroTools, Media, Base.StackTraces
 
 using InteractiveUtils
 import Requires
