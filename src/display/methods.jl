@@ -6,9 +6,7 @@ function methodarray(mt::MethodList)
   defs = collect(mt)
   file(m) = m.file |> string |> basename
   line(m) = m.line
-  sort!(defs, lt = (a, b) -> file(a) == file(b) ?
-                               line(a) < line(b) :
-                               file(a) < file(b))
+
   return defs
 end
 
