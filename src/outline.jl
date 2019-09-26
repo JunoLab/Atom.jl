@@ -127,6 +127,10 @@ function scopeof(expr)
             return :call
         end
 
+        if expr.typ == CSTParser.MacroCall
+            return :macro
+        end
+
         if expr.typ == CSTParser.TupleH && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
             return :tupleh
         end
