@@ -98,7 +98,7 @@ end
 
 import Base.Docs: doc
 
-isanon(f) = occursin("#", string(f))
+isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
 @render Inline f::Function begin
   isanon(f) ? span(".syntax--support.syntax--function", "λ") :
