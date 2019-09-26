@@ -92,6 +92,22 @@
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 13, 100))) ==
             Set((("x", "baz"), ("shown1", "baz"), ("shown2", "baz"), outers...))
     end
+    let str = """
+        function foo(x)
+            @macrocall begin
+                xyz = 2
+            end
+            xxx = 3
+            return 12
+        end
+        """
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1))) ==
+            Set((("foo", ""), ("xxx", "foo"), ("x", "foo")))
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 3, 1))) ==
+            Set((("foo", ""), ("xxx", "foo"), ("xyz", ""), ("x", "foo")))
+        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 5, 1))) ==
+            Set((("foo", ""), ("xxx", "foo"), ("x", "foo")))
+    end
 end
 
 @testset "outline" begin
@@ -102,6 +118,9 @@ end
             2x
         end
         const sss = 3
+        end
+        @macrocall begin # heuristic: ignore macrocalls
+            inmacro = 4 # this shouldn't show up in outline
         end
         """
         @test Atom.outline(str) == Any[
