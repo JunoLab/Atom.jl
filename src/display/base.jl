@@ -107,9 +107,13 @@ isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 end
 
 # TODO: lazy load a recursive tree
-trim(xs, len = 25) =
-  length(xs) ≤ 25 ? undefs(xs) :
-                    [undefs(xs[1:10]); fade("..."); undefs(xs[end-9:end])]
+function trim(xs, len = 25)
+  if length(xs) ≤ len
+    undefs(xs)
+  else
+    [undefs(xs[1:(len÷2 - iseven(len))]); fade("..."); undefs(xs[end-(len÷2 - 1):end])]
+  end
+end
 
 @render i::Inline xs::Vector begin
     LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(length(xs)) elements"))), () -> trim(xs))
