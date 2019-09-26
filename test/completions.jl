@@ -96,7 +96,7 @@
         @test map(comps("split(\"\", \"\")[1].")) do c
             c[:type] == "property" &&
             c[:rightLabel] == "SubString{String}" &&
-            c[:leftLabel] ∈ string.(fieldtypes(SubString{String})) &&
+            c[:leftLabel] ∈ string.(ntuple(i -> fieldtype(SubString{String}, i), fieldcount(SubString{String}))) &&
             c[:text] ∈ string.(fieldnames(SubString{String}))
         end |> all
     end
