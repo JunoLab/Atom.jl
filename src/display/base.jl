@@ -115,12 +115,15 @@ function trim(xs, len = 25)
   end
 end
 
+pluralize(n::Int, one, more=one) = string(n, " ", n == 1 ? one : more)
+pluralize(xs, one, more=one) = pluralize(length(xs), one, more)
+
 @render i::Inline xs::Vector begin
-    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(length(xs)) elements"))), () -> trim(xs))
+    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(pluralize(xs, "element", "elements"))"))), () -> trim(xs))
 end
 
 @render i::Inline xs::Set begin
-    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(length(xs)) elements"))), () -> trim(collect(xs)))
+    LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(pluralize(xs, "element", "elements"))"))), () -> trim(collect(xs)))
 end
 
 @render Inline xs::AbstractArray begin
@@ -139,7 +142,7 @@ end
     return st
   end
   LazyTree(span(c(typ(string(nameof(typeof(d)),
-            "{$(eltype(d).parameters[1]), $(eltype(d).parameters[2])}")), Atom.fade(" with $(length(d)) entries"))), cs)
+            "{$(eltype(d).parameters[1]), $(eltype(d).parameters[2])}")), Atom.fade(" with $(pluralize(d, "entry", "entries"))"))), cs)
 end
 
 @render Inline x::Number span(".syntax--constant.syntax--numeric", sprint(show, x))

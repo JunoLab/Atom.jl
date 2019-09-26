@@ -8,4 +8,7 @@
 
     @test Atom.isanon(sin) == false
     @test Atom.isanon(x -> x)
+
+    @test Atom.pluralize([1,2,3], "entry", "entries") == "3 entries"
+    @test Atom.pluralize([1], "entry", "entries") == "1 entry"
 end
