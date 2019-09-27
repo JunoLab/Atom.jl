@@ -179,6 +179,16 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
 end
 
 function locals(text, line, col)
+    parsed = CSTParser.parse(text, true)
+    bindings = local_bindings(parsed, text)
+    bindings = filter_local_bindings(bindings, line, byteoffset(text, line, col))
+    bindings = filter(x -> !isempty(x[:name]), bindings)
+    bindings = sort(bindings, lt = (a,b) -> a[:locality] < b[:locality])
+    bindings = unique(x -> x[:name], bindings)
+    bindings
+end
+
+function byteoffset(text, line, col)
     byteoffset = 1
     current_line = 1
     current_char = 0
@@ -191,14 +201,7 @@ function locals(text, line, col)
         byteoffset += VERSION >= v"1.1" ? ncodeunits(c) : ncodeunits(string(c))
         c === '\n' && (current_line += 1)
     end
-    parsed = CSTParser.parse(text, true)
-    bindings = local_bindings(parsed, text)
-    bindings = filter_local_bindings(bindings, line, byteoffset)
-    bindings = filter(x -> !isempty(x[:name]), bindings)
-    bindings = sort(bindings, lt = (a,b) -> a[:locality] < b[:locality])
-    bindings = unique(x -> x[:name], bindings)
-
-    bindings
+    byteoffset
 end
 
 function distance(line, byteoffset, defline, defspan)
@@ -217,11 +220,12 @@ end
 function filter_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
         push!(actual_bindings, Dict(
-            :name => bind.name,
-            :root => root,
+            :name     => bind.name,
+            :root     => root,
+            :line     => bind.line,
             :locality => distance(line, byteoffset, bind.line, bind.span),
-            :icon => static_icon(bind.expr),
-            :type => static_type(bind.expr)
+            :icon     => static_icon(bind.expr),
+            :type     => static_type(bind.expr)
         ))
         if bind isa LocalScope && byteoffset in bind.span
             filter_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)

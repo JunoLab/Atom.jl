@@ -159,25 +159,3 @@ handle("docs") do data
        :tag      => :div,
        :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
 end
-
-handle("methods") do data
-  @destruct [mod || "Main", word] = data
-  mtable = @errs getmethods(mod, word)
-  if mtable isa EvalError
-    Dict(:error => true, :items => sprint(showerror, mtable.err))
-  else
-    # only show the method with full default arguments
-    aggregated = @>> mtable collect sort(by = m -> m.nargs, rev = true) unique(m -> (m.file, m.line))
-    Dict(:error => false, :items => [gotoitem(m) for m in aggregated])
-  end
-end
-
-function gotoitem(m::Method)
-  _, link = view(m)
-  sig = sprint(show, m)
-  sig = replace(sig, r" in .* at .*$" => "")
-  Dict(:text => sig,
-       :file => link.file,
-       :line => link.line - 1,
-       :secondary => join(link.contents))
-end
