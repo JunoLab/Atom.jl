@@ -8,21 +8,59 @@ handle("datatip") do data
   @destruct [
     word,
     mod || "Main",
-    path || nothing,
+    path || "",
+    column || 1,
     row || 1,
-    column || 1
+    startRow || 0,
+    context || ""
   ] = data
 
+  datatip(word, mod, path, column, row, startRow, context)
+end
+
+function datatip(word, mod, path, column = 1, row = 1, startRow = 0, context = "")
   if isdebugging() && (datatip = JunoDebugger.datatip(word, path, row, column)) !== nothing
     return Dict(:error => false, :strings => datatip)
   end
 
+  let localdatatip = localdatatip(word, column, row, startRow, context)
+    localdatatip !== nothing && return Dict(:error => false, :line => localdatatip)
+  end
+
+  let topleveldatatip = topleveldatatip(mod, word)
+    topleveldatatip !== nothing && return Dict(:error => false, :strings => topleveldatatip)
+  end
+
+  return Dict(:error => true) # nothing hits
+end
+
+function localdatatip(word, column, row, startRow, context)
+  position = row - startRow
+  ls = locals(context, position, column)
+  filter!(ls) do l
+    l[:name] == word &&
+    l[:line] < position
+  end
+  # there should be zero or one element in `ls`
+  if isempty(ls)
+    return nothing
+  else
+    return startRow + ls[1][:line] - 1
+  end
+end
+
+function localdatatip(l)
+  str = bindingstr(l[:expr])
+  Dict(:type => :snippet, :value => str)
+end
+
+function topleveldatatip(mod, word)
   docs = @errs getdocs(mod, word)
-  docs isa EvalError && return Dict(:error => true)
+  docs isa EvalError && return nothing
 
   # don't show verbose stuff
   docstr = replace(string(docs), nodoc_regex => "")
-  occursin(nobinding_regex, docstr) && return Dict(:error => true)
+  occursin(nobinding_regex, docstr) && return nothing
 
   datatip = []
 
@@ -31,7 +69,7 @@ handle("datatip") do data
 
   processdoc!(docs, docstr, datatip)
 
-  return Dict(:error => false, :strings => datatip)
+  return datatip
 end
 
 # adapted from `REPL.summarize(binding::Binding, sig)`
