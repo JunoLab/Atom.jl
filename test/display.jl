@@ -4,6 +4,10 @@
         @test Atom.render(Atom.Inline(), Atom.@errs foo()) != nothing
     end
 
+    # issue: https://github.com/JunoLab/Juno.jl/issues/376
+    @test Atom.render(Atom.Inline(), :abc)[:contents] == [":abc"]
+    @test Atom.render(Atom.Inline(), Symbol("A B"))[:contents] == ["Symbol(\"A B\")"]
+
     @test length(Atom.trim(rand(50), 20)) == 20
 
     @test Atom.isanon(sin) == false

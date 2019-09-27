@@ -86,7 +86,7 @@ end
 
 @render Inline x::Module span(".syntax--keyword.syntax--other", string(x))
 
-@render Inline x::Symbol span(".syntax--constant.syntax--other.syntax--symbol", ":$x")
+@render Inline x::Symbol span(".syntax--constant.syntax--other.syntax--symbol", repr(x))
 
 @render Inline x::Char span(".syntax--string.syntax--quoted.syntax--single", escape_string("'$x'"))
 
