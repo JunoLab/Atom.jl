@@ -1,5 +1,4 @@
-# toggle docs / goto symbols
-@testset "docs and methods" begin
+@testset "toggle docs" begin
     cb = 0  # callback count
     handle(type, word, mod = "Main") =
         Atom.handlemsg(Dict("type"     => type,
@@ -20,30 +19,4 @@
     # keyword
     handle("docs", "begin", "Atom")
     @test !readmsg()[3]["error"]
-
-    ## goto symbols
-
-    # basic - `Atom.handlemsg` is not defined with default args
-    handle("methods", "Atom.handlemsg")
-    @test length(readmsg()[3]["items"]) === length(methods(Atom.handlemsg))
-
-    # module awareness
-    handle("methods", "handlemsg", "Atom")
-    @test length(readmsg()[3]["items"]) === length(methods(Atom.handlemsg))
-
-    # aggregate methods with default params
-    @eval Main function funcwithdefaultargs(args, defarg = "default") end
-    handle("methods", "funcwithdefaultargs")
-    items = readmsg()[3]["items"]
-    @test length(items) === 1 # should be handled as an unique method
-    # show a method with full arguments
-    @test "funcwithdefaultargs(args, defarg)" ∈ map(i -> i["text"], items)
-
-    @eval Main function funcwithdefaultargs(args::String, defarg = "default") end
-    handle("methods", "funcwithdefaultargs")
-    items = readmsg()[3]["items"]
-    @test length(items) === 2 # should be handled as different methods
-    # show methods with full arguments
-    @test "funcwithdefaultargs(args, defarg)" ∈ map(i -> i["text"], items)
-    @test "funcwithdefaultargs(args::String, defarg)" ∈ map(i -> i["text"], items)
 end
