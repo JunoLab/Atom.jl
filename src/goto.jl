@@ -58,10 +58,10 @@ end
 
 # aggregate methods with default arguments to the ones with full arguments
 aggregatemethods(f) = aggregatemethods(methods(f))
-aggregatemethods(ms::MethodList) = aggregatemethods!(collect(ms))
-function aggregatemethods!(ms::Vector{Method})
-  sort!(ms, by = m -> m.nargs, rev = true)
-  unique!(m -> (m.file, m.line), ms)
+aggregatemethods(ms::MethodList) = aggregatemethods(collect(ms))
+function aggregatemethods(ms::Vector{Method})
+  ms = sort(ms, by = m -> m.nargs, rev = true)
+  unique(m -> (m.file, m.line), ms)
 end
 
 function gotoitem(text, file, line = 0, secondary = "")
