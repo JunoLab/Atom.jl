@@ -15,7 +15,7 @@
               end                                                              # L11
             end                                                                # L12
             """
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf64, line + 1, 0, str)[1]
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1]
 
             let item = localgotoitem("row", 2)
                 @test item[:line] === 0
@@ -33,7 +33,8 @@
 
     @testset "goto methods" begin
         using Atom: methodgotoitem
-        #$ basic
+
+        ## basic
         # `Atom.handlemsg` is not defined with default args
         let items = methodgotoitem("Main", "Atom.handlemsg")
             @test length(items) === length(methods(Atom.handlemsg))
