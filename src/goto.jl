@@ -21,9 +21,13 @@ function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", 
     isempty(localitems) || return Dict(:error => false, :items => localitems)
   end
 
-  # toplevel items -- toplevel variables within the module & methods
+  # toplevel items
   toplevelitems = toplevelgotoitem(mod, word)
   isempty(toplevelitems) || return Dict(:error => false, :items => toplevelitems)
+
+  # method goto
+  methodgotoitems = methodgotoitem(mod, word)
+  isempty(methodgotoitems) || return Dict(:error => false, :items => methodgotoitems)
 
   Dict(:error => true) # nothing hits
 end
@@ -42,9 +46,63 @@ function localgotoitem(word, path, column, row, startRow, context)
   end
 end
 
+function gotoitem(text, file, line = 0, secondary = "")
+  Dict(
+    :text      => text,
+    :file      => file,
+    :line      => line,
+    :secondary => secondary
+  )
+end
+
 function toplevelgotoitem(mod, word)
-  methodgotoitem(mod, word)
-  # TODO look through toplevel bindings via CSTParser and enables variable jumps
+  (entrypath = Base.find_package(string(mod))) === nothing && return []
+
+  bindpathmaps = searchtoplevelbindings(entrypath)
+
+  filter!(bindpathmaps) do bindpathmap
+    expr = bindpathmap[1].expr
+    binding = CSTParser.bindingof(expr)
+    if binding === nothing
+      false
+    else
+      name = binding.name
+      word == name
+    end
+  end
+  map(gotoitem, bindpathmaps)
+end
+
+function searchtoplevelbindings(path, bindpathmaps = [])
+  text = read(path, String)
+  parsed = CSTParser.parse(text, true)
+  currentbindings = toplevel_bindings(parsed, text)
+  append!(bindpathmaps, map(binding -> (binding, path), currentbindings))
+
+  for binding in currentbindings
+    expr = binding.expr
+    if isinclude(expr)
+      nextfile = expr.args[3].val
+      nextpath = joinpath(dirname(path), nextfile)
+      searchtoplevelbindings(nextpath, bindpathmaps)
+    end
+  end
+
+  bindpathmaps
+end
+
+function gotoitem(bindpathmap::Tuple{ToplevelBinding, String})
+  bind = bindpathmap[1]
+  expr = bind.expr
+  text = CSTParser.bindingof(expr).name
+  if CSTParser.has_sig(expr)
+    sig = CSTParser.get_sig(expr)
+    text = str_value(sig)
+  end
+  file = bindpathmap[2]
+  line = bind.lines.start - 1
+  secondary = file * ":" * string(line)
+  gotoitem(text, file, line, secondary)
 end
 
 function methodgotoitem(mod, word)
@@ -52,7 +110,7 @@ function methodgotoitem(mod, word)
   if ms isa EvalError
     []
   else
-    map(m -> gotoitem(m), aggregatemethods(ms))
+    map(gotoitem, aggregatemethods(ms))
   end
 end
 
@@ -62,15 +120,6 @@ aggregatemethods(ms::MethodList) = aggregatemethods(collect(ms))
 function aggregatemethods(ms::Vector{Method})
   ms = sort(ms, by = m -> m.nargs, rev = true)
   unique(m -> (m.file, m.line), ms)
-end
-
-function gotoitem(text, file, line = 0, secondary = "")
-  Dict(
-    :text      => text,
-    :file      => file,
-    :line      => line,
-    :secondary => secondary
-  )
 end
 
 function gotoitem(m::Method)
