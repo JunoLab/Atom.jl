@@ -9,21 +9,17 @@
                 l[:line] < position                                     # L5
               end                                                       # L6
               # there should be zero or one element in `ls`             # L7
-              if isempty(ls)                                            # L8
-                return nothing                                          # L9
-              else                                                      # L10
-                return startRow + ls[1][:line] - 1                      # L11
-              end                                                       # L12
-            end                                                         # L13
+              map(l -> localdatatip(l, word, startRow), ls)             # L8
+            end                                                         # L9
             """
-            localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)
-            @test localdatatip("row", 1) == 0
-            @test localdatatip("position", 2) == 1
-            @test localdatatip("l", 4) == 3
+            localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)[1]
+            @test localdatatip("row", 1) == 0 # line
+            @test localdatatip("position", 2) == Dict(:type => :snippet, :value => "position = row - startRow") # binding string
+            @test localdatatip("l", 4) == 3 # line
         end
 
         # don't error on fallback case
-        @test Atom.localdatatip("word", 1, 1, 0, "") === nothing
+        @test Atom.localdatatip("word", 1, 1, 0, "") == []
     end
 
     @testset "code block search" begin

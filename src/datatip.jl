@@ -14,25 +14,26 @@ handle("datatip") do data
     startRow || 0,
     context || ""
   ] = data
-
   datatip(word, mod, path, column, row, startRow, context)
 end
 
 function datatip(word, mod, path, column = 1, row = 1, startRow = 0, context = "")
-  if isdebugging() && (datatip = JunoDebugger.datatip(word, path, row, column)) !== nothing
-    return Dict(:error => false, :strings => datatip)
+  if isdebugging() && (ddt = JunoDebugger.datatip(word, path, row, column)) !== nothing
+    return Dict(:error => false, :strings => ddt)
   end
 
-  let localdatatip = localdatatip(word, column, row, startRow, context)
-    localdatatip !== nothing && return Dict(:error => false, :line => localdatatip)
-  end
+  ldt = localdatatip(word, column, row, startRow, context)
+  isempty(ldt) || return datatip(ldt)
 
-  let topleveldatatip = topleveldatatip(mod, word)
-    topleveldatatip !== nothing && return Dict(:error => false, :strings => topleveldatatip)
-  end
+  tdt = topleveldatatip(mod, word)
+  tdt !== nothing && return Dict(:error => false, :strings => tdt)
 
   return Dict(:error => true) # nothing hits
 end
+
+datatip(dt::Vector{Dict{Symbol, Any}}) = Dict(:error => false, :strings => dt)
+datatip(dt::Int) = Dict(:error => false, :line => dt)
+datatip(dt::Vector{Int}) = datatip(dt[1])
 
 function localdatatip(word, column, row, startRow, context)
   position = row - startRow
@@ -42,16 +43,16 @@ function localdatatip(word, column, row, startRow, context)
     l[:line] < position
   end
   # there should be zero or one element in `ls`
-  if isempty(ls)
-    return nothing
-  else
-    return startRow + ls[1][:line] - 1
-  end
+  map(l -> localdatatip(l, word, startRow), ls)
 end
 
-function localdatatip(l)
-  str = bindingstr(l[:expr])
-  Dict(:type => :snippet, :value => str)
+function localdatatip(l, word, startRow)
+  str = l[:str]
+  return if str == word # when `word` is an argument or such
+    startRow + l[:line] - 1
+  else
+    Dict(:type => :snippet, :value => str)
+  end
 end
 
 function topleveldatatip(mod, word)

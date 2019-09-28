@@ -98,8 +98,11 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     count(c -> c === eol, text[s:e])
 end
 
+# TODO? maybe create separate structs for each downstream ?
+
 struct LocalBinding
     name::String
+    str::String
     span::UnitRange{Int64}
     line::Int
     expr::CSTParser.EXPR
@@ -107,6 +110,7 @@ end
 
 struct LocalScope
     name::String
+    str::String
     span::UnitRange{Int64}
     line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
@@ -142,14 +146,19 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     bind = CSTParser.bindingof(expr)
     scope = scopeof(expr)
     if bind !== nothing && scope === nothing
-        push!(bindings, LocalBinding(bind.name, pos:pos+expr.span, line, expr))
+        str = bindingstr(bind, text, pos)
+        range = pos:pos+expr.span
+        push!(bindings, LocalBinding(bind.name, str, range, line, expr))
     end
 
     if scope !== nothing
         if expr.typ == CSTParser.Kw
             return bindings
         end
+
+        str = bindingstr(bind, text, pos)
         range = pos:pos+expr.span
+
         localbindings = []
         if expr.args !== nothing
             for arg in expr.args
@@ -158,16 +167,20 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
                 pos += arg.fullspan
             end
         end
+
         if expr.typ === CSTParser.TupleH && # destructure multiple return expression
            any(CSTParser.bindingof(a) !== nothing for a in expr.args)
             for leftsidebind in localbindings
                 push!(bindings, leftsidebind)
             end
         else
-            push!(bindings, LocalScope(bind === nothing ? "" : bind.name, range, line, localbindings, expr))
+            name = bind === nothing ? "" : bind.name
+            push!(bindings, LocalScope(name, str, range, line, localbindings, expr))
         end
         return bindings
-    elseif expr.args !== nothing
+    end
+
+    if expr.args !== nothing
         for arg in expr.args
             local_bindings(arg, text, bindings, pos, line)
             line += countlines(arg, text, pos)
@@ -177,6 +190,13 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
 
     return bindings
 end
+
+bindingstr(bind::CSTParser.Binding, text::String, pos::Int) = begin
+    s = nextind(text, pos - 1)
+    e = prevind(text, pos + bind.val.span)
+    text[s:e]
+end
+bindingstr(bind::Nothing, text::String, pos::Int) = ""
 
 function locals(text, line, col)
     parsed = CSTParser.parse(text, true)
@@ -220,12 +240,15 @@ end
 function filter_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
         push!(actual_bindings, Dict(
+            #- completions -#
             :name     => bind.name,
             :root     => root,
-            :line     => bind.line,
             :locality => distance(line, byteoffset, bind.line, bind.span),
             :icon     => static_icon(bind.expr),
-            :type     => static_type(bind.expr)
+            :type     => static_type(bind.expr),
+            #- goto & datatip - #
+            :line     => bind.line,
+            :str      => bind.str,
         ))
         if bind isa LocalScope && byteoffset in bind.span
             filter_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
