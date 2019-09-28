@@ -145,8 +145,8 @@ end
 
 handle("docs") do data
   @destruct [mod || "Main", word] = data
-  docstring = @errs getdocs(mod, word)
 
+  docstring = @errs getdocs(mod, word)
   docstring isa EvalError && return Dict(:error => true)
 
   mtable = try getmethods(mod, word)

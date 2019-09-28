@@ -158,5 +158,8 @@ getdocs(mod::Module, word::String) = begin
 end
 getdocs(mod::String, word::String) = getdocs(getmodule(mod), word)
 
-cangetdocs(mod::Module, word::Symbol) = Base.isbindingresolved(mod, word) && !Base.isdeprecated(mod, word)
+cangetdocs(mod::Module, word::Symbol) =
+  Base.isbindingresolved(mod, word) &&
+  !Base.isdeprecated(mod, word) &&
+  isdefined(mod, Symbol("@doc"))
 cangetdocs(mod::Module, word::String) = cangetdocs(mod, Symbol(word))

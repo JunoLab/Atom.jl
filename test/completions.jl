@@ -26,6 +26,11 @@
                 c[:rightLabel] == "Atom"
             end |> !isempty
         end
+
+        ## don't error for `ModuleCompletion` of modules where `@doc` isn't defined
+        let line = "Core.Compiler.type"
+            @test length(comps(line)) == length(completions(line, lastindex(line))[1])
+        end
     end
 
     # method completion
