@@ -147,7 +147,7 @@ end
 isinclude(expr) = expr.typ === CSTParser.Call && expr.args[1].val == "include"
 
 ### local bindings -- completions, goto ###
-# TODO? create separate structs for each downstream ?
+# TODO? create separate structs for each downstream
 
 struct LocalBinding
     name::String

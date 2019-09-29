@@ -11,27 +11,40 @@ handle("goto") do data
     row || 1,
     startRow || 0,
     context || "",
+    refreshFiles || [],
     onlytoplevel || false
   ] = data
-  goto(word, mod, path, column, row, startRow, context, onlytoplevel)
+  goto(word, mod, path, column, row, startRow, context, refreshFiles, onlytoplevel)
 end
 
-function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", onlytoplevel = false)
+function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", refreshfiles = [], onlytoplevel = false)
   mod = getmodule(mod)
 
   # local items
   if !onlytoplevel
     localitems = localgotoitem(word, path, column, row, startRow, context)
-    isempty(localitems) || return Dict(:error => false, :items => localitems)
+    isempty(localitems) || return Dict(
+      :error => false,
+      :items => localitems,
+      :remainingfiles => refreshfiles
+    )
   end
 
   # toplevel items
-  toplevelitems = toplevelgotoitem(mod, word, path)
-  isempty(toplevelitems) || return Dict(:error => false, :items => toplevelitems)
+  toplevelitems = toplevelgotoitem(mod, word, path, refreshfiles)
+  isempty(toplevelitems) || return Dict(
+    :error => false,
+    :items => toplevelitems,
+    :remainingfiles => refreshfiles
+  )
 
   # method goto
   methodgotoitems = methodgotoitem(mod, word)
-  isempty(methodgotoitems) || return Dict(:error => false, :items => methodgotoitems)
+  isempty(methodgotoitems) || return Dict(
+    :error => false,
+    :items => methodgotoitems,
+    :remainingfiles => refreshfiles
+  )
 
   Dict(:error => true) # nothing hits
 end
@@ -63,21 +76,32 @@ end
 
 ## toplevel goto
 
-function toplevelgotoitem(mod, word, path)
+function toplevelgotoitem(mod, word, path, refreshfiles)
   entrypath = Base.find_package(string(mod))
-  entrypath === nothing && entrypath = path # for e.g.: Base modules
+  entrypath === nothing && (entrypath = path) # for e.g.: Base modules
 
-  itempathmaps = searchtoplevelitems(entrypath)
+  itempathmaps = searchtoplevelitems(entrypath, refreshfiles)
 
   ismacro(word) && (word = lstrip(word, '@'))
   filter!(itempathmap -> filtertoplevelitem(itempathmap, word), itempathmaps)
   map(gotoitem, itempathmaps)
 end
 
-function searchtoplevelitems(path::String, itempathmaps = [])
-  text = read(path, String)
-  parsed = CSTParser.parse(text, true)
-  currentitems = toplevelitems(parsed, text)
+const symbolscache = Dict{String, Vector{ToplevelItem}}()
+
+function searchtoplevelitems(path, refreshfiles, itempathmaps = [])
+  ind = findfirst(p -> p == path, refreshfiles)
+  currentitems = if haskey(symbolscache, path) && ind === nothing
+    symbolscache[path]
+  else
+    text = read(path, String)
+    parsed = CSTParser.parse(text, true)
+    items = toplevelitems(parsed, text)
+    symbolscache[path] = items
+    ind !== nothing && deleteat!(refreshfiles, ind)
+    items
+  end
+
   append!(itempathmaps, map(item -> (item, path), currentitems))
 
   for item in currentitems
@@ -86,7 +110,7 @@ function searchtoplevelitems(path::String, itempathmaps = [])
       if isinclude(expr)
         nextfile = expr.args[3].val
         nextpath = joinpath(dirname(path), nextfile)
-        searchtoplevelitems(nextpath, itempathmaps)
+        searchtoplevelitems(nextpath, refreshfiles, itempathmaps)
       end
     end
   end
