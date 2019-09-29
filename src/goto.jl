@@ -5,7 +5,7 @@
 handle("goto") do data
   @destruct [
     word,
-    path || "",
+    path || nothing,
     mod || "Main",
     column || 1,
     row || 1,
@@ -64,6 +64,7 @@ function localgotoitem(word, path, column, row, startRow, context)
     gotoitem(text, path, line)
   end
 end
+localgotoitem(word, ::Nothing, column, row, startRow, context) = [] # when `path` is not destructured
 
 function gotoitem(text, file, line = 0, secondary = "")
   Dict(
@@ -117,6 +118,7 @@ function searchtoplevelitems(path, refreshfiles, itempathmaps = [])
 
   itempathmaps
 end
+searchtoplevelitems(::Nothing, refreshfiles, itempathmaps = []) = itempathmaps  # when `path` is not destructured
 
 filtertoplevelitem(itempathmap, word) = false
 function filtertoplevelitem(bindpathmap::Tuple{ToplevelBinding, String}, word)

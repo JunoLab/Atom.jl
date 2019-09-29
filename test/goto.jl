@@ -28,7 +28,14 @@
         end
 
         # don't error on fallback case
-        @test Atom.localgotoitem("word", "path", 1, 1, 0, "") == []
+        @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
+    end
+
+    @testset "goto toplevel symbols" begin
+        using Atom: toplevelgotoitem
+
+        # don't error on fallback case
+        @test toplevelgotoitem(Main, "word", nothing, []) == []
     end
 
     @testset "goto methods" begin
