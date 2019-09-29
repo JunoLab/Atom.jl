@@ -28,7 +28,7 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
         push!(items, ToplevelBinding(expr, bind, lines))
     end
 
-    lines = line:line+countlines(expr, text, pos)
+    lines = line:line+countlines(expr, text, pos, false)
 
     # call
     if istoplevelcall(expr)
