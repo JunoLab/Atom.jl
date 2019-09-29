@@ -1,3 +1,7 @@
+#=
+@TODO: remove dot accessor within local bindings
+=#
+
 handle("goto") do data
   @destruct [
     word,
@@ -32,6 +36,8 @@ function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", 
   Dict(:error => true) # nothing hits
 end
 
+## local goto
+
 function localgotoitem(word, path, column, row, startRow, context)
   position = row - startRow
   ls = locals(context, position, column)
@@ -55,46 +61,56 @@ function gotoitem(text, file, line = 0, secondary = "")
   )
 end
 
+## toplevel goto
+
 function toplevelgotoitem(mod, word)
   (entrypath = Base.find_package(string(mod))) === nothing && return []
 
-  bindpathmaps = searchtoplevelbindings(entrypath)
+  itempathmaps = searchtoplevelitems(entrypath)
 
-  filter!(bindpathmaps) do bindpathmap
-    expr = bindpathmap[1].expr
-    binding = CSTParser.bindingof(expr)
-    if binding === nothing
-      false
-    else
-      name = binding.name
-      word == name
-    end
-  end
-  map(gotoitem, bindpathmaps)
+  filter!(itempathmap -> filtertoplevelitem(itempathmap, word), itempathmaps)
+  map(gotoitem, itempathmaps)
 end
 
-function searchtoplevelbindings(path, bindpathmaps = [])
+function searchtoplevelitems(path::String, itempathmaps = [])
   text = read(path, String)
   parsed = CSTParser.parse(text, true)
-  currentbindings = toplevel_bindings(parsed, text)
-  append!(bindpathmaps, map(binding -> (binding, path), currentbindings))
+  currentitems = toplevelitems(parsed, text)
+  append!(itempathmaps, map(item -> (item, path), currentitems))
 
-  for binding in currentbindings
-    expr = binding.expr
-    if isinclude(expr)
-      nextfile = expr.args[3].val
-      nextpath = joinpath(dirname(path), nextfile)
-      searchtoplevelbindings(nextpath, bindpathmaps)
+  for item in currentitems
+    if item isa ToplevelCall
+      expr = item.expr
+      if isinclude(expr)
+        nextfile = expr.args[3].val
+        nextpath = joinpath(dirname(path), nextfile)
+        searchtoplevelitems(nextpath, itempathmaps)
+      end
     end
   end
 
-  bindpathmaps
+  itempathmaps
+end
+
+filtertoplevelitem(itempathmap, word) = false
+function filtertoplevelitem(bindpathmap::Tuple{ToplevelBinding, String}, word)
+  bind = bindpathmap[1].bind
+  bind === nothing ? false : word == bind.name
+end
+function filtertoplevelitem(tuplehpathmap::Tuple{ToplevelTupleH, String}, word)
+  expr = tuplehpathmap[1].expr
+  for arg in expr.args
+    if str_value(arg) == word
+      return true
+    end
+  end
+  return false
 end
 
 function gotoitem(bindpathmap::Tuple{ToplevelBinding, String})
   bind = bindpathmap[1]
   expr = bind.expr
-  text = CSTParser.bindingof(expr).name
+  text = bind.bind.name
   if CSTParser.has_sig(expr)
     sig = CSTParser.get_sig(expr)
     text = str_value(sig)
@@ -104,6 +120,17 @@ function gotoitem(bindpathmap::Tuple{ToplevelBinding, String})
   secondary = file * ":" * string(line)
   gotoitem(text, file, line, secondary)
 end
+function gotoitem(tuplehpathmap::Tuple{ToplevelTupleH, String})
+  tupleh = tuplehpathmap[1]
+  expr = tupleh.expr
+  text = str_value(expr)
+  file = tuplehpathmap[2]
+  line = tupleh.lines.start - 1
+  secondary = file * ":" * string(line)
+  gotoitem(text, file, line, secondary)
+end
+
+## method goto
 
 function methodgotoitem(mod, word)
   ms = @errs getmethods(mod, word)

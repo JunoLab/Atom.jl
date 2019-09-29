@@ -1,13 +1,73 @@
 using CSTParser
 
-### toplevel bindings - outlines ###
+### toplevel bindings - outline ###
 
 struct ToplevelBinding
     expr::CSTParser.EXPR
-    name::String
-    type::String
-    icon::String
+    bind::CSTParser.Binding
     lines::UnitRange{Int}
+end
+
+struct ToplevelCall
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
+end
+
+struct ToplevelTupleH
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
+end
+
+ToplevelItem = Union{ToplevelBinding, ToplevelCall, ToplevelTupleH}
+
+function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1)
+    # binding
+    bind = CSTParser.bindingof(expr)
+    if bind !== nothing
+        lines = line:line+countlines(expr, text, pos, false)
+        push!(items, ToplevelBinding(expr, bind, lines))
+    end
+
+    lines = line:line+countlines(expr, text, pos)
+
+    # call
+    if istoplevelcall(expr)
+        push!(items, ToplevelCall(expr, lines))
+    end
+
+    # return
+    if istoplevel(expr)
+        # destructure multiple returns
+        ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
+
+        return items
+    end
+
+    # more recursive call
+    if expr.args !== nothing
+        for arg in expr.args
+            toplevelitems(arg, text, items, line, pos)
+            line += countlines(arg, text, pos)
+            pos += arg.fullspan
+        end
+    end
+    return items
+end
+
+istoplevelcall(expr) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
+
+function istoplevel(expr)
+    scopeof(expr) !== nothing &&
+    !(
+        expr.typ === CSTParser.FileH ||
+        expr.typ === CSTParser.ModuleH ||
+        expr.typ === CSTParser.BareModule
+    )
+end
+
+function ismultiplereturn(expr)
+    expr.typ === CSTParser.TupleH &&
+    !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
 handle("outline") do text
@@ -20,85 +80,69 @@ end
 
 function outline(text)
     parsed = CSTParser.parse(text, true)
-    bindings = toplevel_bindings(parsed, text)
-    map(outlineitem, bindings)
+    items = toplevelitems(parsed, text)
+    filter!(map(outlineitem, items)) do item
+        item !== nothing
+    end
 end
+function outlineitem(binding::ToplevelBinding)
+    expr = binding.expr
+    bind = binding.bind
+    lines = binding.lines
 
-function outlineitem(binding)
+    name = bind.name
+    if CSTParser.has_sig(expr)
+        sig = CSTParser.get_sig(expr)
+        name = str_value(sig)
+    end
+    type = static_type(bind)
+    icon = static_icon(bind)
     Dict(
-        :name  => binding.name,
-        :type  => binding.type,
-        :icon  => binding.icon,
-        :lines => [binding.lines.start, binding.lines.stop]
+        :name  => name,
+        :type  => type,
+        :icon  => icon,
+        :lines => [lines.start, lines.stop]
     )
 end
+function outlineitem(call::ToplevelCall)
+    expr = call.expr
+    lines = call.lines
 
-function toplevel_bindings(expr, text, bindings::Vector{ToplevelBinding} = Vector{ToplevelBinding}(), line = 1, pos = 1)
-    bind = CSTParser.bindingof(expr)
-
-    if bind !== nothing
-        name = bind.name
-        if CSTParser.has_sig(expr)
-            sig = CSTParser.get_sig(expr)
-            name = str_value(sig)
-        end
-
-        type = static_type(bind)
-        icon = static_icon(bind)
-        lines = line:line+countlines(expr, text, pos, false)
-        push!(bindings, ToplevelBinding(expr, name, type, icon, lines))
-    end
-
-    if istoplevel(expr)
-        destructuretupleh!(expr, bindings, text, line, pos)
-        describetest!(expr, bindings, text, line, pos)
-        findinclude!(expr, bindings, text, line, pos)
-        return bindings
-    end
-
-    if expr.args !== nothing
-        for arg in expr.args
-            toplevel_bindings(arg, text, bindings, line, pos)
-            line += countlines(arg, text, pos)
-            pos += arg.fullspan
-        end
-    end
-    return bindings
-end
-
-function istoplevel(expr)
-    scopeof(expr) !== nothing &&
-    !(
-        expr.typ === CSTParser.FileH ||
-        expr.typ === CSTParser.ModuleH ||
-        expr.typ === CSTParser.BareModule
-    )
-end
-
-function destructuretupleh!(expr, bindings, text, line, pos)
-    if expr.typ === CSTParser.TupleH
-        name = join((str_value(a) for a in expr.args if CSTParser.bindingof(a) !== nothing), ',')
-        if !isempty(name)
-            lines = line:line + countlines(expr, text, pos)
-            push!(bindings, ToplevelBinding(expr, name, "variable", "v", lines))
-        end
-    end
-end
-
-function describetest!(expr, bindings, text, line, pos)
-    if expr.typ === CSTParser.MacroCall && expr.args[1].val == "@testset"
+    # describe @testset
+    if expr.typ === CSTParser.MacroCall && str_value(expr.args[1]) == "@testset"
         name = "@testset" * " " * str_value(expr.args[2])
-        lines = line:line + countlines(expr, text, pos)
-        push!(bindings, ToplevelBinding(expr, name, "module", "icon-checklist", lines))
+        return Dict(
+            :name  => name,
+            :type  => "module",
+            :icon  => "icon-checklist",
+            :lines => [lines.start, lines.stop],
+        )
     end
-end
 
-function findinclude!(expr, bindings, text, line, pos)
+    # show includes
     if isinclude(expr)
         file = expr.args[3].val
         name = "include(" * file * ")"
-        push!(bindings, ToplevelBinding(expr, name, "module", "icon-file", line:line))
+        return Dict(
+            :name  => name,
+            :type  => "module",
+            :icon  => "icon-file",
+            :lines => [lines.start, lines.stop],
+        )
     end
+
+    return nothing
+end
+function outlineitem(tupleh::ToplevelTupleH)
+    expr = tupleh.expr
+    lines = tupleh.lines
+
+    Dict(
+        :name  => str_value(expr),
+        :type  => "variable",
+        :icon  => "v",
+        :lines => [lines.start, lines.stop]
+    )
 end
 
 isinclude(expr) = expr.typ === CSTParser.Call && expr.args[1].val == "include"
