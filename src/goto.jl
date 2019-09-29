@@ -26,7 +26,7 @@ function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", 
   end
 
   # toplevel items
-  toplevelitems = toplevelgotoitem(mod, word)
+  toplevelitems = toplevelgotoitem(mod, word, path)
   isempty(toplevelitems) || return Dict(:error => false, :items => toplevelitems)
 
   # method goto
@@ -63,11 +63,13 @@ end
 
 ## toplevel goto
 
-function toplevelgotoitem(mod, word)
-  (entrypath = Base.find_package(string(mod))) === nothing && return []
+function toplevelgotoitem(mod, word, path)
+  entrypath = Base.find_package(string(mod))
+  entrypath === nothing && entrypath = path # for e.g.: Base modules
 
   itempathmaps = searchtoplevelitems(entrypath)
 
+  ismacro(word) && (word = lstrip(word, '@'))
   filter!(itempathmap -> filtertoplevelitem(itempathmap, word), itempathmaps)
   map(gotoitem, itempathmaps)
 end

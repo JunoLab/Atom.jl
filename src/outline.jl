@@ -110,10 +110,10 @@ function outlineitem(call::ToplevelCall)
 
     # describe @testset
     if expr.typ === CSTParser.MacroCall && str_value(expr.args[1]) == "@testset"
-        name = "@testset" * " " * str_value(expr.args[2])
+        name = "@testset"
         return Dict(
-            :name  => name,
-            :type  => "module",
+            :name  => length(expr.args) >= 2 ? name * " " * str_value(expr.args[2]) : name,
+            :type  => length(expr.args) >= 2 ? "module" : "ignored",
             :icon  => "icon-checklist",
             :lines => [lines.start, lines.stop],
         )
@@ -121,12 +121,11 @@ function outlineitem(call::ToplevelCall)
 
     # show includes
     if isinclude(expr)
-        file = expr.args[3].val
-        name = "include(" * file * ")"
+        name = "include"
         return Dict(
-            :name  => name,
+            :name  => str_value(expr),
             :type  => "module",
-            :icon  => "icon-file",
+            :icon  => "icon-file-code",
             :lines => [lines.start, lines.stop],
         )
     end
@@ -340,9 +339,14 @@ function str_value(x)
 end
 
 bindingstr(bind::CSTParser.Binding, text::String, pos::Int) = begin
-    s = nextind(text, pos - 1)
-    e = prevind(text, pos + bind.val.span)
-    text[s:e]
+    epos = pos + bind.val.span
+    if ncodeunits(text) + 1 < epos
+        ""
+    else
+        s = nextind(text, pos - 1)
+        e = prevind(text, epos)
+        text[s:e]
+    end
 end
 bindingstr(bind::Nothing, text::String, pos::Int) = ""
 
