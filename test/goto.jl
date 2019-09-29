@@ -65,9 +65,7 @@
         end
 
         ## where `Base.find_package(modstr)` works
-        let path = joinpath(@__DIR__, "fixtures", "Junk.jl")
-            include(path)
-
+        let path = junkpath
             # basic
             let items = toplevelgotoitem("Main.Junk", "toplevelval", path, [])
                 @test !isempty(items)
