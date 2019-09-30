@@ -122,10 +122,14 @@ function outlineitem(tupleh::ToplevelTupleH)
     expr = tupleh.expr
     lines = tupleh.lines
 
+    # `expr.parent` is always `CSTParser.EXPR`
+    type = isconst(expr.parent) ? "constant" : "variable"
+    icon = isconst(expr.parent) ? "c" : "v"
+
     Dict(
         :name  => str_value(expr),
-        :type  => "variable",
-        :icon  => "v",
+        :type  => type,
+        :icon  => icon,
         :lines => [first(lines), last(lines)]
     )
 end
@@ -317,7 +321,7 @@ function str_value(x)
         x.kind == CSTParser.Tokens.RPAREN && return ")"
         x.kind == CSTParser.Tokens.RBRACE && return "}"
         x.kind == CSTParser.Tokens.RSQUARE && return "]"
-        x.kind == CSTParser.Tokens.COMMA && return ","
+        x.kind == CSTParser.Tokens.COMMA && return ", "
         x.kind == CSTParser.Tokens.SEMICOLON && return ";"
         x.kind == CSTParser.Tokens.AT_SIGN && return "@"
         x.kind == CSTParser.Tokens.DOT && return "."
@@ -326,8 +330,12 @@ function str_value(x)
         return string("\"\"\"", x.val, "\"\"\"")
     elseif x.kind === CSTParser.Tokens.STRING
         return string("\"", x.val, "\"")
+    elseif x.kind === CSTParser.Tokens.EQ
+        return " = "
+    elseif x.kind === CSTParser.Tokens.WHERE
+        return " where "
     elseif x.typ === CSTParser.Parameters
-        return ";" * join(str_value(a) for a in x)
+        return "; " * join(str_value(a) for a in x)
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
     else
@@ -362,7 +370,7 @@ function static_type(val::CSTParser.EXPR)
            CSTParser.defines_primitive(val)
         "type"
     else
-        "variable"
+        isconst(val) ? "constant" : "variable"
     end
 end
 
@@ -381,6 +389,11 @@ function static_icon(val::CSTParser.EXPR)
            CSTParser.defines_primitive(val)
         "T"
     else
-        "v"
+        isconst(val) ? "c" : "v"
     end
+end
+
+function Base.isconst(expr::CSTParser.EXPR)
+    parent = CSTParser.parentof(expr)
+    parent === nothing ? false : parent.typ === CSTParser.Const
 end

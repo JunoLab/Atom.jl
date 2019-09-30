@@ -143,9 +143,9 @@ end
                 :lines => [3, 5]
             ),
             Dict(
-                :type => "variable",
+                :type => "constant",
                 :name => "sss",
-                :icon => "v",
+                :icon => "c",
                 :lines => [6, 6]
             )
         ]
@@ -162,20 +162,20 @@ end
         @test Atom.outline(str) == Any[
             Dict(
                 :type => "function",
-                :name => "bar(foo=3)",
+                :name => "bar(foo = 3)",
                 :icon => "λ",
                 :lines => [1, 3]
             ),
             Dict(
-                :type => "variable",
+                :type => "constant",
                 :name => "foo",
-                :icon => "v",
+                :icon => "c",
                 :lines => [4, 4]
             ),
             Dict(
-                :type => "variable",
+                :type => "constant",
                 :name => "bar",
-                :icon => "v",
+                :icon => "c",
                 :lines => [5, 5]
             ),
         ]
@@ -185,6 +185,7 @@ end
     let str = """
         tuple = (one = 1, two = 2) # `(one = 1, two = 2)` shouldn't leak
         a, b = tuple # `a, b` should be correctly destructured
+        const c1, c2 = tuple # static constantness checks
         """
         @test Atom.outline(str) == Any[
             Dict(
@@ -195,9 +196,15 @@ end
             ),
             Dict(
                 :type => "variable",
-                :name => "a,b",
+                :name => "a, b",
                 :icon => "v",
                 :lines => [2, 2]
+            ),
+            Dict(
+                :type => "constant",
+                :name => "c1, c2",
+                :icon => "c",
+                :lines => [3, 3]
             )
         ]
     end
