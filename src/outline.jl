@@ -301,8 +301,9 @@ end
 
 function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
     endpos = pos + (full ? expr.fullspan : expr.span)
-    s = nextind(text, clamp(pos - 1, 0, ncodeunits(text)))
-    e = prevind(text, clamp(endpos, 1, ncodeunits(text) + 1))
+    n = ncodeunits(text)
+    s = nextind(text, clamp(pos - 1, 0, n))
+    e = prevind(text, clamp(endpos, 1, n + 1))
     count(c -> c === eol, text[s:e])
 end
 
@@ -345,14 +346,11 @@ function str_value(x)
 end
 
 function bindingstr(bind::CSTParser.Binding, text::String, pos::Int)
-    epos = pos + bind.val.span
-    if ncodeunits(text) + 1 < epos
-        ""
-    else
-        s = nextind(text, pos - 1)
-        e = prevind(text, epos)
-        text[s:e]
-    end
+    endpos = pos + bind.val.span
+    n = ncodeunits(text)
+    s = nextind(text, clamp(pos - 1, 0, n))
+    e = prevind(text, clamp(endpos, 1, n + 1))
+    text[s:e]
 end
 bindingstr(bind::Nothing, text::String, pos::Int) = ""
 
