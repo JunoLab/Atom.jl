@@ -229,13 +229,6 @@ end
                 @test call[:icon] == "icon-checklist"
             end
         end
-        # don't cause error when incomplete
-        let str = "@testset "
-            call = Atom.outline(str)[1]
-            @test call[:type] == "ignored"
-            @test call[:name] == "@testset"
-            @test call[:icon] == "icon-checklist"
-        end
 
         # include
         let str = """
@@ -249,13 +242,6 @@ end
                 @test call[:name] == "include(\"test.jl\")"
                 @test call[:icon] == "icon-file-code"
             end
-        end
-        # don't cause error when incomplete
-        let str = "include()"
-            call = Atom.outline(str)[1]
-            @test call[:type] == "module"
-            @test call[:name] == "include()"
-            @test call[:icon] == "icon-file-code"
         end
     end
 end

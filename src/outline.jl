@@ -1,6 +1,6 @@
 using CSTParser
 
-### toplevel bindings - outline ###
+### toplevel bindings - outline, goto ###
 
 struct ToplevelBinding
     expr::CSTParser.EXPR
@@ -30,20 +30,15 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
 
     lines = line:line+countlines(expr, text, pos, false)
 
-    # call
-    if istoplevelcall(expr)
-        push!(items, ToplevelCall(expr, lines))
-    end
+    # toplevel call
+    iscall′(expr) && push!(items, ToplevelCall(expr, lines))
+    # destructure multiple returns
+    ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
 
     # return
-    if istoplevel(expr)
-        # destructure multiple returns
-        ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
+    istoplevel(expr) && return items
 
-        return items
-    end
-
-    # more recursive call
+    # return after more recursive call
     if expr.args !== nothing
         for arg in expr.args
             toplevelitems(arg, text, items, line, pos)
@@ -54,8 +49,6 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     return items
 end
 
-istoplevelcall(expr) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
-
 function istoplevel(expr)
     scopeof(expr) !== nothing &&
     !(
@@ -64,6 +57,8 @@ function istoplevel(expr)
         expr.typ === CSTParser.BareModule
     )
 end
+
+iscall′(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
 
 function ismultiplereturn(expr)
     expr.typ === CSTParser.TupleH &&
@@ -108,12 +103,11 @@ function outlineitem(call::ToplevelCall)
     expr = call.expr
     lines = call.lines
 
-    # describe @testset
-    if expr.typ === CSTParser.MacroCall && str_value(expr.args[1]) == "@testset"
-        name = "@testset"
+    # TODO: describe testset
+    if istestset(expr)
         return Dict(
-            :name  => length(expr.args) >= 2 ? name * " " * str_value(expr.args[2]) : name,
-            :type  => length(expr.args) >= 2 ? "module" : "ignored",
+            :name  =>  "@testset " * str_value(expr.args[2]),
+            :type  => "module",
             :icon  => "icon-checklist",
             :lines => [lines.start, lines.stop],
         )
@@ -144,10 +138,22 @@ function outlineitem(tupleh::ToplevelTupleH)
     )
 end
 
-isinclude(expr) = expr.typ === CSTParser.Call && expr.args[1].val == "include"
+function istestset(expr)
+    expr.typ === CSTParser.MacroCall &&
+    length(expr.args) >= 2 &&
+    str_value(expr.args[1]) == "@testset"
+end
 
-### local bindings -- completions, goto ###
-# TODO? create separate structs for each downstream
+function isinclude(expr)
+    expr.typ === CSTParser.Call &&
+    length(expr.args) >= 3 &&
+    expr.args[1].val == "include"
+end
+
+### local bindings -- completions, goto, datatip ###
+
+# TODO? just keep minimal fields in those structs like `expr`, `line`, and each downstream
+#   composites info that are necessary for them
 
 struct LocalBinding
     name::String
@@ -338,7 +344,7 @@ function str_value(x)
     end
 end
 
-bindingstr(bind::CSTParser.Binding, text::String, pos::Int) = begin
+function bindingstr(bind::CSTParser.Binding, text::String, pos::Int)
     epos = pos + bind.val.span
     if ncodeunits(text) + 1 < epos
         ""
