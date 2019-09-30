@@ -2,6 +2,8 @@ using CSTParser
 
 ### toplevel bindings - outline, goto ###
 
+# TODO?: create separate function to search toplevel bindings, and to search calls
+
 struct ToplevelBinding
     expr::CSTParser.EXPR
     bind::CSTParser.Binding
@@ -18,7 +20,7 @@ struct ToplevelTupleH
     lines::UnitRange{Int}
 end
 
-ToplevelItem = Union{ToplevelBinding, ToplevelCall, ToplevelTupleH}
+const ToplevelItem = Union{ToplevelBinding, ToplevelCall, ToplevelTupleH}
 
 function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1)
     # binding
@@ -55,13 +57,6 @@ function shouldenter(expr)
         expr.typ === CSTParser.ModuleH ||
         expr.typ === CSTParser.BareModule
     ))
-end
-
-iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
-
-function ismultiplereturn(expr)
-    expr.typ === CSTParser.TupleH &&
-    !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
 handle("outline") do text
@@ -101,7 +96,6 @@ function outlineitem(call::ToplevelCall)
     expr = call.expr
     lines = call.lines
 
-    # TODO: describe testset
     if istestset(expr)
         return Dict(
             :name  => "@testset " * str_value(expr.args[2]),
@@ -150,12 +144,9 @@ end
 
 ### local bindings -- completions, goto, datatip ###
 
-# TODO? just keep minimal fields in those structs like `expr`, `line`, and each downstream
-#   composites info that are necessary for them
-
 struct LocalBinding
     name::String
-    str::String
+    bindstr::String
     span::UnitRange{Int64}
     line::Int
     expr::CSTParser.EXPR
@@ -163,7 +154,7 @@ end
 
 struct LocalScope
     name::String
-    str::String
+    bindstr::String
     span::UnitRange{Int64}
     line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
@@ -173,30 +164,28 @@ end
 function locals(text, line, col)
     parsed = CSTParser.parse(text, true)
     bindings = local_bindings(parsed, text)
-    bindings = filter_local_bindings(bindings, line, byteoffset(text, line, col))
-    bindings = filter(x -> !isempty(x[:name]), bindings)
-    bindings = sort(bindings, lt = (a,b) -> a[:locality] < b[:locality])
-    bindings = unique(x -> x[:name], bindings)
-    bindings
+    actual_local_bindings(bindings, line, byteoffset(text, line, col))
 end
 
 function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
+    # binding
     bind = CSTParser.bindingof(expr)
     scope = scopeof(expr)
     if bind !== nothing && scope === nothing
-        str = bindingstr(bind, text, pos)
+        bindstr = bindingstr(bind, text, pos)
         range = pos:pos+expr.span
-        push!(bindings, LocalBinding(bind.name, str, range, line, expr))
+        push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
     end
 
     if scope !== nothing
-        if expr.typ == CSTParser.Kw
-            return bindings
-        end
+        expr.typ == CSTParser.Kw && return bindings
 
-        str = bindingstr(bind, text, pos)
+        # for `LocalScope` below
+        bindstr = bindingstr(bind, text, pos)
         range = pos:pos+expr.span
+        name = bind === nothing ? "" : bind.name
 
+        # local binds in a scope
         localbindings = []
         if expr.args !== nothing
             for arg in expr.args
@@ -206,13 +195,18 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
             end
         end
 
-        destructuretupleh!(expr, bindings, localbindings)
+        # destructure multiple returns
+        if ismultiplereturn(expr)
+            for leftsidebind in localbindings
+                push!(bindings, leftsidebind)
+            end
+        end
 
-        name = bind === nothing ? "" : bind.name
-        push!(bindings, LocalScope(name, str, range, line, localbindings, expr))
+        push!(bindings, LocalScope(name, bindstr, range, line, localbindings, expr))
         return bindings
     end
 
+    # look for more local bindings if exists
     if expr.args !== nothing
         for arg in expr.args
             local_bindings(arg, text, bindings, pos, line)
@@ -222,14 +216,6 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     end
 
     return bindings
-end
-
-function destructuretupleh!(expr, bindings, localbindings)
-    if expr.typ === CSTParser.TupleH && any(CSTParser.bindingof(a) !== nothing for a in expr.args)
-        for leftsidebind in localbindings
-            push!(bindings, leftsidebind)
-        end
-    end
 end
 
 function byteoffset(text, line, col)
@@ -248,25 +234,25 @@ function byteoffset(text, line, col)
     byteoffset
 end
 
-function filter_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
+function actual_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
         push!(actual_bindings, Dict(
-            #- completions -#
             :name     => bind.name,
+            :bindstr  => bind.bindstr,
             :root     => root,
+            :line     => bind.line,
             :locality => distance(line, byteoffset, bind.line, bind.span),
             :icon     => static_icon(bind.expr),
             :type     => static_type(bind.expr),
-            #- goto & datatip - #
-            :line     => bind.line,
-            :str      => bind.str,
         ))
         if bind isa LocalScope && byteoffset in bind.span
-            filter_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
+            actual_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
         end
     end
 
-    actual_bindings
+    filter!(b -> !isempty(b[:name]), actual_bindings)
+    sort!(actual_bindings, lt = (b1, b2) -> b1[:locality] < b2[:locality])
+    unique(b -> b[:name], actual_bindings)
 end
 
 function distance(line, byteoffset, defline, defspan)
@@ -313,6 +299,13 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     s = nextind(text, pos - 1)
     e = prevind(text, pos + (full ? expr.fullspan : expr.span))
     count(c -> c === eol, text[s:e])
+end
+
+iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
+
+function ismultiplereturn(expr)
+    expr.typ === CSTParser.TupleH &&
+    !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
 # adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
