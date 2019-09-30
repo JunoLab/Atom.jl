@@ -76,7 +76,7 @@ end
 
 function toplevelgotoitem(mod, word, path, refreshfiles)
   entrypath = Base.find_package(string(mod))
-  entrypath === nothing && (entrypath = path) # for e.g.: Base modules
+  entrypath === nothing && (entrypath = path) # e.g. Base modules
 
   itempathmaps = searchtoplevelitems(entrypath, refreshfiles)
 

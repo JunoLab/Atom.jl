@@ -310,8 +310,9 @@ function scopeof(expr)
 end
 
 function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
-    s = nextind(text, pos - 1)
-    e = prevind(text, pos + (full ? expr.fullspan : expr.span))
+    endpos = pos + (full ? expr.fullspan : expr.span)
+    s = nextind(text, clamp(pos - 1, 0, ncodeunits(text)))
+    e = prevind(text, clamp(endpos, 1, ncodeunits(text) + 1))
     count(c -> c === eol, text[s:e])
 end
 
