@@ -17,12 +17,12 @@ handle("datatip") do data
   datatip(word, mod, path, column, row, startRow, context)
 end
 
-function datatip(word, mod, path, column = 1, row = 1, startRow = 0, context = "")
+function datatip(word, mod, path, column = 1, row = 1, startrow = 0, context = "")
   if isdebugging() && (ddt = JunoDebugger.datatip(word, path, row, column)) !== nothing
     return Dict(:error => false, :strings => ddt)
   end
 
-  ldt = localdatatip(word, column, row, startRow, context)
+  ldt = localdatatip(word, column, row, startrow, context)
   isempty(ldt) || return datatip(ldt)
 
   tdt = topleveldatatip(mod, word)
@@ -35,21 +35,22 @@ datatip(dt::Vector{Dict{Symbol, Any}}) = Dict(:error => false, :strings => dt)
 datatip(dt::Int) = Dict(:error => false, :line => dt)
 datatip(dt::Vector{Int}) = datatip(dt[1])
 
-function localdatatip(word, column, row, startRow, context)
-  position = row - startRow
+function localdatatip(word, column, row, startrow, context)
+  word = first(split(word, '.')) # ignore dot accessors
+  position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
     l[:name] == word &&
     l[:line] < position
   end
   # there should be zero or one element in `ls`
-  map(l -> localdatatip(l, word, startRow), ls)
+  map(l -> localdatatip(l, word, startrow), ls)
 end
 
-function localdatatip(l, word, startRow)
+function localdatatip(l, word, startrow)
   str = l[:str]
   return if str == word # when `word` is an argument or such
-    startRow + l[:line] - 1
+    startrow + l[:line] - 1
   else
     Dict(:type => :snippet, :value => str)
   end

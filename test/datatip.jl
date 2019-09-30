@@ -11,11 +11,26 @@
               # there should be zero or one element in `ls`             # L7
               map(l -> localdatatip(l, word, startRow), ls)             # L8
             end                                                         # L9
-            """
+            """,
             localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)[1]
+
             @test localdatatip("row", 1) == 0 # line
             @test localdatatip("position", 2) == Dict(:type => :snippet, :value => "position = row - startRow") # binding string
             @test localdatatip("l", 4) == 3 # line
+        end
+
+        # remove dot accessors
+        let str = """
+            function withdots(expr::CSTParser.EXPR)
+                bind = CSTParser.bindingof(expr.args[1])
+                val = bind.val
+                return val
+            end
+            """,
+            localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)[1]
+
+            @test localdatatip("expr.args", 1)[:value] == "expr::CSTParser.EXPR"
+            @test localdatatip("bind.val", 2)[:value] == "bind = CSTParser.bindingof(expr.args[1])"
         end
 
         # don't error on fallback case

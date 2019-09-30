@@ -14,7 +14,7 @@
                 gotoitem(text, path, line)                                     # L10
               end                                                              # L11
             end                                                                # L12
-            """
+            """,
             localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1]
 
             let item = localgotoitem("row", 2)
@@ -25,6 +25,20 @@
             @test localgotoitem("position", 2)[:line] === 1
             @test localgotoitem("l", 4)[:line] === 3
             @test localgotoitem("l", 8)[:line] === 7
+        end
+
+        # remove dot accessors
+        let str = """
+            function withdots(expr::CSTParser.EXPR)
+                bind = CSTParser.bindingof(expr.args[1])
+                val = bind.val
+                return val
+            end
+            """,
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1]
+
+            @test localgotoitem("expr.args", 1)[:line] === 0
+            @test localgotoitem("bind.val", 2)[:line] === 1
         end
 
         # don't error on fallback case

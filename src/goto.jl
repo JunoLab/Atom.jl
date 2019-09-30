@@ -1,7 +1,3 @@
-#=
-@TODO: remove dot accessor within local bindings
-=#
-
 handle("goto") do data
   @destruct [
     word,
@@ -12,17 +8,17 @@ handle("goto") do data
     startRow || 0,
     context || "",
     refreshFiles || [],
-    onlytoplevel || false
+    onlyToplevel || false
   ] = data
-  goto(word, mod, path, column, row, startRow, context, refreshFiles, onlytoplevel)
+  goto(word, mod, path, column, row, startRow, context, refreshFiles, onlyToplevel)
 end
 
-function goto(word, mod, path, column = 1, row = 1, startRow = 0, context = "", refreshfiles = [], onlytoplevel = false)
+function goto(word, mod, path, column = 1, row = 1, startrow = 0, context = "", refreshfiles = [], onlytoplevel = false)
   mod = getmodule(mod)
 
   # local items
   if !onlytoplevel
-    localitems = localgotoitem(word, path, column, row, startRow, context)
+    localitems = localgotoitem(word, path, column, row, startrow, context)
     isempty(localitems) || return Dict(
       :error => false,
       :items => localitems,
@@ -51,8 +47,9 @@ end
 
 ## local goto
 
-function localgotoitem(word, path, column, row, startRow, context)
-  position = row - startRow
+function localgotoitem(word, path, column, row, startrow, context)
+  word = first(split(word, '.')) # ignore dot accessors
+  position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
     l[:name] == word &&
@@ -60,11 +57,11 @@ function localgotoitem(word, path, column, row, startRow, context)
   end
   map(ls) do l # there should be zero or one element in `ls`
     text = l[:name]
-    line = startRow + l[:line] - 1
+    line = startrow + l[:line] - 1
     gotoitem(text, path, line)
   end
 end
-localgotoitem(word, ::Nothing, column, row, startRow, context) = [] # when `path` is not destructured
+localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path` is not destructured
 
 function gotoitem(text, file, line = 0, secondary = "")
   Dict(
