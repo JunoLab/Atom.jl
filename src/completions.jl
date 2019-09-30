@@ -117,29 +117,26 @@ completionsummary(mod, c) = ""
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   mod, word = c.parent, c.mod
   cangetdocs(mod, word) || return ""
-  makedescription(getdocs(mod, word))
+  docs = getdocs(mod, word)
+  description(docs)
 end
 completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   ct = Symbol(c.func)
   cangetdocs(mod, ct) || return ""
-  b = Docs.Binding(mod, ct)
-  description(b, Base.tuple_type_tail(c.method.sig))
-end
-completionsummary(mod, c::REPLCompletions.KeywordCompletion) =
-  makedescription(getdocs(mod, c.keyword))
-
-function description(binding, sig = Union{})
-  try
-    Docs.doc(binding, sig)
+  docs = try
+    Docs.doc(Docs.Binding(mod, ct), Base.tuple_type_tail(c.method.sig))
   catch err
     ""
-  end |> makedescription
+  end
+  description(docs)
 end
+completionsummary(mod, c::REPLCompletions.KeywordCompletion) =
+  description(getdocs(mod, c.keyword))
 
 using Markdown
 
-makedescription(docs) = ""
-makedescription(docs::Markdown.MD) = begin
+description(docs) = ""
+description(docs::Markdown.MD) = begin
   md = CodeTools.flatten(docs).content
   for part in md
     if part isa Markdown.Paragraph
