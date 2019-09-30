@@ -31,34 +31,33 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     lines = line:line+countlines(expr, text, pos, false)
 
     # toplevel call
-    iscall′(expr) && push!(items, ToplevelCall(expr, lines))
+    iscallexpr(expr) && push!(items, ToplevelCall(expr, lines))
+
     # destructure multiple returns
     ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
 
-    # return
-    istoplevel(expr) && return items
-
-    # return after more recursive call
-    if expr.args !== nothing
-        for arg in expr.args
-            toplevelitems(arg, text, items, line, pos)
-            line += countlines(arg, text, pos)
-            pos += arg.fullspan
+    # look for more toplevel items in expr:
+    if shouldenter(expr)
+        if expr.args !== nothing
+            for arg in expr.args
+                toplevelitems(arg, text, items, line, pos)
+                line += countlines(arg, text, pos)
+                pos += arg.fullspan
+            end
         end
     end
     return items
 end
 
-function istoplevel(expr)
-    scopeof(expr) !== nothing &&
-    !(
+function shouldenter(expr)
+    !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
         expr.typ === CSTParser.ModuleH ||
         expr.typ === CSTParser.BareModule
-    )
+    ))
 end
 
-iscall′(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
+iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
 
 function ismultiplereturn(expr)
     expr.typ === CSTParser.TupleH &&
@@ -87,8 +86,7 @@ function outlineitem(binding::ToplevelBinding)
 
     name = bind.name
     if CSTParser.has_sig(expr)
-        sig = CSTParser.get_sig(expr)
-        name = str_value(sig)
+        name = str_value(CSTParser.get_sig(expr))
     end
     type = static_type(bind)
     icon = static_icon(bind)
@@ -96,7 +94,7 @@ function outlineitem(binding::ToplevelBinding)
         :name  => name,
         :type  => type,
         :icon  => icon,
-        :lines => [lines.start, lines.stop]
+        :lines => [first(lines), last(lines)]
     )
 end
 function outlineitem(call::ToplevelCall)
@@ -106,10 +104,10 @@ function outlineitem(call::ToplevelCall)
     # TODO: describe testset
     if istestset(expr)
         return Dict(
-            :name  =>  "@testset " * str_value(expr.args[2]),
+            :name  => "@testset " * str_value(expr.args[2]),
             :type  => "module",
             :icon  => "icon-checklist",
-            :lines => [lines.start, lines.stop],
+            :lines => [first(lines), last(lines)],
         )
     end
 
@@ -120,7 +118,7 @@ function outlineitem(call::ToplevelCall)
             :name  => str_value(expr),
             :type  => "module",
             :icon  => "icon-file-code",
-            :lines => [lines.start, lines.stop],
+            :lines => [first(lines), last(lines)],
         )
     end
 
@@ -134,20 +132,20 @@ function outlineitem(tupleh::ToplevelTupleH)
         :name  => str_value(expr),
         :type  => "variable",
         :icon  => "v",
-        :lines => [lines.start, lines.stop]
+        :lines => [first(lines), last(lines)]
     )
 end
 
 function istestset(expr)
     expr.typ === CSTParser.MacroCall &&
-    length(expr.args) >= 2 &&
-    str_value(expr.args[1]) == "@testset"
+        length(expr.args) >= 2 &&
+        str_value(expr.args[1]) == "@testset"
 end
 
 function isinclude(expr)
     expr.typ === CSTParser.Call &&
-    length(expr.args) >= 3 &&
-    expr.args[1].val == "include"
+        length(expr.args) >= 3 &&
+        expr.args[1].val == "include"
 end
 
 ### local bindings -- completions, goto, datatip ###
