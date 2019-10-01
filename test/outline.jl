@@ -69,29 +69,47 @@
             ff = function (x, xxx)
                 z = 3
             end
-            y = (foo = 3, bar = 4) # named tuple elements shouldn't show up in completions
             return y+x
         end
         kwfun(kw = 3) # `kw` should not show up in completions
         function foo(x)
             asd = 3
         end
-        function baz(x) # should destructure multiple return values
-           shown1, shown2 = (notshown1 = 1, notshown2 = 2) # should n't leak named tuple names
-        end
         """
-        outers = (("bar", ""), ("f", ""), ("foo", ""), ("baz", ""))
+        outers = (("bar", ""), ("f", ""), ("foo", ""))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1))) ==
             Set(outers)
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 100))) ==
-            Set((("x", "f"), ("ff", "f"), ("y", "f"), outers...))
+            Set((("x", "f"), ("ff", "f"), outers...))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100))) ==
-            Set((("ff", "f"), ("x", ""), ("xxx", ""), ("z", ""), ("y", "f"), outers...))
+            Set((("ff", "f"), ("x", ""), ("xxx", ""), ("z", ""), outers...))
         @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100))) ==
             Set((("x", "foo"), ("asd", "foo"), outers...))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 13, 100))) ==
-            Set((("x", "baz"), ("shown1", "baz"), ("shown2", "baz"), outers...))
     end
+
+    # destructure multiple return expression
+    let str = """
+        function foo()
+            tpl1, tpl2 = (1, 2)
+            shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)
+        end
+        """
+
+        ls = Atom.locals(str, 1, 1)
+        # basic
+        for l in filter(l -> l[:line] == 2, ls)
+            @test l[:name] ∈ ("tpl1", "tpl2")
+            @test l[:root] == "foo"
+            @test l[:bindstr] == "tpl1, tpl2 = (1, 2)"
+        end
+        # named tuple elements shouldn't show up in completions
+        for l in filter(l -> l[:line] == 3, ls)
+            @test l[:name] ∈ ("shown1", "shown2")
+            @test l[:root] == "foo"
+            @test l[:bindstr] == "shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)"
+        end
+    end
+
     let str = """
         function foo(x)
             @macrocall begin
@@ -118,9 +136,6 @@ end
             2x
         end
         const sss = 3
-        end
-        @macrocall begin # heuristic: ignore macrocalls
-            inmacro = 4 # this shouldn't show up in outline
         end
         """
         @test Atom.outline(str) == Any[
@@ -221,34 +236,50 @@ end
         topbinds[3] == "withkwarg(arg,defarg=0;kwarg1=1,kwarg2=2)"
     end
 
-    @testset "special cased calls" begin
-        # @testset
-        let str = """
-            @testset \"test\" begin
-                @test [] == []
-            end
-            """
-            items = Atom.outline(str)
-            @test !isempty(items)
-            let call = items[1]
-                @test call[:type] == "module"
-                @test call[:name] == "@testset \"test\""
-                @test call[:icon] == "icon-checklist"
-            end
+    # toplevel macro calls
+    let str = """
+        @generate f(x) = x
+        @render i::Inline x::Complex begin
+          re, ima = reim(x)
+          if signbit(ima)
+            span(c(render(i, re), " - ", render(i, -ima), "im"))
+          else
+            span(c(render(i, re), " + ", render(i, ima), "im"))
+          end
         end
+        @nospecialize
+        """
+        calls = Atom.outline(str)
 
-        # include
-        let str = """
-            include(\"test.jl\")
-            include(\"moretest.jl\")
-            """
-            items = Atom.outline(str)
-            @test length(items) == 2
-            let call = items[1]
-                @test call[:type] == "module"
-                @test call[:name] == "include(\"test.jl\")"
-                @test call[:icon] == "icon-file-code"
-            end
+        @test !isempty(calls)
+        let call = calls[1] # single line
+            @test call[:name] == "@generate f(x) = x"
+            @test call[:type] == "snippet"
+            @test call[:icon] == "icon-mention"
+        end
+        let call = calls[2] # multiple lines
+            @test call[:name] == "@render i::Inline x::Complex begin" # just shows the first line
+            @test call[:type] == "snippet"
+            @test call[:icon] == "icon-mention"
+        end
+        let call = calls[3] # no argument
+            @test call[:name] == "@nospecialize"
+            @test call[:type] == "snippet"
+            @test call[:icon] == "icon-mention"
+        end
+    end
+
+    # toplevel include
+    let str = """
+        include(\"test.jl\")
+        include(\"moretest.jl\")
+        """
+        items = Atom.outline(str)
+        @test length(items) == 2
+        let call = items[1]
+            @test call[:type] == "module"
+            @test call[:name] == "include(\"test.jl\")"
+            @test call[:icon] == "icon-file-code"
         end
     end
 end

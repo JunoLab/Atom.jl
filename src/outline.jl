@@ -13,6 +13,7 @@ end
 struct ToplevelCall
     expr::CSTParser.EXPR
     lines::UnitRange{Int}
+    callstr::String
 end
 
 struct ToplevelTupleH
@@ -33,7 +34,9 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     lines = line:line+countlines(expr, text, pos, false)
 
     # toplevel call
-    iscallexpr(expr) && push!(items, ToplevelCall(expr, lines))
+    if iscallexpr(expr)
+        push!(items, ToplevelCall(expr, lines, str_value_asis(expr, text, pos)))
+    end
 
     # destructure multiple returns
     ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
@@ -50,6 +53,8 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     end
     return items
 end
+
+iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
 
 function shouldenter(expr)
     !(scopeof(expr) !== nothing && !(
@@ -96,11 +101,11 @@ function outlineitem(call::ToplevelCall)
     expr = call.expr
     lines = call.lines
 
-    if istestset(expr)
+    if ismacrocall(expr)
         return Dict(
-            :name  => "@testset " * str_value(expr.args[2]),
-            :type  => "module",
-            :icon  => "icon-checklist",
+            :name  => strlimit(first(split(call.callstr, '\n')), 100),
+            :type  => "snippet",
+            :icon  => "icon-mention",
             :lines => [first(lines), last(lines)],
         )
     end
@@ -109,7 +114,7 @@ function outlineitem(call::ToplevelCall)
     if isinclude(expr)
         name = "include"
         return Dict(
-            :name  => str_value(expr),
+            :name  => call.callstr,
             :type  => "module",
             :icon  => "icon-file-code",
             :lines => [first(lines), last(lines)],
@@ -134,11 +139,7 @@ function outlineitem(tupleh::ToplevelTupleH)
     )
 end
 
-function istestset(expr)
-    expr.typ === CSTParser.MacroCall &&
-        length(expr.args) >= 2 &&
-        str_value(expr.args[1]) == "@testset"
-end
+ismacrocall(expr) = expr.typ === CSTParser.MacroCall
 
 function isinclude(expr)
     expr.typ === CSTParser.Call &&
@@ -176,7 +177,7 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     bind = CSTParser.bindingof(expr)
     scope = scopeof(expr)
     if bind !== nothing && scope === nothing
-        bindstr = bindingstr(bind, text, pos)
+        bindstr = str_value_asis(bind, text, pos)
         range = pos:pos+expr.span
         push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
     end
@@ -184,29 +185,33 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     if scope !== nothing
         expr.typ == CSTParser.Kw && return bindings
 
-        # for `LocalScope` below
-        bindstr = bindingstr(bind, text, pos)
-        range = pos:pos+expr.span
-        name = bind === nothing ? "" : bind.name
-
-        # local binds in a scope
-        localbindings = []
-        if expr.args !== nothing
-            for arg in expr.args
-                local_bindings(arg, text, localbindings, pos, line)
-                line += countlines(arg, text, pos)
-                pos += arg.fullspan
-            end
-        end
-
-        # destructure multiple returns
         if ismultiplereturn(expr)
-            for leftsidebind in localbindings
-                push!(bindings, leftsidebind)
+            # destructure multiple returns
+            if expr.args !== nothing
+                for arg in expr.args
+                    # don't update `pos` & `line`, i.e.: treat all the multiple returns at a same place
+                    local_bindings(arg, text, bindings, pos, line)
+                end
             end
+        else
+            # find local binds in a scope
+            # calculate fields for `LocalScope` first
+            bindstr = str_value_asis(expr, text, pos)
+            range = pos:pos+expr.span
+            name = bind === nothing ? "" : bind.name
+
+            localbindings = []
+            if expr.args !== nothing
+                for arg in expr.args
+                    local_bindings(arg, text, localbindings, pos, line)
+                    line += countlines(arg, text, pos)
+                    pos += arg.fullspan
+                end
+            end
+
+            push!(bindings, LocalScope(name, bindstr, range, line, localbindings, expr))
         end
 
-        push!(bindings, LocalScope(name, bindstr, range, line, localbindings, expr))
         return bindings
     end
 
@@ -307,8 +312,6 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     count(c -> c === eol, text[s:e])
 end
 
-iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
-
 function ismultiplereturn(expr)
     expr.typ === CSTParser.TupleH &&
     !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
@@ -345,14 +348,15 @@ function str_value(x)
     end
 end
 
-function bindingstr(bind::CSTParser.Binding, text::String, pos::Int)
-    endpos = pos + bind.val.span
+function str_value_asis(expr::CSTParser.EXPR, text::String, pos::Int)
+    endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
-    text[s:e]
+    strip(text[s:e])
 end
-bindingstr(bind::Nothing, text::String, pos::Int) = ""
+str_value_asis(bind::CSTParser.Binding, text::String, pos::Int) = str_value_asis(bind.val, text, pos)
+str_value_asis(bind, text::String, pos::Int) = ""
 
 # need to keep this consistent with wstype
 static_type(bind::CSTParser.Binding) = static_type(bind.val)
