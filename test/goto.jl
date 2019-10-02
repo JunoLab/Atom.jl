@@ -154,7 +154,6 @@
         let items = toplevelgotoitems(word, mod, newtext, path) .|> Dict
             @test !isempty(items)
             @test items[1][:file] == path
-            @test items[1][:line] == 18
             @test items[1][:text] == "toplevelval2"
         end
 
@@ -197,6 +196,18 @@
             # show methods with full arguments
             @test "funcwithdefaultargs(args, defarg)" ∈ map(i -> i[:text], items)
             @test "funcwithdefaultargs(args::String, defarg)" ∈ map(i -> i[:text], items)
+        end
+    end
+
+    @testset "goto global symbols" begin # toplevel symbol goto & method goto
+        using Atom: globalgotoitems
+
+        # both the original methods and the toplevel bindings that are overloaded
+        # in a context module should be shown
+        let items = globalgotoitems("isconst", "Atom", "", nothing)
+            @test length(items) === 2
+            @test "isconst(m::Module, s::Symbol)" ∈ map(item -> item.text, items) # from Base
+            @test "Base.isconst(expr::CSTParser)" ∈ map(item -> item.text, items) # from Atom
         end
     end
 end
