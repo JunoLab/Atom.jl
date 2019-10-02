@@ -4,24 +4,24 @@ using CSTParser
 
 # TODO?: create separate function to search toplevel bindings, and to search calls
 
-struct ToplevelBinding
+abstract type ToplevelItem end
+
+struct ToplevelBinding <: ToplevelItem
     expr::CSTParser.EXPR
     bind::CSTParser.Binding
     lines::UnitRange{Int}
 end
 
-struct ToplevelCall
+struct ToplevelCall <: ToplevelItem
     expr::CSTParser.EXPR
     lines::UnitRange{Int}
     callstr::String
 end
 
-struct ToplevelTupleH
+struct ToplevelTupleH <: ToplevelItem
     expr::CSTParser.EXPR
     lines::UnitRange{Int}
 end
-
-const ToplevelItem = Union{ToplevelBinding, ToplevelCall, ToplevelTupleH}
 
 function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1)
     # binding

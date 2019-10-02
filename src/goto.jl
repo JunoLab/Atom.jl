@@ -1,51 +1,67 @@
-handle("goto") do data
+using CSTParser
+
+handle("gotosymbol") do data
   @destruct [
     word,
     path || nothing,
-    mod || "Main",
+    # local context
     column || 1,
     row || 1,
     startRow || 0,
     context || "",
-    refreshFiles || [],
-    onlyToplevel || false
+    onlyGlobal || true,
+    # module context
+    mod || "Main",
+    text || "",
   ] = data
-  goto(word, mod, path, column, row, startRow, context, refreshFiles, onlyToplevel)
+  gotosymbol(
+    word, path,
+    column, row, startRow, context, onlyGlobal,
+    mod, text
+  )
 end
 
-function goto(word, mod, path, column = 1, row = 1, startrow = 0, context = "", refreshfiles = [], onlytoplevel = false)
-  mod = getmodule(mod)
-
-  # local items
-  if !onlytoplevel
+function gotosymbol(
+  word, path = nothing,
+  column = 1, row = 1, startrow = 0, context = "", onlyglobal = false,
+  mod = "Main", text = ""
+)
+  # local goto
+  if !onlyglobal
     localitems = localgotoitem(word, path, column, row, startrow, context)
     isempty(localitems) || return Dict(
       :error => false,
-      :items => localitems,
-      :remainingfiles => refreshfiles
+      :items => map(Dict, localitems),
     )
   end
 
-  # toplevel items
-  toplevelitems = toplevelgotoitem(mod, word, path, refreshfiles)
-  isempty(toplevelitems) || return Dict(
+  mod = getmodule(mod)
+
+  # global goto
+  globalitems = globalgotoitems(word, mod, text, path)
+  isempty(globalitems) || return Dict(
     :error => false,
-    :items => toplevelitems,
-    :remainingfiles => refreshfiles
+    :items => map(Dict, globalitems),
   )
 
-  # method goto
-  methodgotoitems = methodgotoitem(mod, word)
-  isempty(methodgotoitems) || return Dict(
-    :error => false,
-    :items => methodgotoitems,
-    :remainingfiles => refreshfiles
-  )
-
-  Dict(:error => true) # nothing hits
+  return Dict(:error => true) # nothing hits
 end
 
-## local goto
+struct GotoItem
+  text::String
+  file::String
+  line::Int
+  secondary::String
+  GotoItem(text, file, line = 0, secondary = "") = new(text, file, line, secondary)
+end
+Dict(gotoitem::GotoItem) = Dict(
+  :text      => gotoitem.text,
+  :file      => gotoitem.file,
+  :line      => gotoitem.line,
+  :secondary => gotoitem.secondary,
+)
+
+### local goto
 
 function localgotoitem(word, path, column, row, startrow, context)
   word = first(split(word, '.')) # ignore dot accessors
@@ -58,72 +74,112 @@ function localgotoitem(word, path, column, row, startrow, context)
   map(ls) do l # there should be zero or one element in `ls`
     text = l[:name]
     line = startrow + l[:line] - 1
-    gotoitem(text, path, line)
+    GotoItem(text, path, line)
   end
 end
 localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path` is not destructured
 
-function gotoitem(text, file, line = 0, secondary = "")
-  Dict(
-    :text      => text,
-    :file      => file,
-    :line      => line,
-    :secondary => secondary
-  )
+### global goto - bundles toplevel gotos & method gotos
+
+# TODO: shows both original & overloaded method defitions: e.g.: Atom.isconst & Base.isconst
+function globalgotoitems(word, mod, text, path)
+  toplevelitems = toplevelgotoitems(word, mod, text, path)
+  isempty(toplevelitems) || return toplevelitems
+
+  methoditems = methodgotoitems(mod, word)
+  isempty(methoditems) || return methoditems
+
+  return []
 end
 
 ## toplevel goto
 
-function toplevelgotoitem(mod, word, path, refreshfiles)
-  entrypath = Base.find_package(string(mod))
-  entrypath === nothing && (entrypath = path) # e.g. Base modules
+const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
+const SYMBOLSCACHE = Dict{Module, PathItemsMaps}()
 
-  itempathmaps = searchtoplevelitems(entrypath, refreshfiles)
-
-  ismacro(word) && (word = lstrip(word, '@'))
-  filter!(itempathmap -> filtertoplevelitem(itempathmap, word), itempathmaps)
-  map(gotoitem, itempathmaps)
-end
-
-const symbolscache = Dict{String, Vector{ToplevelItem}}()
-
-function searchtoplevelitems(path, refreshfiles, itempathmaps = [])
-  ind = findfirst(p -> p == path, refreshfiles)
-  currentitems = if haskey(symbolscache, path) && ind === nothing
-    symbolscache[path]
+function toplevelgotoitems(word, mod, text, path)
+  pathitemsmaps = if haskey(SYMBOLSCACHE, mod)
+    SYMBOLSCACHE[mod]
   else
-    text = read(path, String)
-    parsed = CSTParser.parse(text, true)
-    items = toplevelitems(parsed, text)
-    symbolscache[path] = items
-    ind !== nothing && deleteat!(refreshfiles, ind)
-    items
+    SYMBOLSCACHE[mod] = searchtoplevelitems(mod, text, path) # caching
   end
 
-  append!(itempathmaps, map(item -> (item, path), currentitems))
+  ismacro(word) && (word = lstrip(word, '@'))
+  ret = Vector{GotoItem}()
+  for (path, items) ∈ pathitemsmaps
+    for item ∈ filter(item -> filtertoplevelitem(word, item), items)
+      push!(ret, GotoItem(path, item))
+    end
+  end
+  return ret
+end
 
-  for item in currentitems
+# entry method
+function searchtoplevelitems(mod::Module, text::String, path::String)
+  pathitemsmaps = PathItemsMaps()
+  if mod == Main # for `Main` module, always use the passed text
+    _searchtoplevelitems(text, path, pathitemsmaps)
+  else
+    _searchtoplevelitems(mod, pathitemsmaps)
+  end
+  return pathitemsmaps
+end
+
+# entry method when path is not deconstructured, e.g.: called from docpane/workspace
+function searchtoplevelitems(mod::Module, text::String, path::Nothing)
+  pathitemsmaps = PathItemsMaps()
+  _searchtoplevelitems(mod, pathitemsmaps)
+  return pathitemsmaps
+end
+
+function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
+  entrypath, paths = modulefiles(mod)
+  if entrypath !== nothing # when Revise approach succeeds, just find items in those files
+    for p ∈ [entrypath; paths]
+      _searchtoplevelitems(p, pathitemsmaps)
+    end
+  else # if Revise approach fails, fallback to parser-based module walk
+    path = parentfile(mod)
+    text = read(path, String)
+    _searchtoplevelitems(text, path, pathitemsmaps)
+  end
+end
+
+function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
+  text = read(path, String)
+  parsed = CSTParser.parse(text, true)
+  items = toplevelitems(parsed, text)
+  pathitemsmap = path => items
+  push!(pathitemsmaps, pathitemsmap)
+end
+
+function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathItemsMaps)
+  parsed = CSTParser.parse(text, true)
+  items = toplevelitems(parsed, text)
+  pathitemsmap = path => items
+  push!(pathitemsmaps, pathitemsmap)
+
+  # module-walk via toplevel `include` call search
+  for item in items
     if item isa ToplevelCall
       expr = item.expr
       if isinclude(expr)
         nextfile = expr.args[3].val
         nextpath = joinpath(dirname(path), nextfile)
-        searchtoplevelitems(nextpath, refreshfiles, itempathmaps)
+        text = read(nextpath, String)
+        _searchtoplevelitems(text, nextpath, pathitemsmaps)
       end
     end
   end
-
-  itempathmaps
 end
-searchtoplevelitems(::Nothing, refreshfiles, itempathmaps = []) = itempathmaps  # when `path` is not destructured
 
-filtertoplevelitem(itempathmap, word) = false
-function filtertoplevelitem(bindpathmap::Tuple{ToplevelBinding, String}, word)
-  bind = bindpathmap[1].bind
+filtertoplevelitem(word, item::ToplevelItem) = false
+function filtertoplevelitem(word, bind::ToplevelBinding)
+  bind = bind.bind
   bind === nothing ? false : word == bind.name
 end
-function filtertoplevelitem(tuplehpathmap::Tuple{ToplevelTupleH, String}, word)
-  expr = tuplehpathmap[1].expr
+function filtertoplevelitem(word, tupleh::ToplevelTupleH)
+  expr = tupleh.expr
   for arg in expr.args
     if str_value(arg) == word
       return true
@@ -132,37 +188,33 @@ function filtertoplevelitem(tuplehpathmap::Tuple{ToplevelTupleH, String}, word)
   return false
 end
 
-function gotoitem(bindpathmap::Tuple{ToplevelBinding, String})
-  bind = bindpathmap[1]
+function GotoItem(path, bind::ToplevelBinding)
   expr = bind.expr
   text = bind.bind.name
   if CSTParser.has_sig(expr)
     sig = CSTParser.get_sig(expr)
     text = str_value(sig)
   end
-  file = bindpathmap[2]
   line = bind.lines.start - 1
-  secondary = file * ":" * string(line)
-  gotoitem(text, file, line, secondary)
+  secondary = path * ":" * string(line)
+  GotoItem(text, path, line, secondary)
 end
-function gotoitem(tuplehpathmap::Tuple{ToplevelTupleH, String})
-  tupleh = tuplehpathmap[1]
+function GotoItem(path::String, tupleh::ToplevelTupleH)
   expr = tupleh.expr
   text = str_value(expr)
-  file = tuplehpathmap[2]
   line = tupleh.lines.start - 1
-  secondary = file * ":" * string(line)
-  gotoitem(text, file, line, secondary)
+  secondary = path * ":" * string(line)
+  GotoItem(text, path, line, secondary)
 end
 
 ## method goto
 
-function methodgotoitem(mod, word)
+function methodgotoitems(mod, word)::Vector{GotoItem}
   ms = @errs getmethods(mod, word)
   if ms isa EvalError
     []
   else
-    map(gotoitem, aggregatemethods(ms))
+    map(GotoItem, aggregatemethods(ms))
   end
 end
 
@@ -174,12 +226,12 @@ function aggregatemethods(ms::Vector{Method})
   unique(m -> (m.file, m.line), ms)
 end
 
-function gotoitem(m::Method)
+function GotoItem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
   text = replace(sig, r" in .* at .*$" => "")
   file = link.file
   line = link.line - 1
   secondary = join(link.contents)
-  gotoitem(text, file, line, secondary)
+  GotoItem(text, file, line, secondary)
 end
