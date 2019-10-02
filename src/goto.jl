@@ -171,6 +171,7 @@ function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathIte
       if isinclude(expr)
         nextfile = expr.args[3].val
         nextpath = joinpath(dirname(path), nextfile)
+        isfile(nextpath) || continue
         text = read(nextpath, String)
         _searchtoplevelitems(text, nextpath, pathitemsmaps)
       end
@@ -212,22 +213,22 @@ function GotoItem(path::String, tupleh::ToplevelTupleH)
   GotoItem(text, path, line, secondary)
 end
 
-## regenerate toplevel symbols
+## update toplevel symbols
 
-handle("regeneratesymbols") do data
+handle("updatesymbols") do data
   @destruct [
     mod || "Main",
     text || "",
     path || "untitled"
   ] = data
   try
-    regeneratesymbols(mod, text, path)
+    updatesymbols(mod, text, path)
   catch err
   end
   return nothing
 end
 
-function regeneratesymbols(mod, text, path = "untitled")
+function updatesymbols(mod, text, path = "untitled")
   if haskey(SYMBOLSCACHE, mod)
     parsed = CSTParser.parse(text, true)
     items = toplevelitems(parsed, text)
@@ -239,40 +240,53 @@ function regeneratesymbols(mod, text, path = "untitled")
 end
 
 ## generate toplevel symbols
-handle("generatesymbols") do
+handle("regeneratesymbols") do
   with_logger(JunoProgressLogger()) do
-    generatesymbols()
+    regeneratesymbols()
   end
 end
 
-function generatesymbols()
-  id = "generate_symbols_progress"
-  @info "Start symbols cache generation" progress=0 _id=id
+function regeneratesymbols()
+  id = "regenerate_symbols_progress"
+  @info "Start regenerating symbols cache" progress=0 _id=id
 
-  try
-    pkgs = collect(keys(Pkg.installed()))
-    total = length(pkgs)
+  loaded = Set(string.(Base.loaded_modules_array()))
+  unloaded = filter!(collect(keys(Pkg.installed()))) do pkg
+    pkg ∉ loaded
+  end
+  loadedlen = length(loaded)
+  unloadedlen = length(unloaded)
+  total = loadedlen + unloadedlen
 
-    # first cache symbols in Base
-    pathitemsmap = PathItemsMaps()
-    @info "Symbols: Base (1 / $total)" progress=1/total _id=id
-    _searchtoplevelitems(Base, pathitemsmap)
-    SYMBOLSCACHE["Base"] = pathitemsmap
+  for (i, mod) ∈ enumerate(Base.loaded_modules_array())
+    try
+      modstr = string(mod)
+      modstr == "__PackagePrecompilationStatementModule" && continue # will cause error
+      pathitemsmap = PathItemsMaps()
 
-    for (i, pkg) ∈ enumerate(pkgs)
+      @info "Symbols: $modstr ($i / $total)" progress=i/total _id=id
+      _searchtoplevelitems(mod, pathitemsmap)
+      SYMBOLSCACHE[modstr] = pathitemsmap
+    catch err
+      @error err
+    end
+  end
+
+  for (i, pkg) ∈ enumerate(unloaded)
+    try
       path = Base.find_package(pkg)
       text = read(path, String)
       pathitemsmap = PathItemsMaps()
 
-      @info "Symbols: $pkg ($(i + 1) / $total)" progress=i + 1/total _id=id
+      @info "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
       _searchtoplevelitems(text, path, pathitemsmap)
       SYMBOLSCACHE[pkg] = pathitemsmap
+    catch err
+      @error err
     end
-  catch err
-    @error err
-  finally
-    @info "Finish symbols cache generation" progress=1 _id=_id
   end
+
+  @info "Finish symbols cache generation" progress=1 _id=id
 end
 
 ## method goto

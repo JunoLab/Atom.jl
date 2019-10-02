@@ -82,7 +82,7 @@ end
 using Logging: with_logger
 using .Progress: JunoProgressLogger
 
-handle("regenerateCache") do
+handle("regeneratedocs") do
   with_logger(JunoProgressLogger()) do
     @errs DocSeeker.createdocsdb()
   end
