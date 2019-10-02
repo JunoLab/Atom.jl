@@ -236,6 +236,34 @@ end
         topbinds[3] == "withkwarg(arg,defarg=0;kwarg1=1,kwarg2=2)"
     end
 
+    # docstrings souldn't leak into toplevel items
+    let str = """
+        @doc \"\"\"
+            withdocmacro()
+
+        docstring
+        \"\"\"
+        withdocmacro() = nothing
+
+        \"\"\"
+            withdocstring
+
+        docstring
+        \"\"\"
+        withdocstring = nothing
+        """
+        items = Atom.outline(str)
+        @test length(items) === 2
+        @test filter(items) do item
+            item[:name] == "withdocmacro()" &&
+            item[:lines] == [6, 6]
+        end |> !isempty
+        @test filter(items) do item
+            item[:name] == "withdocstring" &&
+            item[:lines] == [13, 13]
+        end |> !isempty
+    end
+
     # toplevel macro calls
     let str = """
         @generate f(x) = x

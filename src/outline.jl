@@ -60,8 +60,18 @@ function shouldenter(expr)
     !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
         expr.typ === CSTParser.ModuleH ||
-        expr.typ === CSTParser.BareModule
+        expr.typ === CSTParser.BareModule ||
+        isdoc(expr)
     ))
+end
+
+function isdoc(expr)
+    expr.typ === CSTParser.MacroCall &&
+        length(expr.args) >= 1 &&
+        (
+            expr.args[1].typ === CSTParser.GlobalRefDoc ||
+            str_value(expr.args[1]) == "@doc"
+        )
 end
 
 handle("outline") do text
@@ -101,6 +111,10 @@ function outlineitem(call::ToplevelCall)
     expr = call.expr
     lines = call.lines
 
+    # don't show doc strings
+    isdoc(expr) && return nothing
+
+    # show first line verbatim of macro calls
     if ismacrocall(expr)
         return Dict(
             :name  => strlimit(first(split(call.callstr, '\n')), 100),
