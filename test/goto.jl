@@ -15,7 +15,7 @@
               end                                                              # L11
             end                                                                # L12
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1]
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> Dict
 
             let item = localgotoitem("row", 2)
                 @test item[:line] === 0
@@ -35,7 +35,7 @@
                 return val
             end
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1]
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> Dict
 
             @test localgotoitem("expr.args", 1)[:line] === 0
             @test localgotoitem("bind.val", 2)[:line] === 1
@@ -46,111 +46,143 @@
     end
 
     @testset "goto toplevel symbols" begin
-        using Atom: realpath′, toplevelgotoitem
+        using Atom: realpath′, toplevelgotoitems, SYMBOLSCACHE
 
-        ## where `Base.find_package(modstr)` works
-        let dir = realpath′(joinpath(@__DIR__, "..", "src")),
+        ## where Revise approach works, i.e.: precompiled modules
+        let dir = realpath′(joinpath(@__DIR__, "..", "src"))
             path = joinpath(dir, "comm.jl")
+            text = read(path, String)
 
             # basic
-            let items = toplevelgotoitem(Atom, "handlers", path, [])
+            let items = toplevelgotoitems("handlers", "Atom", text, path) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
                 @test items[1][:text] == "handlers"
             end
 
-            # when `path` isn't given e.g.: via docpane or workspace view
-            let items = toplevelgotoitem(Atom, "handlers", nothing, [])
-                @test !isempty(items)
-                @test items[1][:file] == path
-                @test items[1][:text] == "handlers"
-            end
+            # check caching works
+            @test haskey(SYMBOLSCACHE, "Atom")
 
-            # check recursive file inclusion works
-            numfiles = 0
-            for (d, ds, fs) ∈ walkdir(dir)
-                for f ∈ fs
-                    if endswith(f, ".jl") # .jl check is needed for travis, who creates hoge.cov files
-                        numfiles += 1
+            # check Revise approach can find all the included files
+            let numfiles = 0
+                debuggerpath = realpath′(joinpath(@__DIR__, "..", "src", "debugger"))
+                profilerpath = realpath′(joinpath(@__DIR__, "..", "src", "profiler"))
+                for (d, ds, fs) ∈ walkdir(dir)
+                    if d ∈ (debuggerpath, profilerpath)
+                        numfiles += 1 # debugger.jl / traceur.jl
+                        continue
+                    end
+                    for f ∈ fs
+                        if endswith(f, ".jl") # .jl check is needed for travis, who creates hoge.cov files
+                            numfiles += 1
+                        end
                     end
                 end
+                @test length(SYMBOLSCACHE["Atom"]) == numfiles
             end
-            @test length(Atom.symbolscache) == numfiles - 1 # `-1` is because of display/webio.jl
+
+            # when `path` isn't given, i.e.: via docpane / workspace
+            let items = toplevelgotoitems("handlers", "Atom", "", nothing) .|> Dict
+                @test !isempty(items)
+                @test items[1][:file] == path
+                @test items[1][:text] == "handlers"
+            end
+
+            # same as above, but without any previous cache -- falls back to parser-based file search
+            delete!(SYMBOLSCACHE, "Atom")
+            let items = toplevelgotoitems("handlers", "Atom", "", nothing) .|> Dict
+                @test !isempty(items)
+                @test items[1][:file] == path
+                @test items[1][:text] == "handlers"
+            end
         end
 
-        ## where `Base.find_package(modstr)` works
-        let path = junkpath
+        ## where Revise approach doesn't work, i.e.: non-precompiled modules
+        let word = "toplevelval"
+            mod = "Main.Junk"
+            path = junkpath
+            text = read(path, String)
+
             # basic
-            let items = toplevelgotoitem("Main.Junk", "toplevelval", path, [])
+            let items = toplevelgotoitems(word, mod, text, path) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
                 @test items[1][:line] == 16
-                @test items[1][:text] == "toplevelval"
+                @test items[1][:text] == word
             end
-
-            # when `path` isn't given, don't work but shouldn't error
-            @test toplevelgotoitem(Main.Junk, "toplevelval", nothing, []) == []
 
             # check caching works
-            @test path ∈ keys(Atom.symbolscache)
+            @test haskey(Atom.SYMBOLSCACHE, mod)
 
-            # test cache refreshing
-            @test filter(Atom.symbolscache[path]) do item
-                Atom.str_value(item.expr) == "toplevelval2"
-            end |> isempty
-
-            originallines = readlines(path)
-            open(path, "w") do io
-                for line ∈ originallines[1:end - 1]
-                    write(io, line * "\n")
-                end
-                write(io, "toplevelval2 = :youshoulderaseme\n")
-                write(io, "end\n")
-            end
-            try
-                let items = toplevelgotoitem(Main.Junk, "toplevelval2", path, [path])
-                    @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:line] == 18
-                    @test items[1][:text] == "toplevelval2"
-                end
-
-                @test filter(Atom.symbolscache[path]) do item
-                    Atom.str_value(item.expr) == "toplevelval2"
-                end |> !isempty
-            catch err
-                @error err
-            finally
-                open(path, "w") do io
-                    for line ∈ originallines
-                        write(io, line * "\n")
-                    end
-                end
+            # when `path` isn't given, i.e.: via docpane / workspace
+            let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
+                @test !isempty(items)
+                @test items[1][:file] == path
+                @test items[1][:line] == 16
+                @test items[1][:text] == word
             end
         end
 
         # don't error on fallback case
-        @test toplevelgotoitem(Main, "word", nothing, []) == []
+        @test toplevelgotoitems("word", "Main", "", nothing) == []
+    end
+
+    @testset "updating toplevel symbols" begin
+        using Atom: SYMBOLSCACHE, updatesymbols, toplevelgotoitems
+
+        mod = "Main.Junk"
+        path = junkpath
+        text = read(path, String)
+
+        # check there is no cache before updating
+        @test filter(SYMBOLSCACHE[mod][path]) do item
+            Atom.str_value(item.expr) == "toplevelval2"
+        end |> isempty
+
+        # mock updatesymbol handler
+        originallines = readlines(path)
+        newtext = join(originallines[1:end - 1], '\n')
+        word = "toplevelval2"
+        newtext *= "\n$word = :youshoulderaseme\nend"
+        updatesymbols(mod, newtext, path)
+
+        # check the cache is updated
+        @test filter(SYMBOLSCACHE[mod][path]) do item
+            Atom.str_value(item.expr) == word
+        end |> !isempty
+
+        let items = toplevelgotoitems(word, mod, newtext, path) .|> Dict
+            @test !isempty(items)
+            @test items[1][:file] == path
+            @test items[1][:line] == 18
+            @test items[1][:text] == "toplevelval2"
+        end
+
+        # re-update the cache
+        updatesymbols(mod, text, path)
+        @test filter(SYMBOLSCACHE[mod][path]) do item
+            Atom.str_value(item.expr) == word
+        end |> isempty
     end
 
     @testset "goto methods" begin
-        using Atom: methodgotoitem
+        using Atom: methodgotoitems
 
         ## basic
         # `Atom.handlemsg` is not defined with default args
-        let items = methodgotoitem("Main", "Atom.handlemsg")
+        let items = methodgotoitems("Main", "Atom.handlemsg")
             @test length(items) === length(methods(Atom.handlemsg))
         end
 
         ## module awareness
-        let items = methodgotoitem("Atom", "handlemsg")
+        let items = methodgotoitems("Atom", "handlemsg")
             @test length(items) === length(methods(Atom.handlemsg))
         end
 
         ## aggregate methods with default params
         @eval Main function funcwithdefaultargs(args, defarg = "default") end
 
-        let items = methodgotoitem("Main", "funcwithdefaultargs")
+        let items = methodgotoitems("Main", "funcwithdefaultargs") .|> Dict
             # should be handled as an unique method
             @test length(items) === 1
             # show a method with full arguments
@@ -159,7 +191,7 @@
 
         @eval Main function funcwithdefaultargs(args::String, defarg = "default") end
 
-        let items = methodgotoitem("Main", "funcwithdefaultargs")
+        let items = methodgotoitems("Main", "funcwithdefaultargs") .|> Dict
             # should be handled as different methods
             @test length(items) === 2
             # show methods with full arguments
