@@ -81,15 +81,14 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path
 
 ### global goto - bundles toplevel gotos & method gotos
 
-# TODO: shows both original & overloaded method defitions: e.g.: Atom.isconst & Base.isconst
 function globalgotoitems(word, mod, text, path)
   toplevelitems = toplevelgotoitems(word, mod, text, path)
-  isempty(toplevelitems) || return toplevelitems
-
-  methoditems = methodgotoitems(mod, word)
-  isempty(methoditems) || return methoditems
-
-  return []
+  files = map(item -> item.file, toplevelitems)
+  # only append methods that are not caught by `toplevelgotoitems`
+  methoditems = filter!(methodgotoitems(mod, word)) do item
+    item.file ∉ files
+  end
+  append!(toplevelitems, methoditems)
 end
 
 ## toplevel goto
