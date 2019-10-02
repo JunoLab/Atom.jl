@@ -207,6 +207,33 @@ function GotoItem(path::String, tupleh::ToplevelTupleH)
   GotoItem(text, path, line, secondary)
 end
 
+## regenerate toplevel symbols
+
+handle("regeneratesymbols") do data
+  @destruct [
+    mod || "Main",
+    text || "",
+    path || "untitled"
+  ] = data
+  regeneratesymbols(mod, text, path)
+  nothing
+end
+
+function regeneratesymbols(mod, text, path = "untitled")
+  mod = getmodule(mod)
+
+  if haskey(SYMBOLSCACHE, mod)
+    parsed = CSTParser.parse(text, true)
+    items = toplevelitems(parsed, text)
+    push!(SYMBOLSCACHE[mod], path => items)
+  else
+    # there is no cache
+    SYMBOLSCACHE[mod] = searchtoplevelitems(mod, text, path)
+  end
+end
+
+## TODO: generate toplevel symbols cache for project modules, like `regenerateCache` for docs
+
 ## method goto
 
 function methodgotoitems(mod, word)::Vector{GotoItem}
