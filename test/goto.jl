@@ -1,4 +1,7 @@
 @testset "goto symbols" begin
+    using Atom: realpath′, toplevelgotoitems, SYMBOLSCACHE, updatesymbols,
+                regeneratesymbols, methodgotoitems, globalgotoitems
+
     @testset "goto local symbols" begin
         let str = """
             function localgotoitem(word, path, column, row, startRow, context) # L0
@@ -46,8 +49,6 @@
     end
 
     @testset "goto toplevel symbols" begin
-        using Atom: realpath′, toplevelgotoitems, SYMBOLSCACHE
-
         ## where Revise approach works, i.e.: precompiled modules
         let dir = realpath′(joinpath(@__DIR__, "..", "src"))
             path = joinpath(dir, "comm.jl")
@@ -128,8 +129,6 @@
     end
 
     @testset "updating toplevel symbols" begin
-        using Atom: SYMBOLSCACHE, updatesymbols, toplevelgotoitems
-
         mod = "Main.Junk"
         path = junkpath
         text = read(path, String)
@@ -162,6 +161,15 @@
         @test filter(SYMBOLSCACHE[mod][path]) do item
             Atom.str_value(item.expr) == word
         end |> isempty
+    end
+
+    @testset "regenerating symbols" begin
+        regeneratesymbols()
+
+        @test haskey(SYMBOLSCACHE, "Base")
+        @test length(keys(SYMBOLSCACHE["Base"])) > 100
+        @test haskey(SYMBOLSCACHE, "Example") # cache symbols even if not loaded
+        @test toplevelgotoitems("hello", "Example", "", nothing) |> !isempty
     end
 
     @testset "goto methods" begin
@@ -200,14 +208,12 @@
     end
 
     @testset "goto global symbols" begin # toplevel symbol goto & method goto
-        using Atom: globalgotoitems
-
         # both the original methods and the toplevel bindings that are overloaded
         # in a context module should be shown
         let items = globalgotoitems("isconst", "Atom", "", nothing)
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" ∈ map(item -> item.text, items) # from Base
-            @test "Base.isconst(expr::CSTParser)" ∈ map(item -> item.text, items) # from Atom
+            @test "Base.isconst(expr::CSTParser.EXPR)" ∈ map(item -> item.text, items) # from Atom
         end
     end
 end
