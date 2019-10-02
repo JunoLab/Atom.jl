@@ -55,7 +55,7 @@ struct GotoItem
   file::String
   line::Int
   secondary::String
-  GotoItem(text, file, line = 0, secondary = "") = new(text, file, line, secondary)
+  GotoItem(text, file, line = 0, secondary = "") = new(text, normpath(file), line, secondary)
 end
 Dict(gotoitem::GotoItem) = Dict(
   :text      => gotoitem.text,
@@ -194,7 +194,7 @@ function filtertoplevelitem(word, tupleh::ToplevelTupleH)
   return false
 end
 
-function GotoItem(path, bind::ToplevelBinding)
+function GotoItem(path::String, bind::ToplevelBinding)
   expr = bind.expr
   text = bind.bind.name
   if CSTParser.has_sig(expr)
