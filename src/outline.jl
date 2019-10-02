@@ -157,8 +157,10 @@ ismacrocall(expr) = expr.typ === CSTParser.MacroCall
 
 function isinclude(expr)
     expr.typ === CSTParser.Call &&
-        length(expr.args) >= 3 &&
-        expr.args[1].val == "include"
+        length(expr.args) === 4 &&
+        expr.args[1].val == "include" &&
+        expr.args[3].val isa String &&
+        endswith(expr.args[3].val, ".jl")
 end
 
 ### local bindings -- completions, goto, datatip ###

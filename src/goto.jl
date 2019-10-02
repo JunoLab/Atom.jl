@@ -26,23 +26,26 @@ function gotosymbol(
   column = 1, row = 1, startrow = 0, context = "", onlyglobal = false,
   mod = "Main", text = ""
 )
-  # local goto
-  if !onlyglobal
-    localitems = localgotoitem(word, path, column, row, startrow, context)
-    isempty(localitems) || return Dict(
+  try
+    # local goto
+    if !onlyglobal
+      localitems = localgotoitem(word, path, column, row, startrow, context)
+      isempty(localitems) || return Dict(
+        :error => false,
+        :items => map(Dict, localitems),
+      )
+    end
+
+    # global goto
+    globalitems = globalgotoitems(word, mod, text, path)
+    isempty(globalitems) || return Dict(
       :error => false,
-      :items => map(Dict, localitems),
+      :items => map(Dict, globalitems),
     )
+  catch err
+    @error err
+    return Dict(:error => true)
   end
-
-  mod = getmodule(mod)
-
-  # global goto
-  globalitems = globalgotoitems(word, mod, text, path)
-  isempty(globalitems) || return Dict(
-    :error => false,
-    :items => map(Dict, globalitems),
-  )
 
   return Dict(:error => true) # nothing hits
 end
@@ -94,13 +97,13 @@ end
 ## toplevel goto
 
 const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
-const SYMBOLSCACHE = Dict{Module, PathItemsMaps}()
+const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 
 function toplevelgotoitems(word, mod, text, path)
   pathitemsmaps = if haskey(SYMBOLSCACHE, mod)
     SYMBOLSCACHE[mod]
   else
-    SYMBOLSCACHE[mod] = searchtoplevelitems(mod, text, path) # caching
+    SYMBOLSCACHE[mod] = searchtoplevelitems(getmodule(mod), text, path) # caching
   end
 
   ismacro(word) && (word = lstrip(word, '@'))
@@ -131,6 +134,7 @@ function searchtoplevelitems(mod::Module, text::String, path::Nothing)
   return pathitemsmaps
 end
 
+# sub entry method
 function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
   entrypath, paths = modulefiles(mod)
   if entrypath !== nothing # when Revise approach succeeds, just find items in those files
@@ -144,6 +148,7 @@ function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
   end
 end
 
+# module walk based on Revise approach
 function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
   text = read(path, String)
   parsed = CSTParser.parse(text, true)
@@ -152,13 +157,14 @@ function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
   push!(pathitemsmaps, pathitemsmap)
 end
 
+# parser-based module walk via looking for toplevel `installed` calls
 function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathItemsMaps)
   parsed = CSTParser.parse(text, true)
   items = toplevelitems(parsed, text)
   pathitemsmap = path => items
   push!(pathitemsmaps, pathitemsmap)
 
-  # module-walk via toplevel `include` call search
+  # looking for toplevel `installed` calls
   for item in items
     if item isa ToplevelCall
       expr = item.expr
@@ -214,24 +220,60 @@ handle("regeneratesymbols") do data
     text || "",
     path || "untitled"
   ] = data
-  regeneratesymbols(mod, text, path)
-  nothing
+  try
+    regeneratesymbols(mod, text, path)
+  catch err
+  end
+  return nothing
 end
 
 function regeneratesymbols(mod, text, path = "untitled")
-  mod = getmodule(mod)
-
   if haskey(SYMBOLSCACHE, mod)
     parsed = CSTParser.parse(text, true)
     items = toplevelitems(parsed, text)
     push!(SYMBOLSCACHE[mod], path => items)
   else
-    # there is no cache
-    SYMBOLSCACHE[mod] = searchtoplevelitems(mod, text, path)
+    # initialize the cache if there is no cache
+    SYMBOLSCACHE[mod] = searchtoplevelitems(getmodule(mod), text, path)
   end
 end
 
-## TODO: generate toplevel symbols cache for project modules, like `regenerateCache` for docs
+## generate toplevel symbols
+handle("generatesymbols") do
+  with_logger(JunoProgressLogger()) do
+    generatesymbols()
+  end
+end
+
+function generatesymbols()
+  id = "generate_symbols_progress"
+  @info "Start symbols cache generation" progress=0 _id=id
+
+  try
+    pkgs = collect(keys(Pkg.installed()))
+    total = length(pkgs)
+
+    # first cache symbols in Base
+    pathitemsmap = PathItemsMaps()
+    @info "Symbols: Base (1 / $total)" progress=1/total _id=id
+    _searchtoplevelitems(Base, pathitemsmap)
+    SYMBOLSCACHE["Base"] = pathitemsmap
+
+    for (i, pkg) ∈ enumerate(pkgs)
+      path = Base.find_package(pkg)
+      text = read(path, String)
+      pathitemsmap = PathItemsMaps()
+
+      @info "Symbols: $pkg ($(i + 1) / $total)" progress=i + 1/total _id=id
+      _searchtoplevelitems(text, path, pathitemsmap)
+      SYMBOLSCACHE[pkg] = pathitemsmap
+    end
+  catch err
+    @error err
+  finally
+    @info "Finish symbols cache generation" progress=1 _id=_id
+  end
+end
 
 ## method goto
 
