@@ -158,21 +158,25 @@ function searchtoplevelitems(mod::Module, text::String, path::Nothing)
   return pathitemsmaps
 end
 
+# TODO:
+# use the module detection logic below for general module auto-detection,
+# e.g.: `module` handler and such
+
 # sub entry method
 function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
-  entrypath, paths = modulefiles(mod)
-  if entrypath !== nothing # when Revise approach succeeds, just find items in those files
+  entrypath, paths = modulefiles(mod) # Revise-like approach
+  if entrypath !== nothing
     for p ∈ [entrypath; paths]
       _searchtoplevelitems(p, pathitemsmaps)
     end
-  else # if Revise approach fails, fallback to parser-based module walk
+  else # if Revise-like approach fails, fallback to CSTParser-based approach
     path, line = moduledefinition(mod)
     text = read(path, String)
     _searchtoplevelitems(text, path, pathitemsmaps)
   end
 end
 
-# module walk based on Revise approach
+# module-walk via Revise-like approach
 function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
   text = read(path, String)
   parsed = CSTParser.parse(text, true)
@@ -181,7 +185,7 @@ function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
   push!(pathitemsmaps, pathitemsmap)
 end
 
-# parser-based module walk via looking for toplevel `installed` calls
+# module-walk by CSTParser-based, looking for toplevel `installed` calls
 function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathItemsMaps)
   parsed = CSTParser.parse(text, true)
   items = toplevelitems(parsed, text)
@@ -259,7 +263,7 @@ function updatesymbols(mod, text, path = "untitled")
   if haskey(SYMBOLSCACHE, mod)
     parsed = CSTParser.parse(text, true)
     items = toplevelitems(parsed, text)
-    push!(SYMBOLSCACHE[mod], path => items)
+    push!(SYMBOLSCACHE[mod], path => items) # don't try to walk in a module
   else
     # initialize the cache if there is no cache
     SYMBOLSCACHE[mod] = searchtoplevelitems(getmodule(mod), text, path)

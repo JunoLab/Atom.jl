@@ -78,13 +78,13 @@
             # check caching works
             @test haskey(SYMBOLSCACHE, key)
 
-            # check Revise approach can find all the included files
+            # check the Revise-like approach finds all the included files
             let numfiles = 0
                 debuggerpath = realpath′(joinpath(@__DIR__, "..", "src", "debugger"))
                 profilerpath = realpath′(joinpath(@__DIR__, "..", "src", "profiler"))
                 for (d, ds, fs) ∈ walkdir(dir)
                     if d ∈ (debuggerpath, profilerpath)
-                        numfiles += 1 # debugger.jl / traceur.jl
+                        numfiles += 1 # debugger.jl / traceur.jl (in Atom module)
                         continue
                     end
                     for f ∈ fs
@@ -96,14 +96,14 @@
                 @test length(SYMBOLSCACHE[key]) == numfiles
             end
 
-            # when `path` isn't given, i.e.: via docpane / workspace
+            # when `path` isn't given, i.e. via docpane / workspace
             let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
                 @test items[1][:text] == word
             end
 
-            # same as above, but without any previous cache -- falls back to parser-based file search
+            # same as above, but without any previous cache -- falls back to CSTPraser-based module-walk
             delete!(SYMBOLSCACHE, key)
             let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
                 @test !isempty(items)
@@ -112,7 +112,7 @@
             end
         end
 
-        ## where Revise approach doesn't work, i.e.: non-precompiled modules
+        ## where the Revise-like approach doesn't work, e.g. non-precompiled modules
         let path = junkpath
             text = read(path, String)
             mod = Main.Junk
@@ -139,7 +139,7 @@
             end
         end
 
-        # don't error on fallback case
+        # don't error on the fallback case
         @test toplevelgotoitems("word", Main, "", nothing) == []
     end
 
