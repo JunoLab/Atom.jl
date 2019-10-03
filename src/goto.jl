@@ -100,9 +100,6 @@ end
 
 ## module goto
 
-# keeps the latest file that has been used for Main module scope
-const MAIN_MODULE_PATH = Ref{String}(moduledefinition(Main)[1])
-
 function modulegotoitems(word, mod)::Vector{GotoItem}
   mod = getfield′(mod, Symbol(word))
   return mod isa Module ? [GotoItem(mod)] : []
@@ -110,7 +107,7 @@ end
 
 function GotoItem(mod::Module)
   file, line = if mod == Main
-    MAIN_MODULE_PATH[], 1
+    MAIN_MODULE_LOCATION[]
   else
     moduledefinition(mod)
   end
@@ -250,9 +247,6 @@ handle("updatesymbols") do data
     path || "untitled"
   ] = data
   try
-    if mod == "Main"
-      MAIN_MODULE_PATH[] = path
-    end
     updatesymbols(mod, text, path)
   catch err
   end

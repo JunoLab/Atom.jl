@@ -19,11 +19,18 @@ function modulenames(data, pos)
   main, sub
 end
 
+# keeps the latest file that has been used for Main module scope
+const MAIN_MODULE_LOCATION = Ref{Tuple{String, Int}}(moduledefinition(Main))
+
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
 
   mod = CodeTools.getmodule(main)
   smod = CodeTools.getmodule(mod, sub)
+
+  if main == "Main" && sub == ""
+    MAIN_MODULE_LOCATION[] = data["path"], data["row"]
+  end
 
   return d(:main => main,
            :sub  => sub,
