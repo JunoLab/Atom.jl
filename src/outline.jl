@@ -126,7 +126,6 @@ function outlineitem(call::ToplevelCall)
 
     # show includes
     if isinclude(expr)
-        name = "include"
         return Dict(
             :name  => call.callstr,
             :type  => "module",
@@ -259,7 +258,14 @@ function byteoffset(text, line, col)
     byteoffset
 end
 
-function actual_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
+function actual_local_bindings(bindings, line, byteoffset)
+    actual_bindings = _actual_local_bindings(bindings, line, byteoffset)
+
+    filter!(b -> !isempty(b[:name]), actual_bindings)
+    sort!(actual_bindings, lt = (b1, b2) -> b1[:locality] < b2[:locality])
+    unique(b -> b[:name], actual_bindings)
+end
+function _actual_local_bindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
         push!(actual_bindings, Dict(
             :name     => bind.name,
@@ -271,13 +277,11 @@ function actual_local_bindings(bindings, line, byteoffset, root = "", actual_bin
             :type     => static_type(bind.expr),
         ))
         if bind isa LocalScope && byteoffset in bind.span
-            actual_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
+            _actual_local_bindings(bind.children, line, byteoffset, bind.name, actual_bindings)
         end
     end
 
-    filter!(b -> !isempty(b[:name]), actual_bindings)
-    sort!(actual_bindings, lt = (b1, b2) -> b1[:locality] < b2[:locality])
-    unique(b -> b[:name], actual_bindings)
+    return actual_bindings
 end
 
 function distance(line, byteoffset, defline, defspan)
