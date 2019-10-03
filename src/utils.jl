@@ -196,13 +196,15 @@ function modulefiles(mod::Module)
   return fixpath(parentfile), [fixpath(mf[2]) for mf in included_files]
 end
 
-function parentfile(mod::Module) # NOTE: added when adapted
-  parentfile = String(first(methods(getfield(mod, :eval))).file)
+function moduledefinition(mod::Module) # NOTE: added when adapted
+  evalmethod = first(methods(getfield(mod, :eval)))
+  parentfile = String(evalmethod.file)
+  line = evalmethod.line
   id = Base.PkgId(mod)
   if id.name == "Base" || id.name == "Core" || Symbol(id.name) ∈ stdlib_names  # NOTE: "Core" is added when adapted
     parentfile = normpath(Base.find_source_file(parentfile))
   end
-  fixpath(parentfile)
+  fixpath(parentfile), line
 end
 
 # Fix paths to files that define Julia (base and stdlibs)

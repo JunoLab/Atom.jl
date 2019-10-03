@@ -43,7 +43,6 @@ function gotosymbol(
       :items => map(Dict, globalitems),
     )
   catch err
-    @error err
     return Dict(:error => true)
   end
 
@@ -85,13 +84,37 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path
 ### global goto - bundles toplevel gotos & method gotos
 
 function globalgotoitems(word, mod, text, path)
+  mod = getmodule(mod)
+
+  moduleitems = modulegotoitems(word, mod)
+  isempty(moduleitems) || return moduleitems
+
   toplevelitems = toplevelgotoitems(word, mod, text, path)
-  files = map(item -> item.file, toplevelitems)
+
   # only append methods that are not caught by `toplevelgotoitems`
-  methoditems = filter!(methodgotoitems(mod, word)) do item
-    item.file ∉ files
-  end
+  files = map(item -> item.file, toplevelitems)
+  methoditems = filter!(item -> item.file ∉ files, methodgotoitems(mod, word))
+
   append!(toplevelitems, methoditems)
+end
+
+## module goto
+
+# keeps the latest file that has been used for Main module scope
+const MAIN_MODULE_PATH = Ref{String}(moduledefinition(Main)[1])
+
+function modulegotoitems(word, mod)::Vector{GotoItem}
+  mod = getfield′(mod, Symbol(word))
+  return mod isa Module ? [GotoItem(mod)] : []
+end
+
+function GotoItem(mod::Module)
+  file, line = if mod == Main
+    MAIN_MODULE_PATH[], 1
+  else
+    moduledefinition(mod)
+  end
+  GotoItem(string(mod), file, line - 1)
 end
 
 ## toplevel goto
@@ -100,10 +123,11 @@ const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
 const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 
 function toplevelgotoitems(word, mod, text, path)
-  pathitemsmaps = if haskey(SYMBOLSCACHE, mod)
-    SYMBOLSCACHE[mod]
+  key = string(mod)
+  pathitemsmaps = if haskey(SYMBOLSCACHE, key)
+    SYMBOLSCACHE[key]
   else
-    SYMBOLSCACHE[mod] = searchtoplevelitems(getmodule(mod), text, path) # caching
+    SYMBOLSCACHE[key] = searchtoplevelitems(mod, text, path) # caching
   end
 
   ismacro(word) && (word = lstrip(word, '@'))
@@ -142,7 +166,7 @@ function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
       _searchtoplevelitems(p, pathitemsmaps)
     end
   else # if Revise approach fails, fallback to parser-based module walk
-    path = parentfile(mod)
+    path, line = moduledefinition(mod)
     text = read(path, String)
     _searchtoplevelitems(text, path, pathitemsmaps)
   end
@@ -222,6 +246,9 @@ handle("updatesymbols") do data
     path || "untitled"
   ] = data
   try
+    if mod == "Main"
+      MAIN_MODULE_PATH[] = path
+    end
     updatesymbols(mod, text, path)
   catch err
   end

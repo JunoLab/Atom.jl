@@ -1,6 +1,6 @@
 @testset "goto symbols" begin
-    using Atom: realpath′, toplevelgotoitems, SYMBOLSCACHE, updatesymbols,
-                regeneratesymbols, methodgotoitems, globalgotoitems
+    using Atom: modulegotoitems, realpath′, toplevelgotoitems, SYMBOLSCACHE,
+                updatesymbols, regeneratesymbols, methodgotoitems, globalgotoitems
 
     @testset "goto local symbols" begin
         let str = """
@@ -48,21 +48,35 @@
         @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
     end
 
+    @testset "module goto" begin
+        let item = modulegotoitems("Atom", Main)[1]
+            @test item.file == realpath′(joinpath(@__DIR__, "..", "src", "Atom.jl"))
+            @test item.line == 2
+        end
+        let item = modulegotoitems("Junk2", Main.Junk)[1]
+            @test item.file == joinpath(@__DIR__, "fixtures", "Junk.jl")
+            @test item.line == 14
+        end
+    end
+
     @testset "goto toplevel symbols" begin
         ## where Revise approach works, i.e.: precompiled modules
         let dir = realpath′(joinpath(@__DIR__, "..", "src"))
             path = joinpath(dir, "comm.jl")
             text = read(path, String)
+            mod = Atom
+            key = "Atom"
+            word = "handlers"
 
             # basic
-            let items = toplevelgotoitems("handlers", "Atom", text, path) .|> Dict
+            let items = toplevelgotoitems(word, mod, text, path) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
-                @test items[1][:text] == "handlers"
+                @test items[1][:text] == word
             end
 
             # check caching works
-            @test haskey(SYMBOLSCACHE, "Atom")
+            @test haskey(SYMBOLSCACHE, key)
 
             # check Revise approach can find all the included files
             let numfiles = 0
@@ -79,30 +93,31 @@
                         end
                     end
                 end
-                @test length(SYMBOLSCACHE["Atom"]) == numfiles
+                @test length(SYMBOLSCACHE[key]) == numfiles
             end
 
             # when `path` isn't given, i.e.: via docpane / workspace
-            let items = toplevelgotoitems("handlers", "Atom", "", nothing) .|> Dict
+            let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
-                @test items[1][:text] == "handlers"
+                @test items[1][:text] == word
             end
 
             # same as above, but without any previous cache -- falls back to parser-based file search
-            delete!(SYMBOLSCACHE, "Atom")
-            let items = toplevelgotoitems("handlers", "Atom", "", nothing) .|> Dict
+            delete!(SYMBOLSCACHE, key)
+            let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
-                @test items[1][:text] == "handlers"
+                @test items[1][:text] == word
             end
         end
 
         ## where Revise approach doesn't work, i.e.: non-precompiled modules
-        let word = "toplevelval"
-            mod = "Main.Junk"
-            path = junkpath
+        let path = junkpath
             text = read(path, String)
+            mod = Main.Junk
+            key = "Main.Junk"
+            word = "toplevelval"
 
             # basic
             let items = toplevelgotoitems(word, mod, text, path) .|> Dict
@@ -113,7 +128,7 @@
             end
 
             # check caching works
-            @test haskey(Atom.SYMBOLSCACHE, mod)
+            @test haskey(Atom.SYMBOLSCACHE, key)
 
             # when `path` isn't given, i.e.: via docpane / workspace
             let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
@@ -125,7 +140,7 @@
         end
 
         # don't error on fallback case
-        @test toplevelgotoitems("word", "Main", "", nothing) == []
+        @test toplevelgotoitems("word", Main, "", nothing) == []
     end
 
     @testset "updating toplevel symbols" begin
@@ -173,8 +188,6 @@
     end
 
     @testset "goto methods" begin
-        using Atom: methodgotoitems
-
         ## basic
         # `Atom.handlemsg` is not defined with default args
         let items = methodgotoitems("Main", "Atom.handlemsg")
