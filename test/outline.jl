@@ -38,29 +38,38 @@
             return bindings
         end
         """
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 15, 1))) == Set([
-            ("i", ""),
-            ("arg", ""),
-            ("localbindings", "local_bindings"),
-            ("range", "local_bindings"),
-            ("scope", "local_bindings"),
-            ("bind", "local_bindings"),
-            ("pos", "local_bindings"),
-            ("bindings", "local_bindings"),
-            ("expr", "local_bindings"),
-            ("local_bindings", "")
-        ])
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 21, 100))) == Set([
-            ("localbindings", "local_bindings"),
-            ("pos", "local_bindings"),
-            ("scope", "local_bindings"),
-            ("bind", "local_bindings"),
-            ("bindings", "local_bindings"),
-            ("expr", "local_bindings"),
-            ("local_bindings", ""),
-            ("range", "local_bindings"),
-            ("local_bindings", "")
-        ])
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 15, 1)))
+            for l ∈ [
+                    ("i", "")
+                    ("arg", "")
+                    ("localbindings", "local_bindings")
+                    ("range", "local_bindings")
+                    ("scope", "local_bindings")
+                    ("bind", "local_bindings")
+                    ("pos", "local_bindings")
+                    ("bindings", "local_bindings")
+                    ("expr", "local_bindings")
+                    ("local_bindings", "")
+                ]
+                @test l ∈ ls
+            end
+        end
+
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 21, 100)))
+            for l ∈ [
+                    ("localbindings", "local_bindings")
+                    ("pos", "local_bindings")
+                    ("scope", "local_bindings")
+                    ("bind", "local_bindings")
+                    ("bindings", "local_bindings")
+                    ("expr", "local_bindings")
+                    ("local_bindings", "")
+                    ("range", "local_bindings")
+                    ("local_bindings", "")
+                ]
+                @test l ∈ ls
+            end
+        end
     end
 
     let str = """
@@ -77,14 +86,26 @@
         end
         """
         outers = (("bar", ""), ("f", ""), ("foo", ""))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1))) ==
-            Set(outers)
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 100))) ==
-            Set((("x", "f"), ("ff", "f"), outers...))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100))) ==
-            Set((("ff", "f"), ("x", ""), ("xxx", ""), ("z", ""), outers...))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100))) ==
-            Set((("x", "foo"), ("asd", "foo"), outers...))
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1)))
+            for o ∈ outers; @test o ∈ ls; end
+        end
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1)))
+            for o ∈ outers; @test o ∈ ls; end
+            @test ("x", "f") ∈ ls
+            @test ("ff", "f") ∈ ls
+        end
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100)))
+            for o ∈ outers; @test o ∈ ls; end
+            @test ("ff", "f") ∈ ls
+            @test ("x", "") ∈ ls
+            @test ("xxx", "") ∈ ls
+            @test ("z", "") ∈ ls
+        end
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100)))
+            for o ∈ outers; @test o ∈ ls; end
+            @test ("x", "foo") ∈ ls
+            @test ("asd", "foo") ∈ ls
+        end
     end
 
     # destructure multiple return expression
@@ -119,12 +140,34 @@
             return 12
         end
         """
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1))) ==
-            Set((("foo", ""), ("xxx", "foo"), ("x", "foo")))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 3, 1))) ==
-            Set((("foo", ""), ("xxx", "foo"), ("xyz", ""), ("x", "foo")))
-        @test Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 5, 1))) ==
-            Set((("foo", ""), ("xxx", "foo"), ("x", "foo")))
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1)))
+            for l ∈ [
+                    ("foo", "")
+                    ("xxx", "foo")
+                    ("x", "foo")
+                ]
+                @test l ∈ ls
+            end
+        end
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 3, 1)))
+            for l ∈ [
+                    ("foo", "")
+                    ("xxx", "foo")
+                    ("xyz", "")
+                    ("x", "foo")
+                ]
+                @test l ∈ ls
+            end
+        end
+        let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 5, 1)))
+            for l ∈ [
+                    ("foo", "")
+                    ("xxx", "foo")
+                    ("x", "foo")
+                ]
+                @test l ∈ ls
+            end
+        end
     end
 end
 
@@ -138,32 +181,36 @@ end
         const sss = 3
         end
         """
-        @test Atom.outline(str) == Any[
-            Dict(
-                :type => "module",
-                :name => "Foo",
-                :icon => "icon-package",
-                :lines => [1, 7]
-            ),
-            Dict(
-                :type => "function",
-                :name => "foo(x)",
-                :icon => "λ",
-                :lines => [2, 2]
-            ),
-            Dict(
-                :type => "function",
-                :name => "bar(x::Int)",
-                :icon => "λ",
-                :lines => [3, 5]
-            ),
-            Dict(
-                :type => "constant",
-                :name => "sss",
-                :icon => "c",
-                :lines => [6, 6]
-            )
-        ]
+        let os = Set(Atom.outline(str))
+            for o ∈ [
+                    Dict(
+                        :type => "module",
+                        :name => "Foo",
+                        :icon => "icon-package",
+                        :lines => [1, 7],
+                    )
+                    Dict(
+                        :type => "function",
+                        :name => "foo(x)",
+                        :icon => "λ",
+                        :lines => [2, 2],
+                    )
+                    Dict(
+                        :type => "function",
+                        :name => "bar(x::Int)",
+                        :icon => "λ",
+                        :lines => [3, 5],
+                    )
+                    Dict(
+                        :type => "constant",
+                        :name => "sss",
+                        :icon => "c",
+                        :lines => [6, 6],
+                    )
+                ]
+                @test o ∈ os
+            end
+        end
     end
 
     # kwargs shouldn't show up in outline, same as anon function args
@@ -174,26 +221,30 @@ end
         const foo = (a,b) -> a+b
         const bar = (asd=3, bsd=4)
         """
-        @test Atom.outline(str) == Any[
-            Dict(
-                :type => "function",
-                :name => "bar(foo = 3)",
-                :icon => "λ",
-                :lines => [1, 3]
-            ),
-            Dict(
-                :type => "constant",
-                :name => "foo",
-                :icon => "c",
-                :lines => [4, 4]
-            ),
-            Dict(
-                :type => "constant",
-                :name => "bar",
-                :icon => "c",
-                :lines => [5, 5]
-            ),
-        ]
+        let os = Set(Atom.outline(str))
+            for o ∈ [
+                    Dict(
+                        :type => "function",
+                        :name => "bar(foo = 3)",
+                        :icon => "λ",
+                        :lines => [1, 3],
+                    )
+                    Dict(
+                        :type => "constant",
+                        :name => "foo",
+                        :icon => "c",
+                        :lines => [4, 4],
+                    )
+                    Dict(
+                        :type => "constant",
+                        :name => "bar",
+                        :icon => "c",
+                        :lines => [5, 5],
+                    )
+                ]
+                @test o ∈ os
+            end
+        end
     end
 
     # destructure multiple return expression
@@ -202,26 +253,30 @@ end
         a, b = tuple # `a, b` should be correctly destructured
         const c1, c2 = tuple # static constantness checks
         """
-        @test Atom.outline(str) == Any[
-            Dict(
-                :type => "variable",
-                :name => "tuple",
-                :icon => "v",
-                :lines => [1, 1]
-            ),
-            Dict(
-                :type => "variable",
-                :name => "a, b",
-                :icon => "v",
-                :lines => [2, 2]
-            ),
-            Dict(
-                :type => "constant",
-                :name => "c1, c2",
-                :icon => "c",
-                :lines => [3, 3]
-            )
-        ]
+        let os = Set(Atom.outline(str))
+            for o ∈ [
+                    Dict(
+                        :type => "variable",
+                        :name => "tuple",
+                        :icon => "v",
+                        :lines => [1, 1],
+                    ),
+                    Dict(
+                        :type => "variable",
+                        :name => "a, b",
+                        :icon => "v",
+                        :lines => [2, 2],
+                    ),
+                    Dict(
+                        :type => "constant",
+                        :name => "c1, c2",
+                        :icon => "c",
+                        :lines => [3, 3],
+                    ),
+                ]
+                @test o ∈ os
+            end
+        end
     end
 
     # should stringify method signatures correctly
@@ -231,9 +286,9 @@ end
         withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2) = defarg * kwarg
         """
         topbinds = map(b -> b[:name], Atom.outline(str))
-        topbinds[1] == "withstrings(single=\"1\",triple=\"\"\"\"3\"\")"
-        topbinds[2] == "withchar(char='c')"
-        topbinds[3] == "withkwarg(arg,defarg=0;kwarg1=1,kwarg2=2)"
+        @test topbinds[1] == "withstrings(single = \"1\", triple = \"\"\"3\"\"\")"
+        @test topbinds[2] == "withchar(char = 'c')"
+        @test topbinds[3] == "withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2)"
     end
 
     # docstrings souldn't leak into toplevel items
