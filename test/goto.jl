@@ -1,6 +1,7 @@
 @testset "goto symbols" begin
     using Atom: modulegotoitems, realpath′, toplevelgotoitems, SYMBOLSCACHE,
-                updatesymbols, regeneratesymbols, methodgotoitems, globalgotoitems
+                regeneratesymbols, methodgotoitems, globalgotoitems
+    using CSTParser
 
     @testset "goto local symbols" begin
         let str = """
@@ -147,6 +148,11 @@
         mod = "Main.Junk"
         path = junkpath
         text = read(path, String)
+        function updatesymbols(mod, text, path)
+            parsed = CSTParser.parse(text, true)
+            items = Atom.toplevelitems(parsed, text)
+            Atom.updatesymbols(text, mod, path, items)
+        end
 
         # check there is no cache before updating
         @test filter(SYMBOLSCACHE[mod][path]) do item

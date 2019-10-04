@@ -172,6 +172,13 @@
 end
 
 @testset "outline" begin
+    using CSTParser
+    function outline(str)
+        parsed = CSTParser.parse(str, true)
+        items = Atom.toplevelitems(parsed, str)
+        Atom.outline(items)
+    end
+
     let str = """
         module Foo
         foo(x) = x
@@ -181,7 +188,7 @@ end
         const sss = 3
         end
         """
-        let os = Set(Atom.outline(str))
+        let os = Set(outline(str))
             for o ∈ [
                     Dict(
                         :type => "module",
@@ -221,7 +228,7 @@ end
         const foo = (a,b) -> a+b
         const bar = (asd=3, bsd=4)
         """
-        let os = Set(Atom.outline(str))
+        let os = Set(outline(str))
             for o ∈ [
                     Dict(
                         :type => "function",
@@ -253,7 +260,7 @@ end
         a, b = tuple # `a, b` should be correctly destructured
         const c1, c2 = tuple # static constantness checks
         """
-        let os = Set(Atom.outline(str))
+        let os = Set(outline(str))
             for o ∈ [
                     Dict(
                         :type => "variable",
@@ -285,7 +292,7 @@ end
         withchar(char = 'c') = char
         withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2) = defarg * kwarg
         """
-        topbinds = map(b -> b[:name], Atom.outline(str))
+        topbinds = map(b -> b[:name], outline(str))
         @test topbinds[1] == "withstrings(single = \"1\", triple = \"\"\"3\"\"\")"
         @test topbinds[2] == "withchar(char = 'c')"
         @test topbinds[3] == "withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2)"
@@ -307,7 +314,7 @@ end
         \"\"\"
         withdocstring = nothing
         """
-        items = Atom.outline(str)
+        items = outline(str)
         @test length(items) === 2
         @test filter(items) do item
             item[:name] == "withdocmacro()" &&
@@ -332,7 +339,7 @@ end
         end
         @nospecialize
         """
-        calls = Atom.outline(str)
+        calls = outline(str)
 
         @test !isempty(calls)
         let call = calls[1] # single line
@@ -357,7 +364,7 @@ end
         include(\"test.jl\")
         include(\"moretest.jl\")
         """
-        items = Atom.outline(str)
+        items = outline(str)
         @test length(items) == 2
         let call = items[1]
             @test call[:type] == "module"

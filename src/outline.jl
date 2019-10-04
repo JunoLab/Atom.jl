@@ -74,21 +74,38 @@ function isdoc(expr)
         )
 end
 
-handle("outline") do text
+handle("updateeditor") do data
+    @destruct [
+        text || "",
+        mod || "Main",
+        path || "untitled",
+    ] = data
+
     try
-        outline(text)
+        updateeditor(text, mod, path)
     catch err
         []
     end
 end
 
-function outline(text)
+# NOTE: update outline and symbols cache all in one go
+function updateeditor(text, mod = "Main", path = "untitled")
     parsed = CSTParser.parse(text, true)
     items = toplevelitems(parsed, text)
+
+    # update symbols cache
+    updatesymbols(text, mod, path, items)
+
+    # return outline
+    outline(items)
+end
+
+function outline(items)
     filter!(map(outlineitem, items)) do item
         item !== nothing
     end
 end
+
 function outlineitem(binding::ToplevelBinding)
     expr = binding.expr
     bind = binding.bind

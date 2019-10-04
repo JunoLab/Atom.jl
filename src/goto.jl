@@ -240,23 +240,9 @@ end
 
 ## update toplevel symbols
 
-handle("updatesymbols") do data
-  @destruct [
-    mod || "Main",
-    text || "",
-    path || "untitled"
-  ] = data
-  try
-    updatesymbols(mod, text, path)
-  catch err
-  end
-  return nothing
-end
-
-function updatesymbols(mod, text, path = "untitled")
+# NOTE: handled by the `updateeditor` handler in outline.jl
+function updatesymbols(text, mod, path, items)
   if haskey(SYMBOLSCACHE, mod)
-    parsed = CSTParser.parse(text, true)
-    items = toplevelitems(parsed, text)
     push!(SYMBOLSCACHE[mod], path => items) # don't try to walk in a module
   else
     # initialize the cache if there is no cache
