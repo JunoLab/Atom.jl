@@ -262,9 +262,12 @@ function regeneratesymbols()
   @info "Start regenerating symbols cache" progress=0 _id=id
 
   loaded = Set(string.(Base.loaded_modules_array()))
-  unloaded = filter!(collect(keys(Pkg.installed()))) do pkg
-    pkg ∉ loaded
+  pkgs = if isdefined(Pkg, :dependencies)
+    getfield.(values(Pkg.dependencies()), :name)
+  else
+    collect(keys(Pkg.installed()))
   end
+  unloaded = filter(pkg -> pkg ∉ loaded, pkgs)
   loadedlen = length(loaded)
   unloadedlen = length(unloaded)
   total = loadedlen + unloadedlen
