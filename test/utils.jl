@@ -62,16 +62,20 @@ end
 
         # basic
         let doc = getdocs(Main.Junk, "imwithdoc")
-            @test occursin("im a doc", string(doc))
+            @test occursin("im a doc in Junk", string(doc))
         end
 
         # use fallback modules if `@doc` is not defined for a module passed as 1st argument
-        let doc = getdocs(Main.BareJunk, "imwithdoc")
-            @test occursin("im a doc", string(doc))
-        end
+        let mod = Main.Junk.BareJunk
+            doc = getdocs(mod, "imwithdoc") # by `@doc` in Main
+            @test occursin("im a doc in BareJunk", string(doc))
 
-        # don't error even if `@doc` is not defined for a fallback module
-        @test getdocs(Main.BareJunk, "imwithdoc", Main.BareJunk) isa MD
+            doc = getdocs(mod, "imwithdoc", Main.Junk) # by `@doc` in Junk
+            @test occursin("im a doc in BareJunk", string(doc))
+
+            # don't error even if `@doc` is not defined for a fallback module
+            @test getdocs(mod, "imwithdoc", mod) isa MD
+        end
     end
 end
 
