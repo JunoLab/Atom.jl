@@ -52,13 +52,12 @@ handle("evalshow") do data
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          try
-            res = include_string(mod, text, path, line)
-            res ≠ nothing && !ends_with_semicolon(text) && display(res)
-            res
-          catch e
-            # should hide parts of the backtrace here
-            Base.display_error(stderr, e, catch_backtrace())
+          res = @errs include_string(mod, text, path, line)
+
+          if res isa EvalError
+              Base.showerror(IOContext(stderr, :limit => true), res)
+          elseif res ≠ nothing && !ends_with_semicolon(text)
+            display(res)
           end
         end
       end
@@ -78,14 +77,22 @@ end
 handle("eval") do data
   fixjunodisplays()
   @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod, displaymode || "editor"] = data
+    @destruct [text, line, path, mod, errorInRepl || false] = data
     mod = getmodule(mod)
 
     lock(evallock)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          @errs include_string(mod, text, path, line)
+          res = @errs include_string(mod, text, path, line)
+          if errorInRepl && res isa EvalError
+            try
+              Base.showerror(IOContext(stderr, :limit => true), res)
+            catch err
+              show(stderr, err)
+            end
+          end
+          return res
         end
       end
     end
@@ -117,21 +124,17 @@ handle("evalall") do data
           result = nothing
           try
             result = include_string(mod, code, path)
-          catch e
-            bt = catch_backtrace()
-            st = cliptrace(stacktrace(bt))
-            ee = EvalError(e, st)
-            if isREPL()
-              printstyled(stderr, "ERROR: "; bold=true, color=Base.error_color())
-              Base.showerror(IOContext(stderr, :limit => true), e, st)
-              println(stderr)
-            else
-              render(Console(), ee)
-            end
+          catch err
+            ee = EvalError(err, st)
+
+            # show error in REPL:
+            Base.showerror(IOContext(stderr, :limit => true), ee)
+            # show notification (if enabled in Atom):
             @msg error(d(:msg => "Error evaluating $(basename(path))",
                          :detail => string(ee),
                          :dismissable => true))
           end
+
           Base.invokelatest() do
             @ierrs displayandrender(result)
           end

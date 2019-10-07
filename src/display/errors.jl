@@ -29,6 +29,12 @@ function Base.show(io::IO, err::EvalError)
   end
 end
 
+function Base.showerror(io::IO, err::EvalError)
+  printstyled(io, "ERROR: "; bold=true, color=Base.error_color())
+  Base.showerror(io, err.err, cliptrace(err.trace))
+  println(io)
+end
+
 const MAX_STACKTRACE_LENGTH = 100
 const STACKTRACE_END_LENGTH = 30
 
