@@ -29,7 +29,7 @@ handle("module") do data
   smod = CodeTools.getmodule(mod, sub)
 
   if main == "Main" && sub == ""
-    MAIN_MODULE_LOCATION[] = data["path"], data["row"]
+    MAIN_MODULE_LOCATION[] = get!(data, "path", ""), data["row"]
   end
 
   return d(:main => main,
