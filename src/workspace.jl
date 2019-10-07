@@ -1,4 +1,8 @@
 handle("workspace") do mod
+  workspace(mod)
+end
+
+function workspace(mod)
   mod = getmodule(mod)
   ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
   filter!(ns) do n

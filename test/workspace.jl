@@ -1,30 +1,46 @@
 @testset "workspace" begin
-    cb = 0  # callback count
-    handle(mod = "Main.Junk") =
-        Atom.handlemsg(Dict("type"     => "workspace",
-                            "callback" => (cb += 1)),
-                       mod)
+    using Atom: workspace
 
-    include("fixtures/Junk.jl")
-    handle()
-    items = readmsg()[3][1]["items"]
+    items = workspace("Main.Junk")[1][:items]
 
     # basics
-    @test filter(i -> i["name"] == "useme", items) |> !isempty
-    @test filter(i -> i["name"] == "@immacro", items) |> !isempty
+    let items = filter(i -> i[:name] == :useme, items)
+        @test !isempty(items)
+        @test items[1][:type] == "function"
+        @test items[1][:icon] == "λ"
+        @test items[1][:nativetype] == "Function"
+    end
+
+    let items = filter(i -> i[:name] == Symbol("@immacro"), items)
+        @test !isempty(items)
+        @test items[1][:type] == "snippet"
+        @test items[1][:icon] == "icon-mention"
+        @test items[1][:nativetype] == "Function"
+    end
 
     # recoginise submodule
-    @test filter(i -> i["name"] == "Junk2", items) |> !isempty
+    let items = filter(i -> i[:name] == :Junk2, items)
+        @test !isempty(items)
+        @test items[1][:type] == "module"
+        @test items[1][:icon] == "icon-package"
+        @test items[1][:nativetype] == "Module"
+    end
 
     # handle undefs
-    @test filter(items) do item
-        item["name"] == "imnotdefined" &&
-        item["type"] == "ignored" &&
-        item["nativetype"] == "Undefined"
-    end |> !isempty
+    let items = filter(i -> i[:name] == :imnotdefined, items)
+        @test !isempty(items)
+        @test items[1][:type] == "ignored"
+        @test items[1][:icon] == "icon-circle-slash"
+        @test items[1][:nativetype] == "Undefined"
+    end
 
     # add variables dynamically
     @eval Main.Junk imadded = 100
-    handle()
-    @test filter(i -> i["name"] == "imadded", readmsg()[3][1]["items"]) |> !isempty
+    items = workspace("Main.Junk")[1][:items]
+    let items = filter(i -> i[:name] == :imadded, items)
+        @test !isempty(items)
+        @test items[1][:type] == "variable"
+        @test items[1][:icon] == "n"
+        @test items[1][:nativetype] == "Int64"
+    end
 end

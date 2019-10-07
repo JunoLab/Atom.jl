@@ -49,20 +49,12 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
   end
 
   # completions from the local code block:
-  for c in reverse!(locals(text, lineNumber, column))
-    if (force || !isempty(pre)) && startswith(c[:name], pre)
-      c[:type] == "variable" && (c[:type] = "attribute")
-      c[:icon] == "v" && (c[:icon] = "icon-chevron-right")
-      pushfirst!(d, Dict(
-                  :type        => c[:type],
-                  :icon        => c[:icon],
-                  :rightLabel  => c[:root],
-                  :leftLabel   => "",
-                  :text        => c[:name],
-                  :description => ""
-                ))
+  for c in localcompletions(text, lineNumber, column)
+    if (force || !isempty(pre)) && startswith(c[:text], pre)
+      pushfirst!(d, c)
     end
   end
+
   d, pre
 end
 
@@ -202,6 +194,23 @@ completionicon(c::REPLCompletions.ModuleCompletion) = begin
 end
 completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
+
+function localcompletions(text, line, col)
+  ls = locals(text, line, col)
+  reverse!(ls)
+  map(localcompletion, ls)
+end
+
+function localcompletion(l)
+  return Dict(
+    :type        => l[:type] == "variable" ? "attribute" : l[:type],
+    :icon        => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
+    :rightLabel  => l[:root],
+    :leftLabel   => "",
+    :text        => l[:name],
+    :description => ""
+  )
+end
 
 handle("cacheCompletions") do mod
   # m = getthing(mod)

@@ -22,9 +22,13 @@ function datatip(word, path, row, column, state::DebuggerState = STATE)
 
   # local bindings
   for v in locals(frame)
-    if string(v.name) == word
-      valstr = @> repr(MIME("text/plain"), v.value, context = :limit => true) strlimit(1000)
-      return [Dict(:type => :snippet, :value => valstr)]
+    str = string(v.name)
+    if str == word
+      valstr = repr(MIME("text/plain"), v.value, context = :limit => true)
+      return [Dict(:type => :snippet, :value => strlimit(valstr, 1000))]
+    elseif str ∈ split(word, '.') # interpret dot accessors
+      valstr = repr(MIME("text/plain"), interpret(word), context = :limit => true)
+      return [Dict(:type => :snippet, :value => strlimit(valstr, 1000))]
     end
   end
 

@@ -19,11 +19,18 @@ function modulenames(data, pos)
   main, sub
 end
 
+# keeps the latest file that has been used for Main module scope
+const MAIN_MODULE_LOCATION = Ref{Tuple{String, Int}}(moduledefinition(Main))
+
 handle("module") do data
   main, sub = modulenames(data, cursor(data))
 
   mod = CodeTools.getmodule(main)
   smod = CodeTools.getmodule(mod, sub)
+
+  if main == "Main" && sub == ""
+    MAIN_MODULE_LOCATION[] = get!(data, "path", ""), data["row"]
+  end
 
   return d(:main => main,
            :sub  => sub,
@@ -161,26 +168,4 @@ handle("docs") do data
        :type     => :dom,
        :tag      => :div,
        :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
-end
-
-handle("methods") do data
-  @destruct [mod || "Main", word] = data
-  mtable = @errs getmethods(mod, word)
-  if mtable isa EvalError
-    Dict(:error => true, :items => sprint(showerror, mtable.err))
-  else
-    # only show the method with full default arguments
-    aggregated = @>> mtable collect sort(by = m -> m.nargs, rev = true) unique(m -> (m.file, m.line))
-    Dict(:error => false, :items => [gotoitem(m) for m in aggregated])
-  end
-end
-
-function gotoitem(m::Method)
-  _, link = view(m)
-  sig = sprint(show, m)
-  sig = replace(sig, r" in .* at .*$" => "")
-  Dict(:text => sig,
-       :file => link.file,
-       :line => link.line - 1,
-       :secondary => join(link.contents))
 end

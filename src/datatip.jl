@@ -8,21 +8,61 @@ handle("datatip") do data
   @destruct [
     word,
     mod || "Main",
-    path || nothing,
+    path || "",
+    column || 1,
     row || 1,
-    column || 1
+    startRow || 0,
+    context || ""
   ] = data
+  datatip(word, mod, path, column, row, startRow, context)
+end
 
-  if isdebugging() && (datatip = JunoDebugger.datatip(word, path, row, column)) !== nothing
-    return Dict(:error => false, :strings => datatip)
+function datatip(word, mod, path, column = 1, row = 1, startrow = 0, context = "")
+  if isdebugging() && (ddt = JunoDebugger.datatip(word, path, row, column)) !== nothing
+    return Dict(:error => false, :strings => ddt)
   end
 
+  ldt = localdatatip(word, column, row, startrow, context)
+  isempty(ldt) || return datatip(ldt)
+
+  tdt = topleveldatatip(mod, word)
+  tdt !== nothing && return Dict(:error => false, :strings => tdt)
+
+  return Dict(:error => true) # nothing hits
+end
+
+datatip(dt::Vector{Dict{Symbol, Any}}) = Dict(:error => false, :strings => dt)
+datatip(dt::Int) = Dict(:error => false, :line => dt)
+datatip(dt::Vector{Int}) = datatip(dt[1])
+
+function localdatatip(word, column, row, startrow, context)
+  word = first(split(word, '.')) # ignore dot accessors
+  position = row - startrow
+  ls = locals(context, position, column)
+  filter!(ls) do l
+    l[:name] == word &&
+    l[:line] < position
+  end
+  # there should be zero or one element in `ls`
+  map(l -> localdatatip(l, word, startrow), ls)
+end
+
+function localdatatip(l, word, startrow)
+  bindstr = l[:bindstr]
+  return if bindstr == word # when `word` is an argument or such
+    startrow + l[:line] - 1
+  else
+    Dict(:type => :snippet, :value => bindstr)
+  end
+end
+
+function topleveldatatip(mod, word)
   docs = @errs getdocs(mod, word)
-  docs isa EvalError && return Dict(:error => true)
+  docs isa EvalError && return nothing
 
   # don't show verbose stuff
   docstr = replace(string(docs), nodoc_regex => "")
-  occursin(nobinding_regex, docstr) && return Dict(:error => true)
+  occursin(nobinding_regex, docstr) && return nothing
 
   datatip = []
 
@@ -31,7 +71,7 @@ handle("datatip") do data
 
   processdoc!(docs, docstr, datatip)
 
-  return Dict(:error => false, :strings => datatip)
+  return datatip
 end
 
 # adapted from `REPL.summarize(binding::Binding, sig)`

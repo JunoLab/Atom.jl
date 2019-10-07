@@ -161,4 +161,7 @@ end
         @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "aaa"
         @test Atom.basecompletionadapter("a", Main, true, 8, 6, str)[1][1][:text] == "abc"
     end
+
+    # don't error on fallback case
+    @test Atom.localcompletions("", 1, 1) == []
 end
