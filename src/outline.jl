@@ -35,7 +35,7 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
 
     # toplevel call
     if iscallexpr(expr)
-        push!(items, ToplevelCall(expr, lines, str_value_asis(expr, text, pos)))
+        push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
     end
 
     # destructure multiple returns
@@ -78,7 +78,7 @@ handle("updateeditor") do data
     @destruct [
         text || "",
         mod || "Main",
-        path || "untitled",
+        path || "untitled"
     ] = data
 
     try
@@ -158,8 +158,8 @@ function outlineitem(tupleh::ToplevelTupleH)
     lines = tupleh.lines
 
     # `expr.parent` is always `CSTParser.EXPR`
-    type = isconst(expr.parent) ? "constant" : "variable"
-    icon = isconst(expr.parent) ? "c" : "v"
+    type = isconstexpr(expr.parent) ? "constant" : "variable"
+    icon = isconstexpr(expr.parent) ? "c" : "v"
 
     Dict(
         :name  => str_value(expr),
@@ -209,7 +209,7 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     bind = CSTParser.bindingof(expr)
     scope = scopeof(expr)
     if bind !== nothing && scope === nothing
-        bindstr = str_value_asis(bind, text, pos)
+        bindstr = str_value_as_is(bind, text, pos)
         range = pos:pos+expr.span
         push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
     end
@@ -228,7 +228,7 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
         else
             # find local binds in a scope
             # calculate fields for `LocalScope` first
-            bindstr = str_value_asis(expr, text, pos)
+            bindstr = str_value_as_is(expr, text, pos)
             range = pos:pos+expr.span
             name = bind === nothing ? "" : bind.name
 
@@ -354,7 +354,14 @@ function ismultiplereturn(expr)
     !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
-# adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
+
+"""
+    str_value(x)
+
+Reconstruct source code from a `CSTParser.EXPR`.
+
+Adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108.
+"""
 function str_value(x)
     if x.typ === CSTParser.PUNCTUATION
         x.kind == CSTParser.Tokens.LPAREN && return "("
@@ -385,15 +392,21 @@ function str_value(x)
     end
 end
 
-function str_value_asis(expr::CSTParser.EXPR, text::String, pos::Int)
+"""
+    str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
+
+Extract `expr`'s source from `text`, starting at `pos`. Similar to `str_value`, but doesn't
+*reconstruct* the source code.
+"""
+function str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
     strip(text[s:e])
 end
-str_value_asis(bind::CSTParser.Binding, text::String, pos::Int) = str_value_asis(bind.val, text, pos)
-str_value_asis(bind, text::String, pos::Int) = ""
+str_value_as_is(bind::CSTParser.Binding, text::String, pos::Int) = str_value_as_is(bind.val, text, pos)
+str_value_as_is(bind, text::String, pos::Int) = ""
 
 # need to keep this consistent with wstype
 static_type(bind::CSTParser.Binding) = static_type(bind.val)
@@ -410,7 +423,7 @@ function static_type(val::CSTParser.EXPR)
            CSTParser.defines_primitive(val)
         "type"
     else
-        isconst(val) ? "constant" : "variable"
+        isconstexpr(val) ? "constant" : "variable"
     end
 end
 
@@ -429,11 +442,11 @@ function static_icon(val::CSTParser.EXPR)
            CSTParser.defines_primitive(val)
         "T"
     else
-        isconst(val) ? "c" : "v"
+        isconstexpr(val) ? "c" : "v"
     end
 end
 
-function Base.isconst(expr::CSTParser.EXPR)
+function isconstexpr(expr::CSTParser.EXPR)
     parent = CSTParser.parentof(expr)
     parent === nothing ? false : parent.typ === CSTParser.Const
 end
