@@ -229,10 +229,10 @@
     @testset "goto global symbols" begin # toplevel symbol goto & method goto
         # both the original methods and the toplevel bindings that are overloaded
         # in a context module should be shown
-        let items = globalgotoitems("isconst", "Atom", "", nothing)
+        let items = globalgotoitems("isconst", "Main.Junk", "", nothing)
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" ∈ map(item -> item.text, items) # from Base
-            @test "Base.isconst(expr::CSTParser.EXPR)" ∈ map(item -> item.text, items) # from Atom
+            @test "Base.isconst(::JunkType)" ∈ map(item -> item.text, items) # from Junk
         end
     end
 end

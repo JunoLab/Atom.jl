@@ -16,4 +16,8 @@ module Junk2 end
 
 const toplevelval = "you should jump to me !"
 
+# mock overloaded method
+struct JunkType end
+Base.isconst(::JunkType) = false
+
 end

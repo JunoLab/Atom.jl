@@ -2,8 +2,6 @@ using CSTParser
 
 ### toplevel bindings - outline, goto ###
 
-# TODO?: create separate function to search toplevel bindings, and to search calls
-
 abstract type ToplevelItem end
 
 struct ToplevelBinding <: ToplevelItem
@@ -56,7 +54,7 @@ end
 
 iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
 
-function shouldenter(expr)
+function shouldenter(expr::CSTParser.EXPR)
     !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
         expr.typ === CSTParser.ModuleH ||
@@ -65,7 +63,7 @@ function shouldenter(expr)
     ))
 end
 
-function isdoc(expr)
+function isdoc(expr::CSTParser.EXPR)
     expr.typ === CSTParser.MacroCall &&
         length(expr.args) >= 1 &&
         (
@@ -169,9 +167,9 @@ function outlineitem(tupleh::ToplevelTupleH)
     )
 end
 
-ismacrocall(expr) = expr.typ === CSTParser.MacroCall
+ismacrocall(expr::CSTParser.EXPR) = expr.typ === CSTParser.MacroCall
 
-function isinclude(expr)
+function isinclude(expr::CSTParser.EXPR)
     expr.typ === CSTParser.Call &&
         length(expr.args) === 4 &&
         expr.args[1].val == "include" &&
@@ -180,6 +178,10 @@ function isinclude(expr)
 end
 
 ### local bindings -- completions, goto, datatip ###
+
+# TODO?
+# create more structs to search function/macro calls, and make each structs keeps
+# minimum fields, and each downstream construct necessary values from them when needed
 
 struct LocalBinding
     name::String
@@ -316,7 +318,7 @@ end
 
 ### utils ###
 
-function scopeof(expr)
+function scopeof(expr::CSTParser.EXPR)
     scope = CSTParser.scopeof(expr)
     if scope ≠ nothing
         return scope
@@ -349,20 +351,20 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     count(c -> c === eol, text[s:e])
 end
 
-function ismultiplereturn(expr)
+function ismultiplereturn(expr::CSTParser.EXPR)
     expr.typ === CSTParser.TupleH &&
     !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
 
 """
-    str_value(x)
+    str_value(x::CSTParser.EXPR)
 
 Reconstruct source code from a `CSTParser.EXPR`.
 
 Adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108.
 """
-function str_value(x)
+function str_value(x::CSTParser.EXPR)
     if x.typ === CSTParser.PUNCTUATION
         x.kind == CSTParser.Tokens.LPAREN && return "("
         x.kind == CSTParser.Tokens.LBRACE && return "{"
