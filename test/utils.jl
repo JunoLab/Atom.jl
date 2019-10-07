@@ -53,6 +53,28 @@ end
 cd(old_pwd)
 end
 
+@testset "get utilities" begin
+    # TODO: others
+
+    @testset "get docs" begin
+        using Atom: getdocs
+        using Markdown: MD
+
+        # basic
+        let doc = getdocs(Main.Junk, "imwithdoc")
+            @test occursin("im a doc", string(doc))
+        end
+
+        # use fallback modules if `@doc` is not defined for a module passed as 1st argument
+        let doc = getdocs(Main.BareJunk, "imwithdoc")
+            @test occursin("im a doc", string(doc))
+        end
+
+        # don't error even if `@doc` is not defined for a fallback module
+        @test getdocs(Main.BareJunk, "imwithdoc", Main.BareJunk) isa MD
+    end
+end
+
 @testset "limiting excessive strings" begin
     using Atom: strlimit
 
