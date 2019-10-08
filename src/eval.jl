@@ -112,6 +112,11 @@ handle("eval") do data
   end
 end
 
+# dummy handler for Revise compat
+handle("evalrepl") do data
+  @warn "Juno's evalrepl handler is deprecated."
+end
+
 handle("evalall") do data
   fixjunodisplays()
   @dynamic let Media.input = Editor()
