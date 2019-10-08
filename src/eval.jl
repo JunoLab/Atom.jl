@@ -132,7 +132,7 @@ handle("evalall") do data
           try
             result = include_string(mod, code, path)
           catch err
-            ee = EvalError(err, st)
+            ee = EvalError(err, stacktrace(catch_backtrace()))
 
             # show error in REPL:
             Base.showerror(IOContext(stderr, :limit => true), ee)
