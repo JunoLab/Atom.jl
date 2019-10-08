@@ -107,9 +107,9 @@ using Base.Docs
 
 completionsummary(mod, c) = ""
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
-  mod, word = c.parent, c.mod
-  cangetdocs(mod, word) || return ""
-  docs = getdocs(mod, word)
+  m, word = c.parent, c.mod
+  cangetdocs(m, word) || return ""
+  docs = getdocs(m, word, mod)
   description(docs)
 end
 completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin

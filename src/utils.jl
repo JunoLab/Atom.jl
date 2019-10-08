@@ -148,20 +148,28 @@ getmodule(args...) = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
 getmethods(mod::Module, word::String) = methods(CodeTools.getthing(mod, word))
 getmethods(mod::String, word::String) = getmethods(getmodule(mod), word)
 
-getdocs(mod::Module, word::String) = begin
+getdocs(mod::Module, word::String, fallbackmod::Module = Main) = begin
   md = if Symbol(word) in keys(Docs.keywords)
     Core.eval(Main, :(@doc($(Symbol(word)))))
   else
-    include_string(mod, "@doc $word")
+    docsym = Symbol("@doc")
+    if isdefined(mod, docsym)
+      include_string(mod, "@doc $word")
+    elseif isdefined(fallbackmod, docsym)
+      word = string(mod) * "." * word
+      include_string(fallbackmod, "@doc $word")
+    else
+      MD("@doc is not available in " * string(mod))
+    end
   end
   md_hlines(md)
 end
-getdocs(mod::String, word::String) = getdocs(getmodule(mod), word)
+getdocs(mod::String, word::String, fallbackmod::Module = Main) =
+  getdocs(getmodule(mod), word, fallbackmod)
 
 cangetdocs(mod::Module, word::Symbol) =
   Base.isbindingresolved(mod, word) &&
-  !Base.isdeprecated(mod, word) &&
-  isdefined(mod, Symbol("@doc"))
+  !Base.isdeprecated(mod, word)
 cangetdocs(mod::Module, word::String) = cangetdocs(mod, Symbol(word))
 
 #=

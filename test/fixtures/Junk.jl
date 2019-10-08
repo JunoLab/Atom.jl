@@ -20,4 +20,14 @@ const toplevelval = "you should jump to me !"
 struct JunkType end
 Base.isconst(::JunkType) = false
 
+"""im a doc in Junk"""
+const imwithdoc = nothing
+
+baremodule BareJunk
+
+"""im a doc in BareJunk"""
+const imwithdoc = nothing
+
+end
+
 end
