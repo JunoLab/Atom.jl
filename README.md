@@ -1,6 +1,6 @@
 # Atom
 
-[![Build Status](https://travis-ci.org/JunoLab/Atom.jl.svg?branch=master)](https://travis-ci.org/JunoLab/Atom.jl) [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://JunoLab.github.io/JunoDocs.jl/latest)
+[![Build Status](https://travis-ci.org/JunoLab/Atom.jl.svg?branch=master)](https://travis-ci.org/JunoLab/Atom.jl) [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://JunoLab.github.io/JunoDocs.jl/latest) [![codecov](https://codecov.io/gh/JunoLab/Atom.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JunoLab/Atom.jl)
 
 This is the language server backend for [Juno](http://junolab.org/), the [Julia](http://julialang.org/) IDE. 
 
