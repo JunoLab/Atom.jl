@@ -286,7 +286,7 @@ end
         end
     end
 
-    # the items inside quotes doesn't leak
+    # items inside quote blocks don't leak
     let str = """
         ex = :(func() = nothing)
         q = quote
