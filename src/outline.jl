@@ -332,12 +332,16 @@ function scopeof(expr::CSTParser.EXPR)
             return :call
         end
 
+        if expr.typ == CSTParser.TupleH && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
+            return :tupleh
+        end
+
         if expr.typ == CSTParser.MacroCall
             return :macro
         end
 
-        if expr.typ == CSTParser.TupleH && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
-            return :tupleh
+        if expr.typ == CSTParser.Quote
+            return :quote
         end
     end
     return nothing
