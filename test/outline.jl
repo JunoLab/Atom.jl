@@ -286,6 +286,20 @@ end
         end
     end
 
+    # items inside quote blocks don't leak
+    let str = """
+        ex = :(func() = nothing)
+        q = quote
+            @macrocall something
+            val = nothing
+        end
+        """
+        let names = Set(map(d -> d[:name], outline(str)))
+            @test length(names) === 2
+            @test names == Set(("ex", "q"))
+        end
+    end
+
     # should stringify method signatures correctly
     let str = """
         withstrings(single = \"1\", triple = \"\"\"3\"\"\") = single * triple
