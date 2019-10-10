@@ -168,7 +168,12 @@ function handlemsg(t, args...)
       rethrow()
     end
   else
-    @warn("Atom.jl: unrecognised message $t.")
+    @warn("""
+      Atom.jl: unrecognised message `$t`.
+      Please make sure your Atom and Julia packages are in sync.
+        - Try `using Pkg; Pkg.update()` to update this package.
+        - Check for `julia-client` updates in Atom.
+      """, _id=t, maxlog=1)
     callback ≠ nothing && msg("cancelCallback", callback)
   end
 end
