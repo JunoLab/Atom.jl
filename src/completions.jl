@@ -38,7 +38,7 @@ function basecompletionadapter(line, mod, force, lineNumber, column, text)
   pre = line[replace]
   d = []
   for c in comps
-    if REPLCompletions.afterusing(line, first(replace))
+    if REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
       c isa REPLCompletions.PackageCompletion || continue
     end
     try
