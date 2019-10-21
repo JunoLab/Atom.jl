@@ -19,10 +19,8 @@ function refactor(
   column = 1, row = 1, startrow = 0, context = "",
   mod = "Main",
 )
-  expr = CSTParser.parse(context, true)
-  bind = CSTParser.bindingof(expr)
-
   # local refactor only if `old` is really a local binding
+  bind = CSTParser.bindingof(CSTParser.parse(context))
   if bind === nothing || old != bind.name
     try
       refactored = localrefactor(old, new, path, column, row, startrow, context)
@@ -33,52 +31,75 @@ function refactor(
   end
 
   try
-    refactored = localrefactor(old, new, path, column, row, startrow, context)
-    isempty(refactored) || return Dict(:text => refactored)
+    mod = getmodule(mod)
+    val = getfield′(mod, old)
+    result = globalrefactor(old, new, mod, val)
+    return result isa String ? Dict(:error => result) : Dict(:error => false)
   catch err
     @error err
   end
 
-  # try
-  #   globalrefactor(old, new, path, mod) && return nothing
-  # catch err
-  #   @error err
-  # end
-
-  return Dict(:error => true, :msg => "no refactor")
+  return Dict(:error => "Rename refactoring failed: `$old` -> `$new`")
 end
 
-function localrefactor(old, new, path, column, row, startrow, context)
-  old = first(split(old, '.')) # ignore dot accessors
-  position = row - startrow
+# local refactor
+# --------------
 
-  return if old ∈ map(l -> l[:name], locals(context, position, column))
+function localrefactor(old, new, path, column, row, startrow, context)
+  return if old ∈ map(l -> l[:name], locals(context, row - startrow, column))
     oldsym = Symbol(old)
-    quote
-      MacroTools.textwalk($context) do ex
-        @capture(ex, $oldsym) ? Symbol($new) : ex
-      end
-    end |> eval
+    newsym = Symbol(new)
+    MacroTools.textwalk(context) do sym
+      sym === oldsym ? newsym : sym
+    end
   else
     ""
   end
 end
 
-# mod = getmodule(m)
-# parentfile, modulefiles = modulefiles(mod)
-# sourcewalk("../packages/Atom/src/goto.jl") do x
-#   isshort = MacroTools.isshortdef(x)
-#   ex = MacroTools.shortdef(x)
-#   if @capture(ex, locals(args__) = body_)
-#     return if isshort
-#       :(newlocals(args...) = body)
-#     else
-#       :(function newlocals(args...)
-#         body
-#       end)
-#     end
-#   end
-#   return x
-#   isstruct = MacroTools.isstructdef(x)
-#   if @capture(x, struct )
-# end
+# global refactor
+# ---------------
+
+globalrefactor(old, new, mod, @nospecialize(val)) = _globalrefactor(old, new, mod) # general case
+function globalrefactor(old, new, mod, val::Undefined)
+  Symbol(old) in keys(Docs.keywords) ?
+    "Keywords can't be renamed: `$old`" :
+    _globalrefactor(old, new, mod)
+end
+
+function _globalrefactor(old, new, mod)
+  entrypath, line = moduledefinition(mod)
+  files = modulefiles(entrypath)
+
+  with_logger(JunoProgressLogger()) do
+    refactorfiles(old, new, mod, files)
+  end
+end
+
+function refactorfiles(old, new, obj, files)
+  id = "global_rename_refactor_progress"
+  @info "Start global rename refactoring" progress=0 _id=id
+
+  oldsym     = Symbol(old)
+  newsym     = Symbol(new)
+  modulesyms = Set(Symbol.(Base.loaded_modules_array()))
+  total      = length(files)
+
+  for (i, file) ∈ enumerate(files)
+    @info "Refactoring: $file ($i / $total)" progress=i/total _id=id
+    MacroTools.sourcewalk(file) do ex
+      return if ex === oldsym
+        newsym
+      elseif @capture(ex, obj_.$oldsym)
+        if obj in modulesyms
+          @warn "Came across a global rename refactoring across different modules: `$obj.$old` -> `$obj.$new`"
+        end
+        Expr(:., obj, newsym)
+      else
+        ex
+      end
+    end
+  end
+
+  @info "Finish global rename refactoring" progress=1 _id=id
+end

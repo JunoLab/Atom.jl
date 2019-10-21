@@ -204,6 +204,34 @@ function modulefiles(mod::Module)
   return fixpath(parentfile), [fixpath(mf[2]) for mf in included_files]
 end
 
+"""
+    included_files = modulefiles(entrypath::String)::Vector{String}
+
+Return all the file paths that can be reached via [`include`](@ref) calls.
+Note this function currently only looks for static _toplevel_ calls.
+"""
+function modulefiles(entrypath::String, files = [])
+  push!(files, entrypath)
+
+  text = read(entrypath, String)
+  parsed = CSTParser.parse(text, true)
+  items = toplevelitems(parsed, text)
+
+  for item in items
+    if item isa ToplevelCall
+      expr = item.expr
+      if isinclude(expr)
+        nextfile = expr.args[3].val
+        nextentrypath = joinpath(dirname(entrypath), nextfile)
+        isfile(nextentrypath) || continue
+        modulefiles(nextentrypath, files)
+      end
+    end
+  end
+
+  return files
+end
+
 function moduledefinition(mod::Module) # NOTE: added when adapted
   evalmethod = first(methods(getfield(mod, :eval)))
   parentfile = String(evalmethod.file)
