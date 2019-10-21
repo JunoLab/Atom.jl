@@ -23,8 +23,14 @@ function renamerefactor(
   mod = getmodule(mod)
 
   # catch field renaming
-  if (obj = first(split(full, '.'))) != old && !isa(getfield′(mod, obj), Module)
-    return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
+  modulenote = if (obj = first(split(full, '.'))) != old
+    if (parentmod = getfield′(mod, obj)) isa Module && parentmod != mod
+      "**NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings in that module as well."
+    else
+      return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
+    end
+  else
+    ""
   end
 
   # local refactor only if `old` is really a local binding
@@ -34,7 +40,7 @@ function renamerefactor(
       refactored = localrefactor(old, new, path, column, row, startrow, context)
       isempty(refactored) || return Dict(
         :text    => refactored,
-        :success => "Local rename refactoring `$old` ⟹ `$new` succeeded"
+        :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
       )
     catch err
       @error err
@@ -42,12 +48,21 @@ function renamerefactor(
   end
 
   try
-    val = getfield′(mod, old)
-    kind, description = globalrefactor(old, new, mod, val)
+    val = getfield′(mod, full)
+    # catch keyword renaming
+    if val isa Undefined && Symbol(old) in keys(Docs.keywords)
+      return Dict(:warning => "Keywords can't be renamed: `$old`")
+    end
+    # update modulenote
+    if isempty(modulenote) && applicable(parentmodule, val) && (parentmod = parentmodule(val)) != mod
+      modulenote =
+        "**NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings in that module as well."
+    end
+    kind, desc = globalrefactor(old, new, mod)
     return Dict(
-      kind     => description,
-      :success => kind !== :info ? false :
-        "Global rename refactoring `$old` ⟹ `$new` succeeded"
+      kind => kind === :success ?
+        join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", modulenote, desc), "\n\n") :
+        desc
     )
   catch err
     @error err
@@ -74,14 +89,7 @@ end
 # global refactor
 # ---------------
 
-globalrefactor(old, new, mod, @nospecialize(val)) = _globalrefactor(old, new, mod) # general case
-function globalrefactor(old, new, mod, val::Undefined)
-  Symbol(old) in keys(Docs.keywords) ?
-    (:warning, "Keywords can't be renamed: `$old`") :
-    _globalrefactor(old, new, mod)
-end
-
-function _globalrefactor(old, new, mod)
+function globalrefactor(old, new, mod)
   entrypath, line = moduledefinition(mod)
   files = modulefiles(entrypath)
 
@@ -97,18 +105,18 @@ function refactorfiles(old, new, mod, files)
   oldsym = Symbol(old)
   newsym = Symbol(new)
   total  = length(files)
-  desc = ""
+
+  # TODO: enable line location information (the upstream needs to be enhanced)
+  refactoredfiles = Set{String}()
 
   for (i, file) ∈ enumerate(files)
     @info "Refactoring: $file ($i / $total)" progress=i/total _id=id
     MacroTools.sourcewalk(file) do ex
       return if ex === oldsym
+        push!(refactoredfiles, fullpath(file))
         newsym
       elseif @capture(ex, m_.$oldsym) && getfield′(mod, Symbol(m)) isa Module
-        # TODO: enable line location information (the upstream needs to be enhanced)
-        file = fullpath(file)
-        link = "atom://julia-client/?open=true&file=$(file)&line=0"
-        desc *= "- `$m.$old` ⟹ `$m.$new` in [$file]($link)\n"
+        push!(refactoredfiles, fullpath(file))
         Expr(:., m, newsym)
       else
         ex
@@ -118,5 +126,10 @@ function refactorfiles(old, new, mod, files)
 
   @info "Finish global rename refactoring" progress=1 _id=id
 
-  (:info, isempty(desc) ? "" : "Refactorings across modules\n" * desc)
+  return if !isempty(refactoredfiles)
+    filelist = ("- [$file](atom://julia-client/?open=true&file=$(file)&line=0)" for file in refactoredfiles)
+    (:success, string("Refactored files (all in `$mod` module):\n\n", join(filelist, '\n')))
+  else
+    (:warning, "No rename refactoring occured on `$old`")
+  end
 end
