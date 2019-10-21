@@ -185,6 +185,13 @@ cangetdocs(mod::Module, word::Symbol) =
 cangetdocs(mod::Module, word::AbstractString) = cangetdocs(mod, Symbol(word))
 cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString}) = cangetdocs(getmodule(mod), word)
 
+# uri utilties
+# ------------
+
+uriopen(file, line = 0) = "atom://julia-client/?open=true&file=$(file)&line=$(line)"
+uridocs(mod, word) = "atom://julia-client/?docs=true&mod=$(mod)&word=$(word)"
+urimoduleinfo(mod) = "atom://julia-client/?moduleinfo=true&mod=$(mod)"
+
 #=
 module file detections
 

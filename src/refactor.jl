@@ -23,9 +23,9 @@ function renamerefactor(
   mod = getmodule(mod)
 
   # catch field renaming
-  modulenote = if (obj = first(split(full, '.'))) != old
+  modnote = if (obj = first(split(full, '.'))) != old
     if (parentmod = getfield′(mod, obj)) isa Module && parentmod != mod
-      "**NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings in that module as well."
+      modulenote(old, parentmod)
     else
       return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
     end
@@ -53,15 +53,14 @@ function renamerefactor(
     if val isa Undefined && Symbol(old) in keys(Docs.keywords)
       return Dict(:warning => "Keywords can't be renamed: `$old`")
     end
-    # update modulenote
-    if isempty(modulenote) && applicable(parentmodule, val) && (parentmod = parentmodule(val)) != mod
-      modulenote =
-        "**NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings in that module as well."
+    # update modnote
+    if isempty(modnote) && applicable(parentmodule, val) && (parentmod = parentmodule(val)) != mod
+      modnote = modulenote(old, parentmod)
     end
     kind, desc = globalrefactor(old, new, mod)
     return Dict(
       kind => kind === :success ?
-        join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", modulenote, desc), "\n\n") :
+        join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", modnote, desc), "\n\n") :
         desc
     )
   catch err
@@ -70,6 +69,9 @@ function renamerefactor(
 
   return Dict(:error => "Rename refactoring `$old` ⟹ `$new` failed")
 end
+
+modulenote(old, parentmod) =
+  "**NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings in that module as well."
 
 # local refactor
 # --------------
@@ -127,9 +129,9 @@ function refactorfiles(old, new, mod, files)
   @info "Finish global rename refactoring" progress=1 _id=id
 
   return if !isempty(refactoredfiles)
-    filelist = ("- [$file](atom://julia-client/?open=true&file=$(file)&line=0)" for file in refactoredfiles)
+    filelist = ("- [$file]($(uriopen(file)))" for file in refactoredfiles)
     (:success, string("Refactored files (all in `$mod` module):\n\n", join(filelist, '\n')))
   else
-    (:warning, "No rename refactoring occured on `$old`")
+    (:warning, "No rename refactoring occured on `$old` in `$mod` module.")
   end
 end
