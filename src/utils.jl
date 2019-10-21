@@ -219,7 +219,7 @@ end
 function fixpath(
   filename::AbstractString;
   badpath = basebuilddir,
-  goodpath = juliadir,
+  goodpath = basepath("..")
 )
   startswith(filename, badpath) || return fullpath(normpath(filename)) # NOTE: `fullpath` added when adapted
   filec = filename
@@ -249,35 +249,6 @@ Julia's top-level directory when Julia was built, as recorded by the entries in
 const basebuilddir = let # NOTE: changed from `begin` to `let` when adapted
   sysimg = filter(x -> endswith(x[2], "sysimg.jl"), Base._included_files)[1][2]
   dirname(dirname(sysimg))
-end
-
-"""
-    juliadir
-
-Constant specifying full path to julia top-level source directory.
-This should be reliable even for local builds, cross-builds, and binary installs.
-"""
-const juliadir = begin
-  local jldir = basebuilddir
-  if !isdir(joinpath(jldir, "base"))
-        # Binaries probably end up here. We fall back on Sys.BINDIR
-    jldir = joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia")
-    if !isdir(joinpath(jldir, "base"))
-      while true
-        trydir = joinpath(jldir, "base")
-        isdir(trydir) && break
-        trydir = joinpath(jldir, "share", "julia", "base")
-        if isdir(trydir)
-          jldir = joinpath(jldir, "share", "julia")
-          break
-        end
-        jldirnext = dirname(jldir)
-        jldirnext == jldir && break
-        jldir = jldirnext
-      end
-    end
-  end
-  normpath(jldir)
 end
 
 use_compiled_modules() = Base.JLOptions().use_compiled_modules != 0
