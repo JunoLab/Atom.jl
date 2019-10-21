@@ -97,7 +97,6 @@ function refactorfiles(old, new, mod, files)
   oldsym = Symbol(old)
   newsym = Symbol(new)
   total  = length(files)
-
   desc = ""
 
   for (i, file) ∈ enumerate(files)
@@ -105,8 +104,11 @@ function refactorfiles(old, new, mod, files)
     MacroTools.sourcewalk(file) do ex
       return if ex === oldsym
         newsym
-      elseif @capture(ex, m_.$oldsym) && getfield′(mod, m) isa Module
-        desc *= "`$m.$old` ⟹ `$m.$new` in $(fullpath(file))\n"
+      elseif @capture(ex, m_.$oldsym) && getfield′(mod, Symbol(m)) isa Module
+        # TODO: enable line location information (the upstream needs to be enhanced)
+        file = fullpath(file)
+        link = "atom://julia-client/?open=true&file=$(file)&line=0"
+        desc *= "- `$m.$old` ⟹ `$m.$new` in [$file]($link)\n"
         Expr(:., m, newsym)
       else
         ex
@@ -116,5 +118,5 @@ function refactorfiles(old, new, mod, files)
 
   @info "Finish global rename refactoring" progress=1 _id=id
 
-  (:info, isempty(desc) ? "" : "Refactorings across modules\n\n" * desc)
+  (:info, isempty(desc) ? "" : "Refactorings across modules\n" * desc)
 end
