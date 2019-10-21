@@ -32,7 +32,7 @@ function finddevpackages()
         push!(manifests, Pkg.Types.Context().env.manifest_file)
     end
 
-    devpkgs = Dict{String, String}()
+    devpkgs = OrderedDict{String, String}()
     for manifest in manifests
         isfile(manifest) || continue
         try
