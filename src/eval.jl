@@ -159,8 +159,14 @@ handle("evalall") do data
 end
 
 handle("docs") do data
-  @destruct [mod || "Main", word] = data
+  @destruct [
+    word,
+    mod || "Main"
+  ] = data
+  docs(word, mod)
+end
 
+function docs(word, mod = "Main")
   docstring = @errs getdocs(mod, word)
   docstring isa EvalError && return Dict(:error => true)
 

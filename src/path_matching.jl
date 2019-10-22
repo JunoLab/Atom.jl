@@ -1,10 +1,10 @@
-const uri_regex = if Sys.iswindows()
+const uri_regex = @static if Sys.iswindows()
   r"((?:(?:[a-zA-Z]:|\.\.?|\~)|(?:[^\0<>\?\|\/\s!$`&*()\[\]+'\":;])+)?(?:(?:\\|\/)(?:[^\0<>\?\|\/\s!$`&*()\[\]+'\":;])+)+)(?:\:(\d+))?"
 else
   r"((?:(?:\.\.?|\~)|(?:[^\0\s!$`&*()\[\]+'\":;\\])+)?(?:\/(?:[^\0\s!$`&*()\[\]+'\":;\\])+)+)(?:\:(\d+))?"
 end
 
-const buildbot_regex = if Sys.iswindows()
+const buildbot_regex = @static if Sys.iswindows()
   r"C:\\cygwin\home\\Admininstrator\\buildbot\\.*?(\\julia\\stdlib\\.*?\.jl)"
 else
   r"\/buildworker\/worker\/.*?(\/julia\/stdlib\/.*?\.jl)"

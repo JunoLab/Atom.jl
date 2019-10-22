@@ -1,22 +1,16 @@
 @testset "toggle docs" begin
-    cb = 0  # callback count
-    handle(type, word, mod = "Main") =
-        Atom.handlemsg(Dict("type"     => type,
-                            "callback" => (cb += 1)),
-                       Dict("word"     => word,
-                            "mod"      => mod))
-
-    ## toggle docs
-
     # basic
-    handle("docs", "push!")
-    @test !readmsg()[3]["error"]
+    let doc = Atom.docs("push!")
+        @test !doc[:error]
+    end
 
     # context module
-    handle("docs", "handlemsg", "Atom")
-    @test !readmsg()[3]["error"]
+    let doc = Atom.docs("handle", "Atom")
+        @test !doc[:error]
+    end
 
     # keyword
-    handle("docs", "begin", "Atom")
-    @test !readmsg()[3]["error"]
+    let doc = Atom.docs("begin", "Atom")
+        @test !doc[:error]
+    end
 end

@@ -271,7 +271,7 @@ function byteoffset(text, line, col)
             c === '\n' && break
         end
         current_char == col && break
-        byteoffset += VERSION >= v"1.1" ? ncodeunits(c) : ncodeunits(string(c))
+        byteoffset += @static VERSION >= v"1.1" ? ncodeunits(c) : ncodeunits(string(c))
         c === '\n' && (current_line += 1)
     end
     byteoffset
