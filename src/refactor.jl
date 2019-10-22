@@ -21,21 +21,12 @@ function renamerefactor(
   mod = "Main",
 )
   mod = getmodule(mod)
+  head = first(split(full, '.'))
+  headval = getfield′(mod, head)
 
-  # check on dot accessor
-  moddesc = if (obj = first(split(full, '.'))) != old
-    if (parentmod = getfield′(mod, obj)) isa Module
-      if parentmod != mod
-        moduledescription(old, parentmod)
-      else
-        ""
-      end
-    else
-      # catch field renaming
-      return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
-    end
-  else
-    ""
+  # catch field renaming
+  if head ≠ old && !isa(headval, Module)
+    return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
   end
 
   expr = CSTParser.parse(context)
@@ -72,9 +63,11 @@ function renamerefactor(
 
     # make description
     if kind === :success
-      # update modesc
-      if isempty(moddesc) && applicable(parentmodule, val) && (parentmod = parentmodule(val)) ≠ mod
-        moddesc = moduledescription(old, parentmod)
+      moddesc = if (headval isa Module && headval ≠ mod) ||
+         (applicable(parentmodule, val) && (headval = parentmodule(val)) ≠ mod)
+        moduledescription(old, headval)
+      else
+        ""
       end
 
       desc = join(("_Global_ rename refactoring `$mod.$old` ⟹ `$mod.$new` succeeded.", moddesc, desc), "\n\n")
@@ -167,7 +160,7 @@ end
 function moduledescription(old, parentmod)
   gotouri = urigoto(parentmod, old)
   """
-  **NOTE**: `$old` was defined in `$parentmod` -- you may need the same rename refactorings
+  **NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings
   in that module as well. <button>[Go to `$parentmod.$old`]($gotouri)</button>
   """
 end
