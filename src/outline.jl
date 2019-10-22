@@ -219,13 +219,18 @@ function local_bindings(expr, text, bindings = [], pos = 1, line = 1)
     if scope !== nothing
         expr.typ == CSTParser.Kw && return bindings
 
+        # destructure multiple returns
         if ismultiplereturn(expr)
-            # destructure multiple returns
-            if expr.args !== nothing
-                for arg in expr.args
-                    # don't update `pos` & `line`, i.e.: treat all the multiple returns at a same place
-                    local_bindings(arg, text, bindings, pos, line)
-                end
+            for arg in expr.args
+                # don't update `pos` & `line`, i.e.: treat all the multiple returns as same
+                local_bindings(arg, text, bindings, pos, line)
+            end
+        # properly detect the parameters of a method with where clause: https://github.com/JunoLab/Juno.jl/issues/404
+        elseif iswhereclause(expr)
+            for arg in expr.args
+                local_bindings(arg, text, bindings, pos, line)
+                line += countlines(arg, text, pos)
+                pos += arg.fullspan
             end
         else
             # find local binds in a scope
@@ -320,7 +325,7 @@ end
 
 function scopeof(expr::CSTParser.EXPR)
     scope = CSTParser.scopeof(expr)
-    if scope ≠ nothing
+    if scope !== nothing
         return scope
     else
         # can remove this with CSTParser 0.6.3
@@ -328,12 +333,16 @@ function scopeof(expr::CSTParser.EXPR)
             return :anon
         end
 
-        if expr.typ == CSTParser.Call && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
+        if expr.typ == CSTParser.Call && expr.parent !== nothing && scopeof(expr.parent) == nothing
             return :call
         end
 
-        if expr.typ == CSTParser.TupleH && expr.parent ≠ nothing && scopeof(expr.parent) == nothing
+        if expr.typ == CSTParser.TupleH && expr.parent !== nothing && scopeof(expr.parent) == nothing
             return :tupleh
+        end
+
+        if iswhereclause(expr)
+            return :where
         end
 
         if expr.typ == CSTParser.MacroCall
@@ -357,9 +366,15 @@ end
 
 function ismultiplereturn(expr::CSTParser.EXPR)
     expr.typ === CSTParser.TupleH &&
-    !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
+        expr.args !== nothing &&
+        !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
 end
 
+function iswhereclause(expr::CSTParser.EXPR)
+    expr.typ === CSTParser.WhereOpCall &&
+        expr.parent !== nothing &&
+        expr.args !== nothing
+end
 
 """
     str_value(x::CSTParser.EXPR)
