@@ -30,7 +30,9 @@ function renamerefactor(
   end
 
   expr = CSTParser.parse(context)
-  bind = CSTParser.bindingof(expr)
+  items = toplevelitems(expr, context)
+  ind = findfirst(item -> item isa ToplevelBinding, items)
+  bind = ind === nothing ? nothing : items[ind].bind
 
   # local rename refactor if `old` isn't a toplevel binding
   if bind === nothing || old ≠ bind.name
