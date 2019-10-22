@@ -52,7 +52,7 @@
     @testset "module goto" begin
         let item = modulegotoitems("Atom", Main)[1]
             @test item.file == realpath′(joinpath(@__DIR__, "..", "src", "Atom.jl"))
-            @test item.line == 2
+            @test item.line == 3
         end
         let item = modulegotoitems("Junk2", Main.Junk)[1]
             @test item.file == joinpath(@__DIR__, "fixtures", "Junk.jl")

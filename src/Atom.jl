@@ -1,5 +1,6 @@
 __precompile__()
 
+@doc read(joinpath(dirname(@__DIR__), "README.md"), String)
 module Atom
 
 using Juno, Lazy, JSON, MacroTools, Media, Base.StackTraces

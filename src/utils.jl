@@ -157,9 +157,25 @@ Calls `CodeTools.getmodule(args...)`, but returns `Main` instead of `nothing` in
 """
 getmodule(args...) = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
 
+"""
+    getmethods(mod::Module, word::AbstractString)
+    getmethods(mod::AbstractString, word::AbstractString)
+
+Returns the [`MethodList`](@ref) for `word`, which is bound within `mod` module.
+"""
 getmethods(mod::Module, word::AbstractString) = methods(CodeTools.getthing(mod, word))
 getmethods(mod::AbstractString, word::AbstractString) = getmethods(getmodule(mod), word)
 
+"""
+    getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main)
+    getdocs(mod::AbstractString, word::AbstractString, fallbackmod::Module = Main)
+
+Retrieves docs for `mod.word` with [`@doc`](@ref) macro. If `@doc` is not available
+  within `mod` module, `@doc` will be evaluated in `fallbackmod` module if possible.
+
+!!! note
+    You may want to run [`cangetdocs`](@ref) in advance.
+"""
 getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main) = begin
   md = if Symbol(word) in keys(Docs.keywords)
     Core.eval(Main, :(@doc($(Symbol(word)))))
@@ -179,6 +195,14 @@ end
 getdocs(mod::AbstractString, word::AbstractString, fallbackmod::Module = Main) =
   getdocs(getmodule(mod), word, fallbackmod)
 
+"""
+    cangetdocs(mod::Module, word::Symbol)
+    cangetdocs(mod::Module, word::AbstractString)
+    cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString})
+
+Checks if the documentation bindings for `mod.word` is resolved and `mod.word`
+  is not deprecated.
+"""
 cangetdocs(mod::Module, word::Symbol) =
   Base.isbindingresolved(mod, word) &&
   !Base.isdeprecated(mod, word)
