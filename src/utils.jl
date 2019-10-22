@@ -214,6 +214,7 @@ cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString}) = cangetdoc
 
 uriopen(file, line = 0) = "atom://julia-client/?open=true&file=$(file)&line=$(line)"
 uridocs(mod, word) = "atom://julia-client/?docs=true&mod=$(mod)&word=$(word)"
+urigoto(mod, word) = "atom://julia-client/?goto=true&mod=$(mod)&word=$(word)"
 urimoduleinfo(mod) = "atom://julia-client/?moduleinfo=true&mod=$(mod)"
 
 #=

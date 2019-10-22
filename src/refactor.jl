@@ -65,7 +65,6 @@ function renamerefactor(
 
     # catch global refactoring not on definition, e.g.: on a call site
     if bind === nothing || old ≠ bind.name
-      # TODO: `goto` uri
       return Dict(:info => contextdescription(old, mod, context))
     end
 
@@ -78,7 +77,7 @@ function renamerefactor(
         moddesc = moduledescription(old, parentmod)
       end
 
-      desc = join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", moddesc, desc), "\n\n")
+      desc = join(("_Global_ rename refactoring `$mod.$old` ⟹ `$mod.$new` succeeded.", moddesc, desc), "\n\n")
     end
 
     return Dict(kind => desc)
@@ -161,17 +160,24 @@ end
 # descriptions
 # ------------
 
-moduledescription(old, parentmod) = """
-  **NOTE**: `$old` is defined in `$parentmod`
-  -- you may need the same rename refactorings in that module as well.
+function moduledescription(old, parentmod)
+  gotouri = urigoto(parentmod, old)
   """
+  **NOTE**: `$old` was defined in `$parentmod` -- you may need the same rename refactorings
+  in that module as well. <button>[Go to `$parentmod.$old`]($gotouri)</button>
+  """
+end
 
-contextdescription(old, mod, context) = """
+function contextdescription(old, mod, context)
+  gotouri = urigoto(mod, old)
+  """
   `$old` isn't found in local bindings in the current context:
   <details><summary>Context</summary><pre><code>$(strip(context))</code></p></details>
 
-  If you want a global rename refactoring on `$mod.$old`, you need to call from its definition.
+  If you want a global rename refactoring on `$mod.$old`, you need to run this command
+  from its definition. <button>[Go to `$mod.$old`]($gotouri)</button>
   """
+end
 
 function filedescription(mod, files)
   filelist = join(("<li>[$file]($(uriopen(file)))</li>" for file in files), '\n')
