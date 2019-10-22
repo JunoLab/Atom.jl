@@ -23,10 +23,10 @@ function renamerefactor(
   mod = getmodule(mod)
 
   # check on dot accessor
-  modnote = if (obj = first(split(full, '.'))) != old
-    if (parent = getfield′(mod, obj)) isa Module
-      if parent != mod
-        modulenote(old, parent)
+  moddesc = if (obj = first(split(full, '.'))) != old
+    if (parentmod = getfield′(mod, obj)) isa Module
+      if parentmod != mod
+        moduledescription(old, parentmod)
       else
         ""
       end
@@ -66,19 +66,19 @@ function renamerefactor(
     # catch global refactoring not on definition, e.g.: on a call site
     if bind === nothing || old ≠ bind.name
       # TODO: `goto` uri
-      return Dict(:info => contextnote(old, mod, context))
+      return Dict(:info => contextdescription(old, mod, context))
     end
 
     kind, desc = globalrefactor(old, new, mod, expr)
 
     # make description
     if kind === :success
-      # update modnote
-      if isempty(modnote) && applicable(parentmodule, val) && (parent = parentmodule(val)) ≠ mod
-        modnote = modulenote(old, parent)
+      # update modesc
+      if isempty(moddesc) && applicable(parentmodule, val) && (parentmod = parentmodule(val)) ≠ mod
+        moddesc = moduledescription(old, parentmod)
       end
 
-      desc = join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", modnote, desc), "\n\n")
+      desc = join(("_Global_ rename refactoring `$old` ⟹ `$new` succeeded.", moddesc, desc), "\n\n")
     end
 
     return Dict(kind => desc)
@@ -88,18 +88,6 @@ function renamerefactor(
 
   return Dict(:error => "Rename refactoring `$old` ⟹ `$new` failed")
 end
-
-modulenote(old, parentmod) = """
-  **NOTE**: `$old` is defined in `$parentmod`
-  -- you may need the same rename refactorings in that module as well.
-  """
-
-contextnote(old, mod, context) = """
-  `$old` isn't found in local bindings in the current context:
-  <details><summary>Context</summary><pre><code>$(strip(context))</code></p></details>
-
-  If you want a global rename refactoring on `$mod.$old`, you need to call from its definition.
-  """
 
 # local refactor
 # --------------
@@ -164,9 +152,32 @@ function refactorfiles(old, new, mod, files, expr)
   @info "Finish global rename refactoring" progress=1 _id=id
 
   return if !isempty(refactoredfiles)
-    filelist = ("- [$file]($(uriopen(file)))" for file in refactoredfiles)
-    (:success, string("Refactored files (all in `$mod` module):\n\n", join(filelist, '\n')))
+    (:success, filedescription(mod, refactoredfiles))
   else
     (:warning, "No rename refactoring occured on `$old` in `$mod` module.")
   end
+end
+
+# descriptions
+# ------------
+
+moduledescription(old, parentmod) = """
+  **NOTE**: `$old` is defined in `$parentmod`
+  -- you may need the same rename refactorings in that module as well.
+  """
+
+contextdescription(old, mod, context) = """
+  `$old` isn't found in local bindings in the current context:
+  <details><summary>Context</summary><pre><code>$(strip(context))</code></p></details>
+
+  If you want a global rename refactoring on `$mod.$old`, you need to call from its definition.
+  """
+
+function filedescription(mod, files)
+  filelist = join(("<li>[$file]($(uriopen(file)))</li>" for file in files), '\n')
+  """
+  <details><summary>
+  Refactored files (all in `$mod` module):
+  </summary><ul>$(filelist)</ul></details>
+  """
 end
