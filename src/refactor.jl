@@ -107,6 +107,11 @@ function globalrefactor(old, new, mod, expr)
   end
   files = modulefiles(entrypath)
 
+  nonwritablefiles = filter(f -> Int(Base.uperm(f)) ≠ 6, files)
+  if !isempty(nonwritablefiles)
+    return :warning, nonwritabledescription(mod, nonwritablefiles)
+  end
+
   with_logger(JunoProgressLogger()) do
     refactorfiles(old, new, mod, files, expr)
   end
@@ -173,6 +178,18 @@ function contextdescription(old, mod, context)
 
   If you want a global rename refactoring on `$mod.$old`, you need to run this command
   from its definition. <button>[Go to `$mod.$old`]($gotouri)</button>
+  """
+end
+
+function nonwritabledescription(mod, files)
+  filelist = join(("<li>[$file]($(uriopen(file)))</li>" for file in files), '\n')
+  """
+  Global rename refactor failed, since there are non-writable files detected in
+  `$mod` module.
+
+  <details><summary>
+  Non writable files (all in `$mod` module):
+  </summary><ul>$(filelist)</ul></details>
   """
 end
 
