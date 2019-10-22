@@ -131,6 +131,24 @@
         end
     end
 
+    # detect all the method parameters of a method with a `where` clause
+    let str = """
+        function push!′(ary::Vector{T}, item::S) where {T, S<:T}
+            tmpvec, tmpitem = ary, item
+            push!(tmpvec, tmpitem)
+        end
+        """
+
+        binds = map(l -> l[:name], Atom.locals(str, 1, 0))
+        @test "ary" in binds
+        @test "item" in binds
+        @test "T" in binds
+        @test "S" in binds
+        @test "tmpvec" in binds
+        @test "tmpitem" in binds
+        @test "push!′" in binds
+    end
+
     let str = """
         function foo(x)
             @macrocall begin
