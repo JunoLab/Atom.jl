@@ -107,7 +107,11 @@ end
 # ---------------
 
 function globalrefactor(old, new, mod, expr)
-  entrypath, line = moduledefinition(mod)
+  entrypath, line = if mod == Main
+    MAIN_MODULE_LOCATION[]
+  else
+    moduledefinition(mod)
+  end
   files = modulefiles(entrypath)
 
   with_logger(JunoProgressLogger()) do
