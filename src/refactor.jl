@@ -101,14 +101,13 @@ function current_scope(name, bindings, byteoffset)
   for binding in bindings
     isa(binding, LocalScope) || continue
 
-    scope = binding
-    if byteoffset in scope.span &&
-       any(bind -> bind isa LocalBinding && name == bind.name, scope.children)
-      return scope
-    else
-      let scope = current_scope(name, scope.children, byteoffset)
-        scope !== nothing && return scope
-      end
+    # first looks for innermost scope
+    childscope = current_scope(name, binding.children, byteoffset)
+    childscope !== nothing && return childscope
+
+    if byteoffset in binding.span &&
+       any(bind -> bind isa LocalBinding && name == bind.name, binding.children)
+      return binding
     end
   end
 
