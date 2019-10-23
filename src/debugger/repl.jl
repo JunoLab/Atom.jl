@@ -4,7 +4,7 @@ using REPL.REPLCompletions
 using JuliaInterpreter: moduleof, locals, eval_code
 import ..Atom: @msg
 
-const normal_prefix = Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
+const normal_prefix = @static Sys.iswindows() ? "\e[33m" : "\e[38;5;166m"
 const compiled_prefix = "\e[96m"
 
 function debugprompt()
