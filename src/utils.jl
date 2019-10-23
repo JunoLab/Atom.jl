@@ -1,6 +1,3 @@
-# path utilities
-# --------------
-
 include("path_matching.jl")
 
 isuntitled(p) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
@@ -102,9 +99,6 @@ function md_hlines(md)
   return MD(v)
 end
 
-# string utilties
-# ---------------
-
 function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
   will_append = length(str) > limit
 
@@ -128,56 +122,34 @@ shortstr(val) = strlimit(string(val), 20)
 struct Undefined end
 
 # get utilities
-# -------------
-
 using CodeTools
 
 """
-    getfield′(mod::Module, name::AbstractString, default = Undefined())
+    getfield′(mod::Module, name::String, default = Undefined())
     getfield′(mod::Module, name::Symbol, default = Undefined())
-    getfield′(mod::AbstractString, name::Symbol, default = Undefined())
     getfield′(object, name::Symbol, default = Undefined())
-    getfield′(object, name::AbstractString, default = Undefined())
 
 Returns the specified field of a given `Module` or some arbitrary `object`,
 or `default` if no such a field is found.
 """
-getfield′(mod::Module, name::AbstractString, default = Undefined()) = CodeTools.getthing(mod, name, default)
+getfield′(mod::Module, name::String, default = Undefined()) = CodeTools.getthing(mod, name, default)
 getfield′(mod::Module, name::Symbol, default = Undefined()) = getfield′(mod, string(name), default)
-getfield′(mod::AbstractString, name::Symbol, default = Undefined()) = getfield′(getmodule(mod), string(name), default)
 getfield′(@nospecialize(object), name::Symbol, default = Undefined()) = isdefined(object, name) ? getfield(object, name) : default
-getfield′(@nospecialize(object), name::AbstractString, default = Undefined()) = isdefined(object, name) ? getfield(object, Symbol(name)) : default
 
 """
-    getmodule(mod::AbstractString)
-    getmodule(parent::Union{Nothing, Module}, mod::AbstractString)
+    getmodule(mod::String)
+    getmodule(parent::Union{Nothing, Module}, mod::String)
     getmodule(code::AbstractString, pos; filemod)
 
 Calls `CodeTools.getmodule(args...)`, but returns `Main` instead of `nothing` in a fallback case.
 """
 getmodule(args...) = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
 
-"""
-    getmethods(mod::Module, word::AbstractString)
-    getmethods(mod::AbstractString, word::AbstractString)
+getmethods(mod::Module, word::String) = methods(CodeTools.getthing(mod, word))
+getmethods(mod::String, word::String) = getmethods(getmodule(mod), word)
 
-Returns the [`MethodList`](@ref) for `word`, which is bound within `mod` module.
-"""
-getmethods(mod::Module, word::AbstractString) = methods(CodeTools.getthing(mod, word))
-getmethods(mod::AbstractString, word::AbstractString) = getmethods(getmodule(mod), word)
-
-"""
-    getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main)
-    getdocs(mod::AbstractString, word::AbstractString, fallbackmod::Module = Main)
-
-Retrieves docs for `mod.word` with [`@doc`](@ref) macro. If `@doc` is not available
-  within `mod` module, `@doc` will be evaluated in `fallbackmod` module if possible.
-
-!!! note
-    You may want to run [`cangetdocs`](@ref) in advance.
-"""
-getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main) = begin
-  md = if iskeyword(word)
+getdocs(mod::Module, word::String, fallbackmod::Module = Main) = begin
+  md = if Symbol(word) in keys(Docs.keywords)
     Core.eval(Main, :(@doc($(Symbol(word)))))
   else
     docsym = Symbol("@doc")
@@ -192,36 +164,13 @@ getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main) = begin
   end
   md_hlines(md)
 end
-getdocs(mod::AbstractString, word::AbstractString, fallbackmod::Module = Main) =
+getdocs(mod::String, word::String, fallbackmod::Module = Main) =
   getdocs(getmodule(mod), word, fallbackmod)
 
-"""
-    cangetdocs(mod::Module, word::Symbol)
-    cangetdocs(mod::Module, word::AbstractString)
-    cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString})
-
-Checks if the documentation bindings for `mod.word` is resolved and `mod.word`
-  is not deprecated.
-"""
 cangetdocs(mod::Module, word::Symbol) =
   Base.isbindingresolved(mod, word) &&
   !Base.isdeprecated(mod, word)
-cangetdocs(mod::Module, word::AbstractString) = cangetdocs(mod, Symbol(word))
-cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString}) = cangetdocs(getmodule(mod), word)
-
-# is utilities
-# ------------
-
-iskeyword(word::Symbol) = word in keys(Docs.keywords)
-iskeyword(word::AbstractString) = iskeyword(Symbol(word))
-
-# uri utilties
-# ------------
-
-uriopen(file, line = 0) = "atom://julia-client/?open=true&file=$(file)&line=$(line)"
-uridocs(mod, word) = "atom://julia-client/?docs=true&mod=$(mod)&word=$(word)"
-urigoto(mod, word) = "atom://julia-client/?goto=true&mod=$(mod)&word=$(word)"
-urimoduleinfo(mod) = "atom://julia-client/?moduleinfo=true&mod=$(mod)"
+cangetdocs(mod::Module, word::String) = cangetdocs(mod, Symbol(word))
 
 #=
 module file detections
@@ -253,34 +202,6 @@ function modulefiles(mod::Module)
   filedata === nothing && return nothing, nothing
   included_files = filter(mf -> mf[1] == mod, filedata)
   return fixpath(parentfile), [fixpath(mf[2]) for mf in included_files]
-end
-
-"""
-    included_files = modulefiles(entrypath::String)::Vector{String}
-
-Return all the file paths that can be reached via [`include`](@ref) calls.
-Note this function currently only looks for static _toplevel_ calls.
-"""
-function modulefiles(entrypath::String, files = [])
-  push!(files, entrypath)
-
-  text = read(entrypath, String)
-  parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text)
-
-  for item in items
-    if item isa ToplevelCall
-      expr = item.expr
-      if isinclude(expr)
-        nextfile = expr.args[3].val
-        nextentrypath = joinpath(dirname(entrypath), nextfile)
-        isfile(nextentrypath) || continue
-        modulefiles(nextentrypath, files)
-      end
-    end
-  end
-
-  return files
 end
 
 function moduledefinition(mod::Module) # NOTE: added when adapted

@@ -145,14 +145,19 @@ completionurl(c::REPLCompletions.ModuleCompletion) = begin
   mod, name = c.parent, c.mod
   val = getfield′(mod, name)
   if val isa Module # module info
-    urimoduleinfo(parentmodule(val) == val || val ∈ (Base, Core) ? name : "$mod.$name")
+    parentmodule(val) == val || val ∈ (Main, Base, Core) ?
+      "atom://julia-client/?moduleinfo=true&mod=$(name)" :
+      "atom://julia-client/?moduleinfo=true&mod=$(mod).$(name)"
   else
-    uridocs(mod, name)
+    "atom://julia-client/?docs=true&mod=$(mod)&word=$(name)"
   end
 end
-completionurl(c::REPLCompletions.MethodCompletion) = uridocs(c.method.module, c.method.name)
-completionurl(c::REPLCompletions.PackageCompletion) = urimoduleinfo(c.package)
-completionurl(c::REPLCompletions.KeywordCompletion) = uridocs("Main", c.keyword)
+completionurl(c::REPLCompletions.MethodCompletion) =
+  "atom://julia-client/?docs=true&mod=$(c.method.module)&word=$(c.method.name)"
+completionurl(c::REPLCompletions.PackageCompletion) =
+  "atom://julia-client/?moduleinfo=true&mod=$(c.package)"
+completionurl(c::REPLCompletions.KeywordCompletion) =
+  "atom://julia-client/?docs=true&mod=Main&word=$(c.keyword)"
 
 completionmodule(mod, c) = shortstr(mod)
 completionmodule(mod, c::REPLCompletions.ModuleCompletion) = shortstr(c.parent)

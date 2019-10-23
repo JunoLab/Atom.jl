@@ -1,6 +1,5 @@
 __precompile__()
 
-@doc read(joinpath(dirname(@__DIR__), "README.md"), String)
 module Atom
 
 using Juno, Lazy, JSON, MacroTools, Media, Base.StackTraces
@@ -52,7 +51,6 @@ include("outline.jl")
 include("completions.jl")
 include("goto.jl")
 include("datatip.jl")
-include("refactor.jl")
 include("misc.jl")
 include("formatter.jl")
 include("frontend.jl")
