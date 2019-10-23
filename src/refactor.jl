@@ -37,7 +37,7 @@ function renamerefactor(
   # local rename refactor if `old` isn't a toplevel binding
   if bind === nothing || old ≠ bind.name
     try
-      refactored = localrefactor(old, new, path, column, row, startrow, context)
+      refactored = localrefactor(old, new, path, column, row, startrow, context, expr)
       isempty(refactored) || return Dict(
         :text    => refactored,
         :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
@@ -86,16 +86,38 @@ end
 # local refactor
 # --------------
 
-function localrefactor(old, new, path, column, row, startrow, context)
-  return if old ∈ map(l -> l[:name], locals(context, row - startrow, column))
-    oldsym = Symbol(old)
-    newsym = Symbol(new)
-    MacroTools.textwalk(context) do sym
-      sym === oldsym ? newsym : sym
-    end
-  else
-    ""
+function localrefactor(old, new, path, column, row, startrow, context, expr)
+  bindings = local_bindings(expr, context)
+  line = row - startrow
+  scope = current_scope(old, bindings, byteoffset(context, line, column))
+  scope === nothing && return ""
+
+  current_context = scope.bindstr
+  oldsym = Symbol(old)
+  newsym = Symbol(new)
+  new_context = MacroTools.textwalk(current_context) do sym
+    sym === oldsym ? newsym : sym
   end
+
+  replace(context, current_context => new_context)
+end
+
+function current_scope(name, bindings, byteoffset)
+  for binding in bindings
+    isa(binding, LocalScope) || continue
+
+    scope = binding
+    if byteoffset in scope.span &&
+       any(bind -> bind isa LocalBinding && name == bind.name, scope.children)
+      return scope
+    else
+      let scope = current_scope(name, scope.children, byteoffset)
+        scope !== nothing && return scope
+      end
+    end
+  end
+
+  return nothing
 end
 
 # global refactor
