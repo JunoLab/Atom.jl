@@ -49,7 +49,7 @@ function renamerefactor(
           :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
         )
     catch err
-      @error err
+      return Dict(:error => errdescription(old, new, err))
     end
   end
 
@@ -72,10 +72,8 @@ function renamerefactor(
 
     return Dict(kind => desc)
   catch err
-    @error err
+    return Dict(:error => errdescription(old, new, err))
   end
-
-  return Dict(:error => "Rename refactoring `$old` ⟹ `$new` failed")
 end
 
 islocalrefactor(bind, name) = bind === nothing || name ≠ bind.name
@@ -187,7 +185,7 @@ function contextdescription(old, mod, context)
   gotouri = urigoto(mod, old)
   """
   `$old` isn't found in local bindings in the current context:
-  <details><summary>Context</summary><pre><code>$(strip(context))</code></p></details>
+  <details><summary>Context:</summary><pre><code>$(strip(context))</code></p></details>
 
   If you want a global rename refactoring on `$mod.$old`, you need to run this command
   from its definition. <button>[Go to `$mod.$old`]($gotouri)</button>
@@ -220,5 +218,13 @@ function filedescription(mod, files)
   <details><summary>
   Refactored files (all in `$mod` module):
   </summary><ul>$(filelist)</ul></details>
+  """
+end
+
+function errdescription(old, new, err)
+  """
+  Rename refactoring `$old` ⟹ `$new` failed.
+
+  <details><summary>Error:</summary><pre><code>$(errmsg(err))</code></p></details>
   """
 end
