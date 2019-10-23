@@ -177,7 +177,7 @@ Retrieves docs for `mod.word` with [`@doc`](@ref) macro. If `@doc` is not availa
     You may want to run [`cangetdocs`](@ref) in advance.
 """
 getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main) = begin
-  md = if Symbol(word) in keys(Docs.keywords)
+  md = if iskeyword(word)
     Core.eval(Main, :(@doc($(Symbol(word)))))
   else
     docsym = Symbol("@doc")
@@ -208,6 +208,12 @@ cangetdocs(mod::Module, word::Symbol) =
   !Base.isdeprecated(mod, word)
 cangetdocs(mod::Module, word::AbstractString) = cangetdocs(mod, Symbol(word))
 cangetdocs(mod::AbstractString, word::Union{Symbol, AbstractString}) = cangetdocs(getmodule(mod), word)
+
+# is utilities
+# ------------
+
+iskeyword(word::Symbol) = word in keys(Docs.keywords)
+iskeyword(word::AbstractString) = iskeyword(Symbol(word))
 
 # uri utilties
 # ------------

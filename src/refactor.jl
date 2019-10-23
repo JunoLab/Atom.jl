@@ -20,14 +20,17 @@ function renamerefactor(
   column = 1, row = 1, startrow = 0, context = "",
   mod = "Main",
 )
+  # catch keyword renaming
+  iskeyword(old) && return Dict(:warning => "Keywords can't be renamed: `$old`")
+
   mod = getmodule(mod)
   head = first(split(full, '.'))
   headval = getfield′(mod, head)
 
   # catch field renaming
-  if head ≠ old && !isa(headval, Module)
-    return Dict(:warning => "Rename refactoring on a field isn't available: `$obj.$old`")
-  end
+  head ≠ old && !isa(headval, Module) && return Dict(
+    :warning => "Rename refactoring on a field isn't available: `$obj.$old`"
+  )
 
   expr = CSTParser.parse(context)
   items = toplevelitems(expr, context)
@@ -35,7 +38,7 @@ function renamerefactor(
   bind = ind === nothing ? nothing : items[ind].bind
 
   # local rename refactor if `old` isn't a toplevel binding
-  if bind === nothing || old ≠ bind.name
+  if islocalrefactor(bind, old)
     try
       refactored = localrefactor(old, new, path, column, row, startrow, context, expr)
       isempty(refactored) || return Dict(
@@ -51,15 +54,8 @@ function renamerefactor(
   try
     val = getfield′(mod, full)
 
-    # catch keyword renaming
-    if val isa Undefined && Symbol(old) in keys(Docs.keywords)
-      return Dict(:warning => "Keywords can't be renamed: `$old`")
-    end
-
     # catch global refactoring not on definition, e.g.: on a call site
-    if bind === nothing || old ≠ bind.name
-      return Dict(:info => contextdescription(old, mod, context))
-    end
+    islocalrefactor(bind, old) && return Dict(:info => contextdescription(old, mod, context))
 
     kind, desc = globalrefactor(old, new, mod, expr)
 
@@ -82,6 +78,8 @@ function renamerefactor(
 
   return Dict(:error => "Rename refactoring `$old` ⟹ `$new` failed")
 end
+
+islocalrefactor(bind, name) = bind === nothing || name ≠ bind.name
 
 # local refactor
 # --------------
