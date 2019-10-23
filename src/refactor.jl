@@ -41,10 +41,13 @@ function renamerefactor(
   if islocalrefactor(bind, old)
     try
       refactored = localrefactor(old, new, path, column, row, startrow, context, expr)
-      isempty(refactored) || return Dict(
-        :text    => refactored,
-        :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
-      )
+      return isempty(refactored) ?
+        # NOTE: global refactoring not on definition, e.g.: on a call site, will be caught here
+        Dict(:info => contextdescription(old, mod, context)) :
+        Dict(
+          :text    => refactored,
+          :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
+        )
     catch err
       @error err
     end
@@ -52,17 +55,13 @@ function renamerefactor(
 
   # global rename refactor if the local rename refactor didn't happen
   try
-    val = getfield′(mod, full)
-
-    # catch global refactoring not on definition, e.g.: on a call site
-    islocalrefactor(bind, old) && return Dict(:info => contextdescription(old, mod, context))
-
     kind, desc = globalrefactor(old, new, mod, expr)
 
     # make description
     if kind === :success
+      val = getfield′(mod, full)
       moddesc = if (headval isa Module && headval ≠ mod) ||
-         (applicable(parentmodule, val) && (headval = parentmodule(val)) ≠ mod)
+                   (applicable(parentmodule, val) && (headval = parentmodule(val)) ≠ mod)
         moduledescription(old, headval)
       else
         ""
@@ -175,22 +174,14 @@ function refactorfiles(old, new, mod, files, expr)
   @info "Finish global rename refactoring" progress=1 _id=id
 
   return if !isempty(refactoredfiles)
-    (:success, filedescription(mod, refactoredfiles))
+    :success, filedescription(mod, refactoredfiles)
   else
-    (:warning, "No rename refactoring occured on `$old` in `$mod` module.")
+    :warning, "No rename refactoring occured on `$old` in `$mod` module."
   end
 end
 
 # descriptions
 # ------------
-
-function moduledescription(old, parentmod)
-  gotouri = urigoto(parentmod, old)
-  """
-  **NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings
-  in that module as well. <button>[Go to `$parentmod.$old`]($gotouri)</button>
-  """
-end
 
 function contextdescription(old, mod, context)
   gotouri = urigoto(mod, old)
@@ -200,6 +191,14 @@ function contextdescription(old, mod, context)
 
   If you want a global rename refactoring on `$mod.$old`, you need to run this command
   from its definition. <button>[Go to `$mod.$old`]($gotouri)</button>
+  """
+end
+
+function moduledescription(old, parentmod)
+  gotouri = urigoto(parentmod, old)
+  """
+  **NOTE**: `$old` is defined in `$parentmod` -- you may need the same rename refactorings
+  in that module as well. <button>[Go to `$parentmod.$old`]($gotouri)</button>
   """
 end
 
