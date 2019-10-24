@@ -76,23 +76,25 @@ handle("updateeditor") do data
     @destruct [
         text || "",
         mod || "Main",
-        path || "untitled"
+        path || "untitled",
+        updateSymbols || true
     ] = data
 
     try
-        updateeditor(text, mod, path)
+        updateeditor(text, mod, path, updateSymbols)
     catch err
         []
     end
 end
 
 # NOTE: update outline and symbols cache all in one go
-function updateeditor(text, mod = "Main", path = "untitled")
+function updateeditor(text, mod = "Main", path = "untitled", updateSymbols = true)
     parsed = CSTParser.parse(text, true)
     items = toplevelitems(parsed, text)
 
     # update symbols cache
-    updatesymbols(text, mod, path, items)
+    # ref: https://github.com/JunoLab/Juno.jl/issues/407
+    updateSymbols && updatesymbols(text, mod, path, items)
 
     # return outline
     outline(items)
