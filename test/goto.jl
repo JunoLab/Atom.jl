@@ -140,6 +140,25 @@
             end
         end
 
+        # handle dot accessors gracefully
+        let
+            # can access the non-exported (non-method) bindings in the other module
+            path = realpath′(joinpath(@__DIR__, "..", "src", "goto.jl"))
+            text = read(@__FILE__, String)
+            items = Dict.(toplevelgotoitems("Atom.SYMBOLSCACHE", Main, text, @__FILE__))
+            @test !isempty(items)
+            @test items[1][:file] == path
+            @test items[1][:text] == "SYMBOLSCACHE"
+
+            # handle if a module is duplicated
+            path = realpath′(joinpath(@__DIR__, "..", "src", "comm.jl"))
+            text = read(path, String)
+            items = Dict.(toplevelgotoitems("Atom.handlers", Atom, text, path))
+            @test !isempty(items)
+            @test items[1][:file] == path
+            @test items[1][:text] == "handlers"
+        end
+
         # don't error on the fallback case
         @test toplevelgotoitems("word", Main, "", nothing) == []
     end

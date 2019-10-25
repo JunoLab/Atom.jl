@@ -120,6 +120,16 @@ const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
 const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 
 function toplevelgotoitems(word, mod, text, path)
+  # strip a dot-accessed module if exists
+  identifiers = split(word, '.')
+  head = identifiers[1]
+  if head ≠ word && (val = getfield′(mod, string(head))) isa Module
+    # if `head` is a module, update `word` and `mod`
+    nextword = join(identifiers[2:end], '.')
+    nextmod = val
+    return toplevelgotoitems(nextword, nextmod, text, path)
+  end
+
   key = string(mod)
   pathitemsmaps = if haskey(SYMBOLSCACHE, key)
     SYMBOLSCACHE[key]
