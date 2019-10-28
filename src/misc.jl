@@ -1,3 +1,5 @@
+using Pkg
+
 handle("ping") do
   "pong"
 end
@@ -12,6 +14,18 @@ end
 
 handle("cd") do path
   cd(path)
+end
+
+handle("activateProject") do path
+  hideprompt() do
+    Pkg.activate(path)
+  end
+end
+
+handle("activateDefaultProject") do
+  hideprompt() do
+    Pkg.activate()
+  end
 end
 
 handle("evalsimple") do code
