@@ -165,10 +165,6 @@ function searchtoplevelitems(mod::Module, text::String, path::Nothing)
   return pathitemsmaps
 end
 
-# TODO:
-# use the module detection logic below for general module auto-detection,
-# e.g.: `module` handler and such
-
 # sub entry method
 function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
   entrypath, paths = modulefiles(mod) # Revise-like approach

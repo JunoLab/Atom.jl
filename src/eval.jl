@@ -1,48 +1,10 @@
-using CodeTools, LNR, Media
+using Media
 import REPL
 
 using Logging: with_logger
 using .Progress: JunoProgressLogger
 
 ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
-
-LNR.cursor(data::AbstractDict) = cursor(data["row"], data["column"])
-
-exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Nothing, (Cint,), on)
-
-function modulenames(data, pos)
-  main = haskey(data, "module") ? data["module"] :
-         haskey(data, "path") ? CodeTools.filemodule(data["path"]) :
-         "Main"
-  main == "" && (main = "Main")
-  sub = CodeTools.codemodule(data["code"], pos)
-  main, sub
-end
-
-# keeps the latest file that has been used for Main module scope
-const MAIN_MODULE_LOCATION = Ref{Tuple{String, Int}}(moduledefinition(Main))
-
-handle("module") do data
-  main, sub = modulenames(data, cursor(data))
-
-  mod = CodeTools.getmodule(main)
-  smod = CodeTools.getmodule(mod, sub)
-
-  if main == "Main" && sub == ""
-    MAIN_MODULE_LOCATION[] = get!(data, "path", ""), data["row"]
-  end
-
-  return d(:main => main,
-           :sub  => sub,
-           :inactive => (mod==nothing),
-           :subInactive => smod==nothing)
-end
-
-handle("allmodules") do
-  sort!([string(m) for m in CodeTools.allchildren(Main)])
-end
-
-isselection(data) = data["start"] ≠ data["stop"]
 
 withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
