@@ -4,9 +4,11 @@ stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}" => "")
 
 interpose(xs, y) = map(i -> iseven(i) ? xs[i÷2] : y, 2:2length(xs))
 
+const methodloc_regex = r"(?<sig>.+) in (?<mod>.+) at (?<loc>.+)$"
+
 function view(m::Method)
   str = sprint(show, "text/html", m)
-  str = replace(str, r" in .* at .*$" => "")
+  str = replace(str, methodloc_regex => s"\g<sig>")
   str = string("<span>", str, "</span>")
   tv, decls, file, line = Base.arg_decl_parts(m)
   HTML(str), file == :null ? "not found" : Atom.baselink(string(file), line)
