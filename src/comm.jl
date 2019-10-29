@@ -83,6 +83,8 @@ function initialise(; welcome = false)
   welcome && @msg welcome()
 end
 
+exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Nothing, (Cint,), on)
+
 """
     serve(port; kws...)
 

@@ -6,10 +6,6 @@ using .Progress: JunoProgressLogger
 
 ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false)[end])
 
-exit_on_sigint(on) = ccall(:jl_exit_on_sigint, Nothing, (Cint,), on)
-
-isselection(data) = data["start"] ≠ data["stop"]
-
 withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
