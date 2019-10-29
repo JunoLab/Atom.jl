@@ -111,6 +111,15 @@ end
 # string utilties
 # ---------------
 
+"""
+    strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
+
+Chops off `str` so that its _length_ doesn't exceed `limit`. The excessive part
+  will be replaced by `ellipsis`.
+
+!!! note
+    The length of returned string will _never_ exceed `limit`.
+"""
 function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
   will_append = length(str) > limit
 
@@ -129,6 +138,18 @@ function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString
 end
 
 shortstr(val) = strlimit(string(val), 20)
+
+"""
+    striptrailingdots(word::AbstractString, fullword::AbstractString)
+
+Strips all the dot-accessors after `word` in `fullword`.
+"""
+function striptrailingdots(word::AbstractString, fullword::AbstractString)
+  words = split(fullword, '.')
+  ind = findfirst(w -> w == word, words)
+  ind === nothing && return word # invalid case
+  return join(words[1:ind], '.')
+end
 
 # singleton type for undefined values
 struct Undefined end

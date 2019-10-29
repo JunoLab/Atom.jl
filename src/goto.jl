@@ -3,6 +3,7 @@ using CSTParser
 handle("gotosymbol") do data
   @destruct [
     word,
+    fullWord,
     path || nothing,
     # local context
     column || 1,
@@ -15,29 +16,30 @@ handle("gotosymbol") do data
     text || "",
   ] = data
   gotosymbol(
-    word, path,
+    word, fullWord, path,
     column, row, startRow, context, onlyGlobal,
     mod, text
   )
 end
 
 function gotosymbol(
-  word, path = nothing,
+  word, fullword, path = nothing,
   column = 1, row = 1, startrow = 0, context = "", onlyglobal = false,
   mod = "Main", text = ""
 )
   try
     # local goto
     if !onlyglobal
-      localitems = localgotoitem(word, path, column, row, startrow, context)
+      localitems = localgotoitem(fullword, path, column, row, startrow, context)
       isempty(localitems) || return Dict(
         :error => false,
         :items => map(Dict, localitems),
+        :local => true
       )
     end
 
     # global goto
-    globalitems = globalgotoitems(word, mod, text, path)
+    globalitems = globalgotoitems(word, fullword, mod, text, path)
     isempty(globalitems) || return Dict(
       :error => false,
       :items => map(Dict, globalitems),
@@ -65,8 +67,8 @@ Dict(gotoitem::GotoItem) = Dict(
 
 ### local goto
 
-function localgotoitem(word, path, column, row, startrow, context)
-  word = first(split(word, '.')) # ignore dot accessors
+function localgotoitem(fullword, path, column, row, startrow, context)
+  word = first(split(fullword, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
@@ -83,11 +85,13 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path
 
 ### global goto - bundles toplevel gotos & method gotos
 
-function globalgotoitems(word, mod, text, path)
+function globalgotoitems(word, fullword, mod, text, path)
   mod = getmodule(mod)
 
   moduleitems = modulegotoitems(word, mod)
   isempty(moduleitems) || return moduleitems
+
+  word = striptrailingdots(word, fullword)
 
   toplevelitems = toplevelgotoitems(word, mod, text, path)
 

@@ -7,6 +7,7 @@ Once we can come to handle links within datatips, we may want to append method t
 handle("datatip") do data
   @destruct [
     word,
+    fullWord,
     mod || "Main",
     path || "",
     column || 1,
@@ -14,18 +15,18 @@ handle("datatip") do data
     startRow || 0,
     context || ""
   ] = data
-  datatip(word, mod, path, column, row, startRow, context)
+  datatip(word, fullWord, mod, path, column, row, startRow, context)
 end
 
-function datatip(word, mod, path, column = 1, row = 1, startrow = 0, context = "")
+function datatip(word, fullword, mod, path, column = 1, row = 1, startrow = 0, context = "")
   if isdebugging() && (ddt = JunoDebugger.datatip(word, path, row, column)) !== nothing
     return Dict(:error => false, :strings => ddt)
   end
 
-  ldt = localdatatip(word, column, row, startrow, context)
-  isempty(ldt) || return datatip(ldt)
+  ldt = localdatatip(fullword, column, row, startrow, context)
+  isempty(ldt) || return push!(datatip(ldt), :local => true)
 
-  tdt = topleveldatatip(mod, word)
+  tdt = globaldatatip(mod, word, fullword)
   tdt !== nothing && return Dict(:error => false, :strings => tdt)
 
   return Dict(:error => true) # nothing hits
@@ -35,8 +36,8 @@ datatip(dt::Vector{Dict{Symbol, Any}}) = Dict(:error => false, :strings => dt)
 datatip(dt::Int) = Dict(:error => false, :line => dt)
 datatip(dt::Vector{Int}) = datatip(dt[1])
 
-function localdatatip(word, column, row, startrow, context)
-  word = first(split(word, '.')) # ignore dot accessors
+function localdatatip(fullword, column, row, startrow, context)
+  word = first(split(fullword, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
@@ -56,7 +57,9 @@ function localdatatip(l, word, startrow)
   end
 end
 
-function topleveldatatip(mod, word)
+function globaldatatip(mod, word, fullword)
+  word = striptrailingdots(word, fullword)
+
   docs = @errs getdocs(mod, word)
   docs isa EvalError && return nothing
 
