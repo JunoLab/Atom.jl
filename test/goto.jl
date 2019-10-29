@@ -1,5 +1,5 @@
 @testset "goto symbols" begin
-    using Atom: modulegotoitems, realpath′, toplevelgotoitems, SYMBOLSCACHE,
+    using Atom: modulegotoitems, toplevelgotoitems, SYMBOLSCACHE,
                 regeneratesymbols, methodgotoitems, globalgotoitems
     using CSTParser
 
@@ -51,19 +51,18 @@
 
     @testset "module goto" begin
         let item = modulegotoitems("Atom", Main)[1]
-            @test item.file == realpath′(joinpath(@__DIR__, "..", "src", "Atom.jl"))
-            @test item.line == 2
+            @test item.file == joinpath′(atomjldir, "Atom.jl")
+            @test item.line == 3
         end
         let item = modulegotoitems("Junk2", Main.Junk)[1]
-            @test item.file == joinpath(@__DIR__, "fixtures", "Junk.jl")
+            @test item.file == joinpath′(junkpath)
             @test item.line == 14
         end
     end
 
     @testset "goto toplevel symbols" begin
         ## where Revise approach works, i.e.: precompiled modules
-        let dir = realpath′(joinpath(@__DIR__, "..", "src"))
-            path = joinpath(dir, "comm.jl")
+        let path = joinpath′(atomjldir, "comm.jl")
             text = read(path, String)
             mod = Atom
             key = "Atom"
@@ -79,23 +78,8 @@
             # check caching works
             @test haskey(SYMBOLSCACHE, key)
 
-            # check the Revise-like approach finds all the included files
-            let numfiles = 0
-                debuggerpath = realpath′(joinpath(@__DIR__, "..", "src", "debugger"))
-                profilerpath = realpath′(joinpath(@__DIR__, "..", "src", "profiler"))
-                for (d, ds, fs) ∈ walkdir(dir)
-                    if d ∈ (debuggerpath, profilerpath)
-                        numfiles += 1 # debugger.jl / traceur.jl (in Atom module)
-                        continue
-                    end
-                    for f ∈ fs
-                        if endswith(f, ".jl") # .jl check is needed for travis, who creates hoge.cov files
-                            numfiles += 1
-                        end
-                    end
-                end
-                @test length(SYMBOLSCACHE[key]) == numfiles
-            end
+            # check the Revise-like approach finds all files in Atom module
+            @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
 
             # when `path` isn't given, i.e. via docpane / workspace
             let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
@@ -106,11 +90,18 @@
 
             # same as above, but without any previous cache -- falls back to CSTPraser-based module-walk
             delete!(SYMBOLSCACHE, key)
+
             let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
                 @test !isempty(items)
                 @test items[1][:file] == path
                 @test items[1][:text] == word
             end
+
+            # check CSTPraser-based module-walk finds all the included files
+            # currently broken:
+            # - files in submodules are included
+            # - webio.jl is excluded since `include("webio.jl")` is a toplevel call
+            @test_broken length(SYMBOLSCACHE[key]) == length(atommoddir)
         end
 
         ## where the Revise-like approach doesn't work, e.g. non-precompiled modules
@@ -143,7 +134,7 @@
         # handle dot accessors gracefully
         let
             # can access the non-exported (non-method) bindings in the other module
-            path = realpath′(joinpath(@__DIR__, "..", "src", "goto.jl"))
+            path = joinpath′(@__DIR__, "..", "src", "goto.jl")
             text = read(@__FILE__, String)
             items = Dict.(toplevelgotoitems("Atom.SYMBOLSCACHE", Main, text, @__FILE__))
             @test !isempty(items)
@@ -151,7 +142,7 @@
             @test items[1][:text] == "SYMBOLSCACHE"
 
             # handle if a module is duplicated
-            path = realpath′(joinpath(@__DIR__, "..", "src", "comm.jl"))
+            path = joinpath′(@__DIR__, "..", "src", "comm.jl")
             text = read(path, String)
             items = Dict.(toplevelgotoitems("Atom.handlers", Atom, text, path))
             @test !isempty(items)
