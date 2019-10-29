@@ -31,7 +31,7 @@
             @test localgotoitem("l", 8)[:line] === 7
         end
 
-        # remove dot accessors
+        # ignore dot accessors
         let str = """
             function withdots(expr::CSTParser.EXPR)
                 bind = CSTParser.bindingof(expr.args[1])
@@ -240,13 +240,25 @@
         end
     end
 
-    @testset "goto global symbols" begin # toplevel symbol goto & method goto
+    # bundles `modulegotoitems`, `toplevelgotoitems` and `methodgotoitems`
+    @testset "goto global symbols" begin
         # both the original methods and the toplevel bindings that are overloaded
         # in a context module should be shown
-        let items = globalgotoitems("isconst", "Main.Junk", "", nothing)
+        let items = globalgotoitems("isconst", "isconst", "Main.Junk", "", nothing)
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" ∈ map(item -> item.text, items) # from Base
             @test "Base.isconst(::JunkType)" ∈ map(item -> item.text, items) # from Junk
+        end
+
+        # strips trailing dots
+        let item = globalgotoitems("isconst", "isconst", "Main.Junk", "", nothing)
+            @test item == globalgotoitems("isconst", "Junk.isconst", "Main.Junk", "", nothing)
+            @test item == globalgotoitems("isconst", "Main.Junk.isconst", "Main.Junk", "", nothing)
+        end
+        let item = globalgotoitems("Junk", "Junk", "Main.Junk", "", nothing)
+            @test item == globalgotoitems("Junk", "Main.Junk", "Main.Junk", "", nothing)
+            @test item == globalgotoitems("Junk", "Junk.isconst", "Main.Junk", "", nothing)
+            @test item == globalgotoitems("Junk", "Main.Junk.isconst", "Main.Junk", "", nothing)
         end
     end
 end

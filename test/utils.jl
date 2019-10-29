@@ -114,3 +114,18 @@ end
         @test strlimit("Jμλια in the Nutshell", 20, " ...") == "Jμλια in the Nut ..."
     end
 end
+
+@testset "strip trailing dots" begin
+    using Atom: striptrailingdots
+
+    # only including ASCII
+    @test striptrailingdots("field", "Head.field") == "Head.field"
+    @test striptrailingdots("Head", "Head.field") == "Head"
+
+    # including Unicode
+    @test striptrailingdots("fιηλδ", "Hηαδ.fιηλδ") == "Hηαδ.fιηλδ"
+    @test striptrailingdots("Hηαδ", "Hηαδ.fιηλδ") == "Hηαδ"
+
+    # invalid case
+    @test_nowarn striptrailingdots("foo", "head.field")
+end

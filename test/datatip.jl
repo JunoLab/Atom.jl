@@ -19,7 +19,7 @@
             @test localdatatip("l", 4) == 3 # line
         end
 
-        # remove dot accessors
+        # ignore dot accessors
         let str = """
             function withdots(expr::CSTParser.EXPR)
                 bind = CSTParser.bindingof(expr.args[1])
@@ -68,8 +68,8 @@
         end
     end
 
-    @testset "toplevel datatips" begin
-        using Atom: topleveldatatip
+    @testset "global datatips" begin
+        using Atom: globaldatatip
 
         ## method datatip
         @eval Main begin
@@ -81,7 +81,7 @@
             datatipmethodtest() = nothing
         end
 
-        let datatip = topleveldatatip("Main", "datatipmethodtest")
+        let datatip = globaldatatip("Main", "datatipmethodtest", "datatipmethodtest")
             @test datatip isa Vector
             firsttip = datatip[1]
             secondtip = datatip[2]
@@ -94,11 +94,16 @@
         ## variable datatip
         @eval Main datatipvariabletest = "this string should be shown in datatip"
 
-        let datatip = topleveldatatip("Main", "datatipvariabletest")
+        let datatip = globaldatatip("Main", "datatipvariabletest", "datatipvariabletest")
             @test datatip isa Vector
             firsttip = datatip[1]
             @test firsttip[:type] == :snippet
             @test occursin(r"this string should be shown in datatip", firsttip[:value])
+        end
+
+        ## strips training dots
+        let item = globaldatatip("Atom", "SYMBOLSCACHE", "SYMBOLSCACHE")
+            @test item == globaldatatip("Atom", "SYMBOLSCACHE", "SYMBOLSCACHE.keys")
         end
     end
 end
