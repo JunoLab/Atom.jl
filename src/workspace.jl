@@ -56,5 +56,3 @@ wsicon(mod, name, ::Expr) = "icon-code"
 wsicon(mod, name, ::Symbol) = "icon-code"
 wsicon(mod, name, ::Exception) = "icon-bug"
 wsicon(mod, name, ::Undefined) = "icon-circle-slash"
-
-ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")

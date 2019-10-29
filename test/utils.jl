@@ -48,7 +48,7 @@ end
     @test Atom.finddevpackages() isa AbstractDict
 end
 
-#TODO: baselink, edit
+# TODO: baselink, edit
 
 cd(old_pwd)
 end
@@ -79,18 +79,38 @@ end
     end
 end
 
-@testset "limiting excessive strings" begin
-    using Atom: strlimit
+@testset "is utilities" begin
+    @testset "iskeyword" begin
+        using Atom: iskeyword
 
-    # only including ASCII
-    @test strlimit("julia", 5) == "julia"
-    @test strlimit("julia", 4) == "jul…"
-    @test strlimit("Julia in the Nutshell", 21, " ...") == "Julia in the Nutshell"
-    @test strlimit("Julia in the Nutshell", 20, " ...") == "Julia in the Nut ..."
+        @test iskeyword(:begin)
+        @test iskeyword("begin")
+        @test !iskeyword(:iskeyword)
+    end
 
-    # including Unicode: should respect _length_ of strings, not code units
-    @test strlimit("jμλια", 5) == "jμλια"
-    @test strlimit("jμλια", 4) == "jμλ…"
-    @test strlimit("Jμλια in the Nutshell", 21, " ...") == "Jμλια in the Nutshell"
-    @test strlimit("Jμλια in the Nutshell", 20, " ...") == "Jμλια in the Nut ..."
+    @testset "ismacro" begin
+        using Atom: ismacro
+
+        @test ismacro("@view")
+        @test ismacro("r\"")
+        @test ismacro(getfield(Main, Symbol("@view")))
+    end
+end
+
+@testset "string utilities" begin
+    @testset "limiting excessive strings" begin
+        using Atom: strlimit
+
+        # only including ASCII
+        @test strlimit("julia", 5) == "julia"
+        @test strlimit("julia", 4) == "jul…"
+        @test strlimit("Julia in the Nutshell", 21, " ...") == "Julia in the Nutshell"
+        @test strlimit("Julia in the Nutshell", 20, " ...") == "Julia in the Nut ..."
+
+        # including Unicode: should respect _length_ of strings, not code units
+        @test strlimit("jμλια", 5) == "jμλια"
+        @test strlimit("jμλια", 4) == "jμλ…"
+        @test strlimit("Jμλια in the Nutshell", 21, " ...") == "Jμλια in the Nutshell"
+        @test strlimit("Jμλια in the Nutshell", 20, " ...") == "Jμλια in the Nut ..."
+    end
 end
