@@ -1,7 +1,4 @@
-using Atom
-using Test
-using Logging
-import JSON
+using Atom, Test, JSON, Logging, CSTParser
 
 
 joinpath′(files...) = Atom.fullpath(joinpath(files...))
@@ -47,14 +44,16 @@ readmsg() = JSON.parse(String(take!(Atom.sock)))
 junkpath = joinpath′(@__DIR__, "fixtures", "Junk.jl")
 include(junkpath)
 
-
-include("misc.jl") # basics
+# basics
 include("utils.jl")
-include("eval.jl")
+include("misc.jl")
+include("display.jl")
+include("static/static.jl")
 include("modules.jl")
+
+include("eval.jl")
 include("outline.jl")
 include("completions.jl")
 include("goto.jl")
 include("datatip.jl")
 include("workspace.jl")
-include("display.jl")

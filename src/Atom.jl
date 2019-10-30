@@ -39,25 +39,26 @@ function __init__()
   end
 end
 
+# basics
 include("comm.jl")
 include("utils.jl")
+include("misc.jl")
 include("display/display.jl")
 include("progress.jl")
-include("eval.jl")
+include("static/static.jl")
 include("modules.jl")
-include("workspace.jl")
+
+include("eval.jl")
 include("repl.jl")
-include("docs.jl")
+include("workspace.jl")
 include("outline.jl")
+include("docs.jl")
 include("completions.jl")
 include("goto.jl")
 include("datatip.jl")
-include("misc.jl")
 include("formatter.jl")
 include("frontend.jl")
-
 include("debugger/debugger.jl")
-
 include("profiler/profiler.jl")
 include("profiler/traceur.jl")
 
