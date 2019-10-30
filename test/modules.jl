@@ -1,4 +1,4 @@
-@testset "module utilties" begin
+@testset "modules" begin
     @testset "find module definition" begin
         using Atom: moduledefinition
 

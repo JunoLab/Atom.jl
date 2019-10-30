@@ -3,9 +3,8 @@ __precompile__()
 @doc read(joinpath(dirname(@__DIR__), "README.md"), String)
 module Atom
 
-using Juno, Lazy, JSON, MacroTools, Media, Base.StackTraces
-
-using InteractiveUtils
+using Base.StackTraces, InteractiveUtils, Logging
+using Juno, Lazy, JSON, MacroTools, Media
 import Requires
 import Media: @dynamic
 
