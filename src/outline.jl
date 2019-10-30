@@ -330,11 +330,6 @@ function scopeof(expr::CSTParser.EXPR)
     if scope !== nothing
         return scope
     else
-        # can remove this with CSTParser 0.6.3
-        if expr.typ == CSTParser.BinaryOpCall && expr.args[2].kind == CSTParser.Tokens.ANON_FUNC
-            return :anon
-        end
-
         if expr.typ == CSTParser.Call && expr.parent !== nothing && scopeof(expr.parent) == nothing
             return :call
         end
