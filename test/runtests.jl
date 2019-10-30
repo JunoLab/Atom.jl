@@ -1,6 +1,6 @@
 using Atom
 using Test
-using Lazy
+using Logging
 import JSON
 
 

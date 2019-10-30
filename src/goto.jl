@@ -265,7 +265,7 @@ end
 
 function regeneratesymbols()
   id = "regenerate_symbols_progress"
-  @info "Start regenerating symbols cache" progress=0 _id=id
+  @info "Generating symbols cache in loaded modules" progress=0 _id=id
 
   loaded = Set(string.(Base.loaded_modules_array()))
   pkgs = if isdefined(Pkg, :dependencies)
@@ -284,7 +284,7 @@ function regeneratesymbols()
       modstr == "__PackagePrecompilationStatementModule" && continue # will cause error
       pathitemsmap = PathItemsMaps()
 
-      @info "Symbols: $modstr ($i / $total)" progress=i/total _id=id
+      @logmsg -1 "Symbols: $modstr ($i / $total)" progress=i/total _id=id
       _searchtoplevelitems(mod, pathitemsmap)
       SYMBOLSCACHE[modstr] = pathitemsmap
     catch err
@@ -298,7 +298,7 @@ function regeneratesymbols()
       text = read(path, String)
       pathitemsmap = PathItemsMaps()
 
-      @info "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
+      @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
       _searchtoplevelitems(text, path, pathitemsmap)
       SYMBOLSCACHE[pkg] = pathitemsmap
     catch err
@@ -306,7 +306,7 @@ function regeneratesymbols()
     end
   end
 
-  @info "Finish symbols cache generation" progress=1 _id=id
+  @info "Finished generating the symbols cache" progress=1 _id=id
 end
 
 ## method goto

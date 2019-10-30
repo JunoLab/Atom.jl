@@ -195,7 +195,11 @@
     end
 
     @testset "regenerating symbols" begin
+        # @info "––– caching symbols in loaded modules (only errors shown) ------"
+        # with_logger(ConsoleLogger(stderr, Base.CoreLogging.Warn)) do
         regeneratesymbols()
+        # end
+        # @info "––– finished caching -------------------------------------------"
 
         @test haskey(SYMBOLSCACHE, "Base")
         @test length(keys(SYMBOLSCACHE["Base"])) > 100
