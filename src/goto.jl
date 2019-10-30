@@ -3,7 +3,6 @@ using CSTParser
 handle("gotosymbol") do data
   @destruct [
     word,
-    fullWord,
     path || nothing,
     # local context
     column || 1,
@@ -16,30 +15,29 @@ handle("gotosymbol") do data
     text || "",
   ] = data
   gotosymbol(
-    word, fullWord, path,
+    word, path,
     column, row, startRow, context, onlyGlobal,
     mod, text
   )
 end
 
 function gotosymbol(
-  word, fullword, path = nothing,
+  word, path = nothing,
   column = 1, row = 1, startrow = 0, context = "", onlyglobal = false,
   mod = "Main", text = ""
 )
   try
     # local goto
     if !onlyglobal
-      localitems = localgotoitem(fullword, path, column, row, startrow, context)
+      localitems = localgotoitem(word, path, column, row, startrow, context)
       isempty(localitems) || return Dict(
         :error => false,
-        :items => map(Dict, localitems),
-        :local => true
+        :items => map(Dict, localitems)
       )
     end
 
     # global goto
-    globalitems = globalgotoitems(word, fullword, mod, text, path)
+    globalitems = globalgotoitems(word, mod, text, path)
     isempty(globalitems) || return Dict(
       :error => false,
       :items => map(Dict, globalitems),
@@ -67,8 +65,8 @@ Dict(gotoitem::GotoItem) = Dict(
 
 ### local goto
 
-function localgotoitem(fullword, path, column, row, startrow, context)
-  word = first(split(fullword, '.')) # always ignore dot accessors
+function localgotoitem(word, path, column, row, startrow, context)
+  word = first(split(word, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
@@ -85,13 +83,11 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path
 
 ### global goto - bundles toplevel gotos & method gotos
 
-function globalgotoitems(word, fullword, mod, text, path)
+function globalgotoitems(word, mod, text, path)
   mod = getmodule(mod)
 
   moduleitems = modulegotoitems(word, mod)
   isempty(moduleitems) || return moduleitems
-
-  word = striptrailingdots(word, fullword)
 
   toplevelitems = toplevelgotoitems(word, mod, text, path)
 
@@ -126,12 +122,11 @@ const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 function toplevelgotoitems(word, mod, text, path)
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
-  head = identifiers[1]
-  if head ≠ word && (val = getfield′(mod, string(head))) isa Module
+  head = string(identifiers[1])
+  if head ≠ word && getfield′(mod, head) isa Module
     # if `head` is a module, update `word` and `mod`
     nextword = join(identifiers[2:end], '.')
-    nextmod = val
-    return toplevelgotoitems(nextword, nextmod, text, path)
+    return globalgotoitems(nextword, head, text, path)
   end
 
   key = string(mod)

@@ -195,11 +195,7 @@
     end
 
     @testset "regenerating symbols" begin
-        # @info "––– caching symbols in loaded modules (only errors shown) ------"
-        # with_logger(ConsoleLogger(stderr, Base.CoreLogging.Warn)) do
         regeneratesymbols()
-        # end
-        # @info "––– finished caching -------------------------------------------"
 
         @test haskey(SYMBOLSCACHE, "Base")
         @test length(keys(SYMBOLSCACHE["Base"])) > 100
@@ -244,21 +240,10 @@
     @testset "goto global symbols" begin
         # both the original methods and the toplevel bindings that are overloaded
         # in a context module should be shown
-        let items = globalgotoitems("isconst", "isconst", "Main.Junk", "", nothing)
+        let items = globalgotoitems("isconst", "Main.Junk", "", nothing)
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" ∈ map(item -> item.text, items) # from Base
             @test "Base.isconst(::JunkType)" ∈ map(item -> item.text, items) # from Junk
-        end
-
-        # strips trailing dots
-        let item = globalgotoitems("isconst", "isconst", "Main.Junk", "", nothing)
-            @test item == globalgotoitems("isconst", "Junk.isconst", "Main.Junk", "", nothing)
-            @test item == globalgotoitems("isconst", "Main.Junk.isconst", "Main.Junk", "", nothing)
-        end
-        let item = globalgotoitems("Junk", "Junk", "Main.Junk", "", nothing)
-            @test item == globalgotoitems("Junk", "Main.Junk", "Main.Junk", "", nothing)
-            @test item == globalgotoitems("Junk", "Junk.isconst", "Main.Junk", "", nothing)
-            @test item == globalgotoitems("Junk", "Main.Junk.isconst", "Main.Junk", "", nothing)
         end
     end
 end

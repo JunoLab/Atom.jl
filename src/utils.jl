@@ -140,18 +140,10 @@ end
 shortstr(val) = strlimit(string(val), 20)
 
 """
-    striptrailingdots(word::AbstractString, fullword::AbstractString)
+    Undefined
 
-Strips all the dot-accessors after `word` in `fullword`.
+singleton type representing undefined values
 """
-function striptrailingdots(word::AbstractString, fullword::AbstractString)
-  words = split(fullword, '.')
-  ind = findfirst(w -> w == word, words)
-  ind === nothing && return word # invalid case
-  return join(words[1:ind], '.')
-end
-
-# singleton type for undefined values
 struct Undefined end
 
 # get utilities

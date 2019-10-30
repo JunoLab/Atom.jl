@@ -81,7 +81,7 @@
             datatipmethodtest() = nothing
         end
 
-        let datatip = globaldatatip("Main", "datatipmethodtest", "datatipmethodtest")
+        let datatip = globaldatatip("Main", "datatipmethodtest")
             @test datatip isa Vector
             firsttip = datatip[1]
             secondtip = datatip[2]
@@ -94,16 +94,11 @@
         ## variable datatip
         @eval Main datatipvariabletest = "this string should be shown in datatip"
 
-        let datatip = globaldatatip("Main", "datatipvariabletest", "datatipvariabletest")
+        let datatip = globaldatatip("Main", "datatipvariabletest")
             @test datatip isa Vector
             firsttip = datatip[1]
             @test firsttip[:type] == :snippet
             @test occursin(r"this string should be shown in datatip", firsttip[:value])
-        end
-
-        ## strips training dots
-        let item = globaldatatip("Atom", "SYMBOLSCACHE", "SYMBOLSCACHE")
-            @test item == globaldatatip("Atom", "SYMBOLSCACHE", "SYMBOLSCACHE.keys")
         end
     end
 end
