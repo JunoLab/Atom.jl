@@ -1,7 +1,6 @@
 #=
-@TODO:
-Use our own UI components for this: atom-ide-ui is already deprecated, ugly, not fully functional, and and...
-Once we can come to handle links within datatips, we may want to append method tables as well
+@TODO use our own UI components for this:
+atom-ide-ui is already deprecated, ugly, not fully functional, and and...
 =#
 
 handle("datatip") do data
@@ -25,7 +24,7 @@ function datatip(word, mod, path, column = 1, row = 1, startrow = 0, context = "
   ldt = localdatatip(word, column, row, startrow, context)
   isempty(ldt) || return datatip(ldt)
 
-  tdt = topleveldatatip(mod, word)
+  tdt = globaldatatip(mod, word)
   tdt !== nothing && return Dict(:error => false, :strings => tdt)
 
   return Dict(:error => true) # nothing hits
@@ -36,7 +35,7 @@ datatip(dt::Int) = Dict(:error => false, :line => dt)
 datatip(dt::Vector{Int}) = datatip(dt[1])
 
 function localdatatip(word, column, row, startrow, context)
-  word = first(split(word, '.')) # ignore dot accessors
+  word = first(split(word, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
@@ -56,7 +55,7 @@ function localdatatip(l, word, startrow)
   end
 end
 
-function topleveldatatip(mod, word)
+function globaldatatip(mod, word)
   docs = @errs getdocs(mod, word)
   docs isa EvalError && return nothing
 
@@ -70,6 +69,9 @@ function topleveldatatip(mod, word)
   processval!(val, docstr, datatip)
 
   processdoc!(docs, docstr, datatip)
+
+  ml = methods(val)
+  processmethods!(ml, datatip)
 
   return datatip
 end
@@ -121,6 +123,20 @@ processval!(val::Function, docstr, datatip) = begin
   occursin(valstr, docstr) || pushsnippet!(datatip, valstr)
 end
 processval!(::Undefined, docstr, datatip) = nothing
+
+function processmethods!(ml, datatip)
+  ms = collect(ml)
+  isempty(ms) && return
+
+  substr = s"<code>\g<sig></code> in <code>\g<mod></code> at \g<loc>"
+  msstr = map(ms) do m
+    s = replace(string(m), methodloc_regex => substr)
+    "<li>$s</li>"
+  end |> join
+
+  name = ms[1].name
+  pushmarkdown!(datatip, "<details><summary><code>$name</code> has **$(length(ms))** methods:</summary><ul>$(msstr)</ul></details>")
+end
 
 function pushmarkdown!(datatip, markdown)
   (markdown == "" || markdown == "\n") && return
