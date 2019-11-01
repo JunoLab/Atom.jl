@@ -306,7 +306,7 @@ methodgotoitems(ml) = map(GotoItem, aggregatemethods(ml))
 function aggregatemethods(ml)
   ms = collect(ml)
   sort!(ms, by = m -> m.nargs, rev = true)
-  unique!(m -> (m.file, m.line), ms)
+  unique(m -> (m.file, m.line), ms)
 end
 
 function GotoItem(m::Method)
