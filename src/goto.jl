@@ -86,40 +86,6 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path
 function globalgotoitems(word, mod, text, path)
   mod = getmodule(mod)
 
-  moduleitems = modulegotoitems(word, mod)
-  isempty(moduleitems) || return moduleitems
-
-  toplevelitems = toplevelgotoitems(word, mod, text, path)
-
-  # only append methods that are not caught by `toplevelgotoitems`
-  files = map(item -> item.file, toplevelitems)
-  methoditems = filter!(item -> item.file ∉ files, methodgotoitems(mod, word))
-
-  append!(toplevelitems, methoditems)
-end
-
-## module goto
-
-function modulegotoitems(word, mod)::Vector{GotoItem}
-  mod = getfield′(mod, Symbol(word))
-  return mod isa Module ? [GotoItem(mod)] : []
-end
-
-function GotoItem(mod::Module)
-  file, line = if mod == Main
-    MAIN_MODULE_LOCATION[]
-  else
-    moduledefinition(mod)
-  end
-  GotoItem(string(mod), file, line - 1)
-end
-
-## toplevel goto
-
-const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
-const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
-
-function toplevelgotoitems(word, mod, text, path)
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
   head = string(identifiers[1])
@@ -129,6 +95,31 @@ function toplevelgotoitems(word, mod, text, path)
     return globalgotoitems(nextword, head, text, path)
   end
 
+  val = getfield′(mod, word)
+  val isa Module && return [GotoItem(val)] # module goto
+
+  toplevelitems = toplevelgotoitems(word, mod, text, path)
+
+  # append method gotos that are not caught by `toplevelgotoitems`
+  ml = methods(val)
+  files = map(item -> item.file, toplevelitems)
+  methoditems = filter!(item -> item.file ∉ files, methodgotoitems(ml))
+  append!(toplevelitems, methoditems)
+end
+
+## module goto
+
+function GotoItem(mod::Module)
+  file, line = mod == Main ? MAIN_MODULE_LOCATION[] : moduledefinition(mod)
+  GotoItem(string(mod), file, line - 1)
+end
+
+## toplevel goto
+
+const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
+const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
+
+function toplevelgotoitems(word, mod, text, path)
   key = string(mod)
   pathitemsmaps = if haskey(SYMBOLSCACHE, key)
     SYMBOLSCACHE[key]
@@ -138,8 +129,8 @@ function toplevelgotoitems(word, mod, text, path)
 
   ismacro(word) && (word = lstrip(word, '@'))
   ret = Vector{GotoItem}()
-  for (path, items) ∈ pathitemsmaps
-    for item ∈ filter(item -> filtertoplevelitem(word, item), items)
+  for (path, items) in pathitemsmaps
+    for item in filter(item -> filtertoplevelitem(word, item), items)
       push!(ret, GotoItem(path, item))
     end
   end
@@ -168,7 +159,7 @@ end
 function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
   entrypath, paths = modulefiles(mod) # Revise-like approach
   if entrypath !== nothing
-    for p ∈ [entrypath; paths]
+    for p in [entrypath; paths]
       _searchtoplevelitems(p, pathitemsmaps)
     end
   else # if Revise-like approach fails, fallback to CSTParser-based approach
@@ -187,14 +178,13 @@ function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
   push!(pathitemsmaps, pathitemsmap)
 end
 
-# module-walk by CSTParser-based, looking for toplevel `installed` calls
+# module-walk based on CSTParser, looking for toplevel `installed` calls
 function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathItemsMaps)
   parsed = CSTParser.parse(text, true)
   items = toplevelitems(parsed, text)
-  pathitemsmap = path => items
-  push!(pathitemsmaps, pathitemsmap)
+  push!(pathitemsmaps, path => items)
 
-  # looking for toplevel `installed` calls
+  # looking for toplevel `include` calls
   for item in items
     if item isa ToplevelCall
       expr = item.expr
@@ -277,7 +267,7 @@ function regeneratesymbols()
   unloadedlen = length(unloaded)
   total = loadedlen + unloadedlen
 
-  for (i, mod) ∈ enumerate(Base.loaded_modules_array())
+  for (i, mod) in enumerate(Base.loaded_modules_array())
     try
       modstr = string(mod)
       modstr == "__PackagePrecompilationStatementModule" && continue # will cause error
@@ -291,7 +281,7 @@ function regeneratesymbols()
     end
   end
 
-  for (i, pkg) ∈ enumerate(unloaded)
+  for (i, pkg) in enumerate(unloaded)
     try
       path = Base.find_package(pkg)
       text = read(path, String)
@@ -310,27 +300,19 @@ end
 
 ## method goto
 
-function methodgotoitems(mod, word)::Vector{GotoItem}
-  ms = @errs getmethods(mod, word)
-  if ms isa EvalError
-    []
-  else
-    map(GotoItem, aggregatemethods(ms))
-  end
-end
+methodgotoitems(ml) = map(GotoItem, aggregatemethods(ml))
 
 # aggregate methods with default arguments to the ones with full arguments
-aggregatemethods(f) = aggregatemethods(methods(f))
-aggregatemethods(ms::MethodList) = aggregatemethods(collect(ms))
-function aggregatemethods(ms::Vector{Method})
-  ms = sort(ms, by = m -> m.nargs, rev = true)
-  unique(m -> (m.file, m.line), ms)
+function aggregatemethods(ml)
+  ms = collect(ml)
+  sort!(ms, by = m -> m.nargs, rev = true)
+  unique!(m -> (m.file, m.line), ms)
 end
 
 function GotoItem(m::Method)
   _, link = view(m)
   sig = sprint(show, m)
-  text = replace(sig, r" in .* at .*$" => "")
+  text = replace(sig, methodloc_regex => s"\g<sig>")
   file = link.file
   line = link.line - 1
   secondary = join(link.contents)
