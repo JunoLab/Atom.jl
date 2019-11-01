@@ -2,7 +2,6 @@
 Find toplevel items (bind / call)
 
 - downstreams: modules.jl, outline.jl, goto.jl
-- TODO: crate `ToplevelScope` and allow to escape modules
 =#
 
 
@@ -25,7 +24,11 @@ struct ToplevelTupleH <: ToplevelItem
     lines::UnitRange{Int}
 end
 
-function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1)
+function toplevelitems(
+    expr, text, # necessary
+    items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1;
+    mod::Union{Nothing, String} = nothing, # if given, don't enter into modules other than `mod`
+)
     # binding
     bind = CSTParser.bindingof(expr)
     if bind !== nothing
@@ -44,10 +47,10 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
 
     # look for more toplevel items in expr:
-    if shouldenter(expr)
+    if shouldenter(expr, mod)
         if expr.args !== nothing
             for arg in expr.args
-                toplevelitems(arg, text, items, line, pos)
+                toplevelitems(arg, text, items, line, pos; mod = mod)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
             end
@@ -56,11 +59,13 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     return items
 end
 
-function shouldenter(expr::CSTParser.EXPR)
+function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})
     !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
-        expr.typ === CSTParser.ModuleH ||
-        expr.typ === CSTParser.BareModule ||
+        (ismodule(expr) && shouldentermodule(expr, mod)) ||
         isdoc(expr)
     ))
 end
+
+shouldentermodule(expr::CSTParser.EXPR, mod::Nothing) = true
+shouldentermodule(expr::CSTParser.EXPR, mod::String) = expr.binding.name == mod
