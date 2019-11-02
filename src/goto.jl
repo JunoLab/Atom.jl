@@ -142,31 +142,30 @@ end
 # entry method
 function collecttoplevelitems(mod::String, path::String, text::String)
   pathitemsmaps = PathItemsMaps()
-  if mod == "Main" || isuntitled(path)
+  return if mod == "Main" || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
     # with a given buffer text
     _collecttoplevelitems!(mod, path, text, pathitemsmaps)
   else
     _collecttoplevelitems!(mod, pathitemsmaps)
   end
-  return pathitemsmaps
 end
 
 # entry method when called from docpane/workspace
 function collecttoplevelitems(mod::String, path::Nothing, text::String)
   pathitemsmaps = PathItemsMaps()
   _collecttoplevelitems!(mod, pathitemsmaps)
-  return pathitemsmaps
 end
 
 # sub entry method
 function _collecttoplevelitems!(mod::String, pathitemsmaps::PathItemsMaps)
   m = getmodule(mod)
   entrypath, paths = modulefiles(m)
-  if entrypath !== nothing # Revise-like approach
+  return if entrypath !== nothing # Revise-like approach
     _collecttoplevelitems!([entrypath; paths], pathitemsmaps)
   else # if Revise-like approach fails, fallback to CSTParser-based approach
     entrypath, line = moduledefinition(m)
+    mod = string(last(split(mod, '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
     _collecttoplevelitems!(mod, entrypath, pathitemsmaps)
   end
 end
@@ -179,6 +178,7 @@ function _collecttoplevelitems!(paths::Vector{String}, pathitemsmaps::PathItemsM
     items = toplevelitems(parsed, text)
     push!(pathitemsmaps, path => items)
   end
+  pathitemsmaps
 end
 
 # module-walk based on CSTParser, looking for toplevel `installed` calls
@@ -204,6 +204,8 @@ function _collecttoplevelitems!(mod::String, entrypath::String, text::String, pa
       end
     end
   end
+
+  pathitemsmaps
 end
 
 filtertoplevelitem(word, item::ToplevelItem) = false
@@ -292,9 +294,7 @@ function regeneratesymbols()
     try
       @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
       path = Base.find_package(pkg)
-      pathitemsmap = PathItemsMaps()
-      _collecttoplevelitems!(pkg, path, pathitemsmap)
-      SYMBOLSCACHE[pkg] = pathitemsmap
+      SYMBOLSCACHE[pkg] = _collecttoplevelitems!(pkg, path, PathItemsMaps())
     catch err
       @error err
     end
