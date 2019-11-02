@@ -34,15 +34,15 @@
         @test_broken junkpath == modulefiles(Junk)[1]
 
         ## CSTPraser-based module file detection
-        let included_files = normpath.(modulefiles(joinpath′(atomjldir, "Atom.jl")))
+        let included_files = normpath.(modulefiles("Atom", joinpath′(atomjldir, "Atom.jl")))
             # finds all the files in Atom module except display/webio.jl
             for f in atommodfiles
                 f == webiofile && continue
                 @test f in included_files
             end
 
-            # can't exclude files in the submodules
-            @test_broken length(atommodfiles) == length(included_files)
+            # only finds files in a module -- exclude files in the submodules
+            @test length(atommodfiles) == length(included_files)
 
             # can't look for non-toplevel `include` calls
             @test_broken webiofile in included_files

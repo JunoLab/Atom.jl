@@ -113,7 +113,7 @@ const stdlib_names = Set([
 
 function pkg_fileinfo(id::PkgId)
   uuid, name = id.uuid, id.name
-    # Try to find the matching cache file
+  # Try to find the matching cache file
   paths = Base.find_all_in_cache_path(id)
   sourcepath = Base.locate_package(id)
   for path in paths
@@ -141,8 +141,8 @@ function parse_cache_header(f::IO)
     push!(modules, PkgId(uuid, sym) => build_id)
   end
   totbytes = read(f, Int64) # total bytes for file dependencies
-    # read the list of requirements
-    # and split the list into include and requires statements
+  # read the list of requirements
+  # and split the list into include and requires statements
   includes = Tuple{Module,String,Float64}[]
   requires = Pair{Module,PkgId}[]
   while true
@@ -153,7 +153,7 @@ function parse_cache_header(f::IO)
     n1 = read(f, Int32)
     mod = (n1 == 0) ? Main : Base.root_module(modules[n1].first)
     if n1 != 0
-            # determine the complete module path
+      # determine the complete module path
       while true
         n1 = read(f, Int32)
         totbytes -= 4
@@ -186,20 +186,21 @@ end
 # ------------------------
 
 """
-    included_files = modulefiles(entrypath::String)::Vector{String}
+    included_files = modulefiles(mod::String, entrypath::String)::Vector{String}
 
-Returns all the files that can be reached via [`include`](@ref) calls from `entrypath`.
-Note this function currently only looks for static toplevel calls (i.e. miss the calls
-  in not in toplevel scope), and can include files in the submodules as well.
+Returns all the files in `mod` module that can be reached via [`include`](@ref)
+  calls from `entrypath`.
+Note this function currently only looks for static toplevel calls (i.e. miss the
+  calls in non-toplevel scope).
 """
-function modulefiles(entrypath::String, files = Vector{String}())
+function modulefiles(mod::String, entrypath::String, files = Vector{String}())
   isfile′(entrypath) || return files
 
   push!(files, entrypath)
 
   text = read(entrypath, String)
   parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text)
+  items = toplevelitems(parsed, text; mod = mod)
 
   for item in items
     if item isa ToplevelCall
@@ -208,7 +209,7 @@ function modulefiles(entrypath::String, files = Vector{String}())
         nextfile = expr.args[3].val
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile(nextentrypath) || continue
-        modulefiles(nextentrypath, files)
+        modulefiles(mod, nextentrypath, files)
       end
     end
   end
