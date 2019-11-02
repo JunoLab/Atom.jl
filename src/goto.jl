@@ -17,13 +17,15 @@ handle("gotosymbol") do data
   gotosymbol(
     word, path,
     column, row, startRow, context, onlyGlobal,
-    mod, text
+    mod, text,
   )
 end
 
 function gotosymbol(
   word, path = nothing,
+  # local context
   column = 1, row = 1, startrow = 0, context = "", onlyglobal = false,
+  # module context
   mod = "Main", text = ""
 )
   try
@@ -32,15 +34,15 @@ function gotosymbol(
       localitems = localgotoitem(word, path, column, row, startrow, context)
       isempty(localitems) || return Dict(
         :error => false,
-        :items => map(Dict, localitems)
+        :items => todict.(localitems)
       )
     end
 
     # global goto
-    globalitems = globalgotoitems(word, mod, text, path)
+    globalitems = globalgotoitems(word, mod, path, text)
     isempty(globalitems) || return Dict(
       :error => false,
-      :items => map(Dict, globalitems),
+      :items => todict.(globalitems),
     )
   catch err
     return Dict(:error => true)
@@ -56,7 +58,8 @@ struct GotoItem
   secondary::String
   GotoItem(text, file, line = 0, secondary = "") = new(text, normpath(file), line, secondary)
 end
-Dict(gotoitem::GotoItem) = Dict(
+
+todict(gotoitem::GotoItem) = Dict(
   :text      => gotoitem.text,
   :file      => gotoitem.file,
   :line      => gotoitem.line,
@@ -79,26 +82,26 @@ function localgotoitem(word, path, column, row, startrow, context)
     GotoItem(text, path, line)
   end
 end
-localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when `path` is not destructured
+localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when called from docpane/workspace
 
 ### global goto - bundles toplevel gotos & method gotos
 
-function globalgotoitems(word, mod, text, path)
-  mod = getmodule(mod)
+function globalgotoitems(word, mod, path, text)
+  m = getmodule(mod)
 
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
   head = string(identifiers[1])
-  if head ≠ word && getfield′(mod, head) isa Module
+  if head ≠ word && getfield′(m, head) isa Module
     # if `head` is a module, update `word` and `mod`
     nextword = join(identifiers[2:end], '.')
     return globalgotoitems(nextword, head, text, path)
   end
 
-  val = getfield′(mod, word)
+  val = getfield′(m, word)
   val isa Module && return [GotoItem(val)] # module goto
 
-  toplevelitems = toplevelgotoitems(word, mod, text, path)
+  toplevelitems = toplevelgotoitems(word, mod, path, text)
 
   # append method gotos that are not caught by `toplevelgotoitems`
   ml = methods(val)
@@ -119,16 +122,15 @@ end
 const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
 const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 
-function toplevelgotoitems(word, mod, text, path)
-  key = string(mod)
-  pathitemsmaps = if haskey(SYMBOLSCACHE, key)
-    SYMBOLSCACHE[key]
+function toplevelgotoitems(word, mod, path, text)
+  pathitemsmaps = if haskey(SYMBOLSCACHE, mod)
+    SYMBOLSCACHE[mod]
   else
-    SYMBOLSCACHE[key] = searchtoplevelitems(mod, text, path) # caching
+    SYMBOLSCACHE[mod] = collecttoplevelitems(mod, path, text) # caching
   end
 
   ismacro(word) && (word = lstrip(word, '@'))
-  ret = Vector{GotoItem}()
+  ret = []
   for (path, items) in pathitemsmaps
     for item in filter(item -> filtertoplevelitem(word, item), items)
       push!(ret, GotoItem(path, item))
@@ -138,51 +140,57 @@ function toplevelgotoitems(word, mod, text, path)
 end
 
 # entry method
-function searchtoplevelitems(mod::Module, text::String, path::String)
+function collecttoplevelitems(mod::String, path::String, text::String)
   pathitemsmaps = PathItemsMaps()
-  if mod == Main # for `Main` module, always use the passed text
-    _searchtoplevelitems(text, path, pathitemsmaps)
+  if mod == "Main" || isuntitled(path)
+    # for `Main` module and unsaved editors, always use CSTPraser-based approach
+    # with a given buffer text
+    _collecttoplevelitems!(mod, path, text, pathitemsmaps)
   else
-    _searchtoplevelitems(mod, pathitemsmaps)
+    _collecttoplevelitems!(mod, pathitemsmaps)
   end
   return pathitemsmaps
 end
 
-# entry method when path is not deconstructured, e.g.: called from docpane/workspace
-function searchtoplevelitems(mod::Module, text::String, path::Nothing)
+# entry method when called from docpane/workspace
+function collecttoplevelitems(mod::String, path::Nothing, text::String)
   pathitemsmaps = PathItemsMaps()
-  _searchtoplevelitems(mod, pathitemsmaps)
+  _collecttoplevelitems!(mod, pathitemsmaps)
   return pathitemsmaps
 end
 
 # sub entry method
-function _searchtoplevelitems(mod::Module, pathitemsmaps::PathItemsMaps)
-  entrypath, paths = modulefiles(mod) # Revise-like approach
-  if entrypath !== nothing
-    for p in [entrypath; paths]
-      _searchtoplevelitems(p, pathitemsmaps)
-    end
+function _collecttoplevelitems!(mod::String, pathitemsmaps::PathItemsMaps)
+  m = getmodule(mod)
+  entrypath, paths = modulefiles(m)
+  if entrypath !== nothing # Revise-like approach
+    _collecttoplevelitems!([entrypath; paths], pathitemsmaps)
   else # if Revise-like approach fails, fallback to CSTParser-based approach
-    path, line = moduledefinition(mod)
-    text = read(path, String)
-    _searchtoplevelitems(text, path, pathitemsmaps)
+    entrypath, line = moduledefinition(m)
+    _collecttoplevelitems!(mod, entrypath, pathitemsmaps)
   end
 end
 
 # module-walk via Revise-like approach
-function _searchtoplevelitems(path::String, pathitemsmaps::PathItemsMaps)
-  text = read(path, String)
-  parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text)
-  pathitemsmap = path => items
-  push!(pathitemsmaps, pathitemsmap)
+function _collecttoplevelitems!(paths::Vector{String}, pathitemsmaps::PathItemsMaps)
+  for path in paths
+    text = read(path, String)
+    parsed = CSTParser.parse(text, true)
+    items = toplevelitems(parsed, text)
+    push!(pathitemsmaps, path => items)
+  end
 end
 
 # module-walk based on CSTParser, looking for toplevel `installed` calls
-function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::String, entrypath::String, pathitemsmaps::PathItemsMaps)
+  isfile′(entrypath) || return
+  text = read(entrypath, String)
+  _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps)
+end
+function _collecttoplevelitems!(mod::String, entrypath::String, text::String, pathitemsmaps::PathItemsMaps)
   parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text)
-  push!(pathitemsmaps, path => items)
+  items = toplevelitems(parsed, text; mod = mod)
+  push!(pathitemsmaps, entrypath => items)
 
   # looking for toplevel `include` calls
   for item in items
@@ -190,10 +198,9 @@ function _searchtoplevelitems(text::String, path::String, pathitemsmaps::PathIte
       expr = item.expr
       if isinclude(expr)
         nextfile = expr.args[3].val
-        nextpath = joinpath(dirname(path), nextfile)
-        isfile(nextpath) || continue
-        text = read(nextpath, String)
-        _searchtoplevelitems(text, nextpath, pathitemsmaps)
+        nextentrypath = joinpath(dirname(entrypath), nextfile)
+        isfile′(nextentrypath) || continue
+        _collecttoplevelitems!(mod, nextentrypath, pathitemsmaps)
       end
     end
   end
@@ -222,34 +229,36 @@ function GotoItem(path::String, bind::ToplevelBinding)
     text = str_value(sig)
   end
   line = bind.lines.start - 1
-  secondary = path * ":" * string(line)
+  secondary = string(path, ":", line + 1)
   GotoItem(text, path, line, secondary)
 end
 function GotoItem(path::String, tupleh::ToplevelTupleH)
   expr = tupleh.expr
   text = str_value(expr)
   line = tupleh.lines.start - 1
-  secondary = path * ":" * string(line)
+  secondary = string(path, ":", line + 1)
   GotoItem(text, path, line, secondary)
 end
 
-## update toplevel symbols
+## update toplevel symbols cache
 
 # NOTE: handled by the `updateeditor` handler in outline.jl
-function updatesymbols(text, mod, path, items)
-  if haskey(SYMBOLSCACHE, mod)
-    push!(SYMBOLSCACHE[mod], path => items) # don't try to walk in a module
-  else
-    # initialize the cache if there is no cache
-    SYMBOLSCACHE[mod] = searchtoplevelitems(getmodule(mod), text, path)
+function updatesymbols(items, mod, path::Nothing, text) end # fallback case
+function updatesymbols(items, mod, path::String, text)
+  # initialize the cache if there is no previous one
+  if !haskey(SYMBOLSCACHE, mod)
+    SYMBOLSCACHE[mod] = collecttoplevelitems(mod, path, text)
   end
+  push!(SYMBOLSCACHE[mod], path => items)
 end
 
-## generate toplevel symbols
+## generate toplevel symbols cache
+
 handle("regeneratesymbols") do
   with_logger(JunoProgressLogger()) do
     regeneratesymbols()
   end
+  nothing
 end
 
 function regeneratesymbols()
@@ -267,15 +276,13 @@ function regeneratesymbols()
   unloadedlen = length(unloaded)
   total = loadedlen + unloadedlen
 
-  for (i, mod) in enumerate(Base.loaded_modules_array())
+  for (i, m) in enumerate(Base.loaded_modules_array())
     try
-      modstr = string(mod)
-      modstr == "__PackagePrecompilationStatementModule" && continue # will cause error
-      pathitemsmap = PathItemsMaps()
+      mod = string(m)
+      mod == "__PackagePrecompilationStatementModule" && continue # will cause error
 
-      @logmsg -1 "Symbols: $modstr ($i / $total)" progress=i/total _id=id
-      _searchtoplevelitems(mod, pathitemsmap)
-      SYMBOLSCACHE[modstr] = pathitemsmap
+      @logmsg -1 "Symbols: $mod ($i / $total)" progress=i/total _id=id
+      SYMBOLSCACHE[mod] = collecttoplevelitems(mod, nothing, "")
     catch err
       @error err
     end
@@ -283,12 +290,10 @@ function regeneratesymbols()
 
   for (i, pkg) in enumerate(unloaded)
     try
-      path = Base.find_package(pkg)
-      text = read(path, String)
-      pathitemsmap = PathItemsMaps()
-
       @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
-      _searchtoplevelitems(text, path, pathitemsmap)
+      path = Base.find_package(pkg)
+      pathitemsmap = PathItemsMaps()
+      _collecttoplevelitems!(pkg, path, pathitemsmap)
       SYMBOLSCACHE[pkg] = pathitemsmap
     catch err
       @error err
@@ -296,6 +301,19 @@ function regeneratesymbols()
   end
 
   @info "Finished generating the symbols cache" progress=1 _id=id
+end
+
+## clear toplevel symbols cache
+
+handle("clearsymbols") do
+  clearsymbols()
+  nothing
+end
+
+function clearsymbols()
+  for key in keys(SYMBOLSCACHE)
+    delete!(SYMBOLSCACHE, key)
+  end
 end
 
 ## method goto

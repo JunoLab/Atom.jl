@@ -17,7 +17,14 @@ nonwritablefiles(files) = filter(!iswritablefile, files)
 
 include("path_matching.jl")
 
-isuntitled(p) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", p)
+"""
+    isuntitled(path::AbstractString)
+
+Checks if `path` represents an unsaved editor.
+Usualy the string that follows `"untitled-"` is obtained from `editor.getBuffer().getId()`:
+  e.g. `path = "untitled-266305858c1298b906bed15ddad81cea"`.
+"""
+isuntitled(path::AbstractString) = occursin(r"^(\.\\|\./)?untitled-[\d\w]+(:\d+)?$", path)
 
 appendline(path, line) = line > 0 ? "$path:$line" : path
 
