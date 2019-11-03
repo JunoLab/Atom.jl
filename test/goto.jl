@@ -150,6 +150,19 @@
                     @test items[1][:text] == word
                 end
             end
+
+            ## `Main` module -- use a passed buffer text
+            let path = joinpath′(@__DIR__, "runtests.jl")
+                text = read(path, String)
+                mod = "Main"
+                word = "atomjldir"
+
+                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                @test !isempty(items)
+                @test items[1][:file] == path
+                @test items[1][:line] == 5
+                @test items[1][:text] == word
+            end
         end
 
         @testset "updating toplevel symbols" begin

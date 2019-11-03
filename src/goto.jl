@@ -1,5 +1,3 @@
-using CSTParser
-
 handle("gotosymbol") do data
   @destruct [
     word,
@@ -144,8 +142,8 @@ function collecttoplevelitems(mod::String, path::String, text::String)
   pathitemsmaps = PathItemsMaps()
   return if mod == "Main" || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
-    # with a given buffer text
-    _collecttoplevelitems!(mod, path, text, pathitemsmaps)
+    # with a given buffer text, and don't check module validity
+    _collecttoplevelitems!(nothing, path, text, pathitemsmaps)
   else
     _collecttoplevelitems!(mod, pathitemsmaps)
   end
@@ -182,12 +180,12 @@ function _collecttoplevelitems!(paths::Vector{String}, pathitemsmaps::PathItemsM
 end
 
 # module-walk based on CSTParser, looking for toplevel `installed` calls
-function _collecttoplevelitems!(mod::String, entrypath::String, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps)
   isfile′(entrypath) || return
   text = read(entrypath, String)
   _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps)
 end
-function _collecttoplevelitems!(mod::String, entrypath::String, text::String, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps)
   parsed = CSTParser.parse(text, true)
   items = toplevelitems(parsed, text; mod = mod)
   push!(pathitemsmaps, entrypath => items)
