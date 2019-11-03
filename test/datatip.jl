@@ -34,7 +34,7 @@
         end
 
         # don't error on fallback case
-        @test Atom.localdatatip("word", 1, 1, 0, "") == []
+        @test_nowarn @test Atom.localdatatip("word", 1, 1, 0, "") == []
     end
 
     @testset "code block search" begin

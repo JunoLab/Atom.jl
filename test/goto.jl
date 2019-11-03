@@ -44,7 +44,7 @@
         end
 
         # don't error on fallback case
-        @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
+        @test_nowarn @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
     end
 
     @testset "goto global symbols" begin
@@ -216,6 +216,9 @@
             @test filter(SYMBOLSCACHE[mod][path]) do item
                 Atom.str_value(item.expr) == word
             end |> isempty
+
+            # don't error on fallback case
+            @test_nowarn @test updatesymbols(mod, nothing, text) === nothing
         end
 
         @testset "regenerating toplevel symbols" begin
@@ -268,6 +271,6 @@
         end
 
         ## don't error on the fallback case
-        @test globalgotoitems("word", "Main", nothing, "") == []
+        @test_nowarn @test globalgotoitems("word", "Main", nothing, "") == []
     end
 end

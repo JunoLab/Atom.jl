@@ -163,5 +163,5 @@ end
     end
 
     # don't error on fallback case
-    @test Atom.localcompletions("", 1, 1) == []
+    @test_nowarn @test Atom.localcompletions("", 1, 1) == []
 end
