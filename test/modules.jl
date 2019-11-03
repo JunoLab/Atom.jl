@@ -3,16 +3,16 @@
         using Atom: moduledefinition
 
         let (path, line) = moduledefinition(Atom)
-            @test path == joinpath′(@__DIR__, "..", "src", "Atom.jl")
+            @test path == atommodfile
             @test line == 4
         end
         let (path, line) = moduledefinition(Junk)
-            @test path == joinpath′(@__DIR__, "fixtures", "Junk.jl")
+            @test path == junkpath
             @test line == 1
         end
-        let (path, line) = moduledefinition(Junk.Junk2)
-            @test path == joinpath′(@__DIR__, "fixtures", "Junk.jl")
-            @test line == 15
+        let (path, line) = moduledefinition(Junk.SubJunk)
+            @test path == subjunkspath
+            @test line == 4
         end
     end
 
@@ -34,7 +34,7 @@
         @test_broken junkpath == modulefiles(Junk)[1]
 
         ## CSTPraser-based module file detection
-        let included_files = normpath.(modulefiles("Atom", joinpath′(atomjldir, "Atom.jl")))
+        let included_files = normpath.(modulefiles("Atom", atommodfile))
             # finds all the files in Atom module except display/webio.jl
             for f in atommodfiles
                 f == webiofile && continue

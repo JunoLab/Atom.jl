@@ -78,21 +78,20 @@
                 @test item[:file] == joinpath′(atomjldir, "Atom.jl")
                 @test item[:line] == 3
             end
-            let item = globalgotoitems("Junk2", "Main.Junk", nothing, "")[1] |> todict
-                @test item[:file] == joinpath′(junkpath)
-                @test item[:line] == 14
+            let item = globalgotoitems("SubJunk", "Main.Junk", nothing, "")[1] |> todict
+                @test item[:file] == subjunkspath
+                @test item[:line] == 3
             end
         end
 
         @testset "goto toplevel symbols" begin
             ## where Revise approach works, i.e.: precompiled modules
             let path = joinpath′(atomjldir, "comm.jl")
-                text = read(path, String)
                 mod = "Atom"
                 word = "handlers"
 
                 # basic
-                let items = todict.(toplevelgotoitems(word, mod, path, text))
+                let items = todict.(toplevelgotoitems(word, mod, path, ""))
                     @test !isempty(items)
                     @test items[1][:file] == path
                     @test items[1][:text] == word
@@ -127,15 +126,14 @@
 
             ## where the Revise-like approach doesn't work, e.g. non-precompiled modules
             let path = junkpath
-                text = read(path, String)
                 mod = "Main.Junk"
                 word = "toplevelval"
 
-                # basic
-                let items = toplevelgotoitems(word, mod, path, text) .|> todict
+                # basic -- no need to pass a buffer text
+                let items = toplevelgotoitems(word, mod, path, "") .|> todict
                     @test !isempty(items)
                     @test items[1][:file] == path
-                    @test items[1][:line] == 16
+                    @test items[1][:line] == 14
                     @test items[1][:text] == word
                 end
 
@@ -146,7 +144,22 @@
                 let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
                     @test !isempty(items)
                     @test items[1][:file] == path
-                    @test items[1][:line] == 16
+                    @test items[1][:line] == 14
+                    @test items[1][:text] == word
+                end
+            end
+
+            ## don't include bindings outside of a module
+            let path = subjunkspath
+                text = read(subjunkspath, String)
+                mod = "Main.Junk.SubJunk"
+                word = "imwithdoc"
+
+                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                @test_broken length(items) === 1 # broken since it finds `imwithdoc` in `Junk` as well
+                if length(items) === 1
+                    @test items[1][:file] == path
+                    @test items[1][:line] == 6
                     @test items[1][:text] == word
                 end
             end

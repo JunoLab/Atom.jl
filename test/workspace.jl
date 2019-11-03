@@ -19,7 +19,7 @@
     end
 
     # recoginise submodule
-    let items = filter(i -> i[:name] == :Junk2, items)
+    let items = filter(i -> i[:name] == :SubJunk, items)
         @test !isempty(items)
         @test items[1][:type] == "module"
         @test items[1][:icon] == "icon-package"
