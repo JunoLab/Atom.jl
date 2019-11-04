@@ -15,12 +15,12 @@
     @test filter(toplevelitems(parsed, text; mod = "Junk")) do item
         item isa Atom.ToplevelBinding &&
         item.bind.name == "imwithdoc"
-    end |> length === 1 # only `imwithdoc` in Junk module
+    end |> length === 1 # should only find the `imwithdoc` in Junk module
 
     # don't include items outside of a module
     # FIX: currently broken -- include `imwithdoc` in Junk module as well
     @test_broken filter(toplevelitems(parsed, text; mod = "SubJunk")) do item
         item isa Atom.ToplevelBinding &&
         item.bind.name == "imwithdoc"
-    end |> length === 1 # only `imwithdoc` in Junk module
+    end |> length === 1 # should only find the `imwithdoc` in SubJunk module
 end

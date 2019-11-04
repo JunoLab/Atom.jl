@@ -168,7 +168,8 @@ end
 function _collecttoplevelitems!(mod::Module, pathitemsmaps::PathItemsMaps)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
-    _collecttoplevelitems!([entrypath; paths], pathitemsmaps)
+    mod = string(last(split(string(mod), '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
+    _collecttoplevelitems!(mod, [entrypath; paths], pathitemsmaps)
   else # if Revise-like approach fails, fallback to CSTParser-based approach
     entrypath, line = moduledefinition(mod)
     mod = string(last(split(string(mod), '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
@@ -177,11 +178,10 @@ function _collecttoplevelitems!(mod::Module, pathitemsmaps::PathItemsMaps)
 end
 
 # module-walk via Revise-like approach
-function _collecttoplevelitems!(paths::Vector{String}, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, paths::Vector{String}, pathitemsmaps::PathItemsMaps)
   for path in paths
     text = read(path, String)
-    parsed = CSTParser.parse(text, true)
-    items = toplevelitems(parsed, text)
+    items = toplevelitems(text; mod = mod)
     push!(pathitemsmaps, path => items)
   end
   pathitemsmaps
