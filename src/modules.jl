@@ -193,13 +193,13 @@ Returns all the files in `mod` module that can be reached via [`include`](@ref)
 Note this function currently only looks for static toplevel calls (i.e. miss the
   calls in non-toplevel scope).
 """
-function modulefiles(mod::String, entrypath::String, files = Vector{String}())
+function modulefiles(mod::String, entrypath::String, files = Vector{String}(); inmod = false)
   isfile′(entrypath) || return files
 
   push!(files, entrypath)
 
   text = read(entrypath, String)
-  items = toplevelitems(text; mod = mod)
+  items = toplevelitems(text; mod = mod, inmod = inmod)
 
   for item in items
     if item isa ToplevelCall
@@ -208,7 +208,8 @@ function modulefiles(mod::String, entrypath::String, files = Vector{String}())
         nextfile = expr.args[3].val
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile(nextentrypath) || continue
-        modulefiles(mod, nextentrypath, files)
+        # `nextentrypath` is always in `mod`
+        modulefiles(mod, nextentrypath, files; inmod = true)
       end
     end
   end

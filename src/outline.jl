@@ -15,14 +15,12 @@ end
 
 # NOTE: update outline and symbols cache all in one go
 function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
-    items = toplevelitems(text)
-
     # update symbols cache
     # ref: https://github.com/JunoLab/Juno.jl/issues/407
-    updateSymbols && updatesymbols(items, mod, path, text)
+    updateSymbols && updatesymbols(mod, path, text)
 
     # return outline
-    outline(items)
+    outline(toplevelitems(text))
 end
 
 function outline(items)

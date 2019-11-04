@@ -25,13 +25,14 @@ struct ToplevelTupleH <: ToplevelItem
 end
 
 """
-    toplevelitems(text; kwargs...)
+    toplevelitems(text; kwargs...)::Vector{ToplevelItem}
 
-Returns [`ToplevelItem`](@ref)s in `text`.
+Finds and returns toplevel "item"s (call and binding) in `text`.
 
 keyword arguments:
 - `mod::Union{Nothing, String}`: if not `nothing` don't return items within modules
     other than `mod`, otherwise enter into every module.
+- `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
 """
 function toplevelitems(text; kwargs...)
     parsed = CSTParser.parse(text, true)
@@ -42,10 +43,13 @@ function _toplevelitems(
     text, expr,
     items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1;
     mod::Union{Nothing, String} = nothing,
+    inmod::Bool = false,
 )
+    shouldadd = mod === nothing || inmod
+
     # binding
     bind = CSTParser.bindingof(expr)
-    if bind !== nothing
+    if bind !== nothing && shouldadd
         lines = line:line+countlines(expr, text, pos, false)
         push!(items, ToplevelBinding(expr, bind, lines))
     end
@@ -53,18 +57,23 @@ function _toplevelitems(
     lines = line:line+countlines(expr, text, pos, false)
 
     # toplevel call
-    if iscallexpr(expr)
+    if iscallexpr(expr) && shouldadd
         push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
     end
 
     # destructure multiple returns
-    ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
+    if ismultiplereturn(expr) && shouldadd
+        push!(items, ToplevelTupleH(expr, lines))
+    end
 
     # look for more toplevel items in expr:
     if shouldenter(expr, mod)
         if expr.args !== nothing
+            if ismodule(expr) && shouldentermodule(expr, mod)
+                inmod = true
+            end
             for arg in expr.args
-                _toplevelitems(text, arg, items, line, pos; mod = mod)
+                _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
             end

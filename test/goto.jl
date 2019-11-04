@@ -48,7 +48,7 @@
     end
 
     @testset "goto global symbols" begin
-        using Atom: globalgotoitems, toplevelgotoitems, SYMBOLSCACHE,
+        using Atom: globalgotoitems, toplevelgotoitems, SYMBOLSCACHE, updatesymbols,
                     clearsymbols, regeneratesymbols, methodgotoitems
 
         ## strip a dot-accessed modules
@@ -158,7 +158,7 @@
                 word = "imwithdoc"
 
                 items = toplevelgotoitems(word, mod, path, text) .|> todict
-                @test_broken length(items) === 1 # broken since it finds `imwithdoc` in `Junk` as well
+                @test length(items) === 1
                 if length(items) === 1
                     @test items[1][:file] == path
                     @test items[1][:line] == 6
@@ -181,11 +181,6 @@
         end
 
         @testset "updating toplevel symbols" begin
-            function updatesymbols(mod, path, text)
-                items = Atom.toplevelitems(text)
-                Atom.updatesymbols(items, mod, path, text)
-            end
-
             # check there is no cache before updating
             mod = Main.Junk
             key = "Main.Junk"

@@ -146,6 +146,9 @@ end
 
 shortstr(val) = strlimit(string(val), 20)
 
+"""used to strip parent module prefixes e.g.: `"Main.Junk" ⟶ "Junk"`"""
+stripdotprefixes(str::AbstractString)  = string(last(split(str, '.')))
+
 """
     Undefined
 

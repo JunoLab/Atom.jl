@@ -97,13 +97,13 @@ function globalgotoitems(word, mod, path, text)
   val = getfield′(mod, word)
   val isa Module && return [GotoItem(val)] # module goto
 
-  toplevelitems = toplevelgotoitems(word, mod, path, text)
+  items = toplevelgotoitems(word, mod, path, text)
 
   # append method gotos that are not caught by `toplevelgotoitems`
   ml = methods(val)
-  files = map(item -> item.file, toplevelitems)
+  files = map(item -> item.file, items)
   methoditems = filter!(item -> item.file ∉ files, methodgotoitems(ml))
-  append!(toplevelitems, methoditems)
+  append!(items, methoditems)
 end
 
 ## module goto
@@ -168,33 +168,36 @@ end
 function _collecttoplevelitems!(mod::Module, pathitemsmaps::PathItemsMaps)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
-    mod = string(last(split(string(mod), '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
-    _collecttoplevelitems!(mod, [entrypath; paths], pathitemsmaps)
+    _collecttoplevelitems!(stripdotprefixes(string(mod)), entrypath, paths, pathitemsmaps)
   else # if Revise-like approach fails, fallback to CSTParser-based approach
     entrypath, line = moduledefinition(mod)
-    mod = string(last(split(string(mod), '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
-    _collecttoplevelitems!(mod, entrypath, pathitemsmaps)
+    _collecttoplevelitems!(stripdotprefixes(string(mod)), entrypath, pathitemsmaps)
   end
 end
 
 # module-walk via Revise-like approach
-function _collecttoplevelitems!(mod::Union{Nothing, String}, paths::Vector{String}, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, paths::Vector{String}, pathitemsmaps::PathItemsMaps)
+  # ignore toplevel items outside of `mod`
+  items = toplevelitems(read(entrypath, String); mod = mod)
+  push!(pathitemsmaps, entrypath => items)
+
   for path in paths
-    text = read(path, String)
-    items = toplevelitems(text; mod = mod)
+    # collect symbols in included files (always in `mod`)
+    items = toplevelitems(read(path, String); mod = mod, inmod = true)
     push!(pathitemsmaps, path => items)
   end
+
   pathitemsmaps
 end
 
 # module-walk based on CSTParser, looking for toplevel `installed` calls
-function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps; inmod = false)
   isfile′(entrypath) || return
   text = read(entrypath, String)
-  _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps)
+  _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps; inmod = inmod)
 end
-function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps)
-  items = toplevelitems(text; mod = mod)
+function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps; inmod = false)
+  items = toplevelitems(text; mod = mod, inmod = inmod)
   push!(pathitemsmaps, entrypath => items)
 
   # looking for toplevel `include` calls
@@ -205,7 +208,8 @@ function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, 
         nextfile = expr.args[3].val
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile′(nextentrypath) || continue
-        _collecttoplevelitems!(mod, nextentrypath, pathitemsmaps)
+        # `nextentrypath` is always in `mod`
+        _collecttoplevelitems!(mod, nextentrypath, pathitemsmaps; inmod = true)
       end
     end
   end
@@ -250,12 +254,19 @@ end
 ## update toplevel symbols cache
 
 # NOTE: handled by the `updateeditor` handler in outline.jl
-function updatesymbols(items, mod, path::Nothing, text) end # fallback case
-function updatesymbols(items, mod, path::String, text)
+function updatesymbols(mod, path::Nothing, text) end # fallback case
+function updatesymbols(mod, path::String, text)
+  m = getmodule(mod)
+
   # initialize the cache if there is no previous one
   if !haskey(SYMBOLSCACHE, mod)
-    SYMBOLSCACHE[mod] = collecttoplevelitems(getmodule(mod), path, text)
+    SYMBOLSCACHE[mod] = collecttoplevelitems(m, path, text)
   end
+
+  # ignore toplevel items outside of `mod` when `path` is an entry file
+  entrypath, _ = moduledefinition(m)
+  inmod = path != entrypath
+  items = toplevelitems(text; mod = stripdotprefixes(mod), inmod = inmod)
   push!(SYMBOLSCACHE[mod], path => items)
 end
 
