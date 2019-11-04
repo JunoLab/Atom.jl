@@ -37,7 +37,7 @@ function gotosymbol(
     end
 
     # global goto
-    globalitems = globalgotoitems(word, mod, path, text)
+    globalitems = globalgotoitems(word, getmodule(mod), path, text)
     isempty(globalitems) || return Dict(
       :error => false,
       :items => todict.(globalitems),
@@ -85,18 +85,16 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when calle
 ### global goto - bundles toplevel gotos & method gotos
 
 function globalgotoitems(word, mod, path, text)
-  m = getmodule(mod)
-
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
   head = string(identifiers[1])
-  if head ≠ word && getfield′(m, head) isa Module
+  if head ≠ word && (nextmod = getfield′(mod, head)) isa Module
     # if `head` is a module, update `word` and `mod`
     nextword = join(identifiers[2:end], '.')
-    return globalgotoitems(nextword, head, text, path)
+    return globalgotoitems(nextword, nextmod, text, path)
   end
 
-  val = getfield′(m, word)
+  val = getfield′(mod, word)
   val isa Module && return [GotoItem(val)] # module goto
 
   toplevelitems = toplevelgotoitems(word, mod, path, text)
@@ -118,13 +116,24 @@ end
 ## toplevel goto
 
 const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
+
+"""
+    Atom.SYMBOLSCACHE
+
+"module" (`String`) ⟶ "path" (`String`) ⟶ "symbols" (`Vector{ToplevelItem}`) map
+
+!!! note
+    "module" should be canonical, i.e.: should be identical to names that are
+      constructed from `string(mod::Module)`.
+"""
 const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
 
 function toplevelgotoitems(word, mod, path, text)
-  pathitemsmaps = if haskey(SYMBOLSCACHE, mod)
-    SYMBOLSCACHE[mod]
+  key = string(mod)
+  pathitemsmaps = if haskey(SYMBOLSCACHE, key)
+    SYMBOLSCACHE[key]
   else
-    SYMBOLSCACHE[mod] = collecttoplevelitems(mod, path, text) # caching
+    SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
   end
 
   ismacro(word) && (word = lstrip(word, '@'))
@@ -138,9 +147,9 @@ function toplevelgotoitems(word, mod, path, text)
 end
 
 # entry method
-function collecttoplevelitems(mod::String, path::String, text::String)
+function collecttoplevelitems(mod::Module, path::String, text::String)
   pathitemsmaps = PathItemsMaps()
-  return if mod == "Main" || isuntitled(path)
+  return if mod == Main || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
     # with a given buffer text, and don't check module validity
     _collecttoplevelitems!(nothing, path, text, pathitemsmaps)
@@ -150,20 +159,19 @@ function collecttoplevelitems(mod::String, path::String, text::String)
 end
 
 # entry method when called from docpane/workspace
-function collecttoplevelitems(mod::String, path::Nothing, text::String)
+function collecttoplevelitems(mod::Module, path::Nothing, text::String)
   pathitemsmaps = PathItemsMaps()
   _collecttoplevelitems!(mod, pathitemsmaps)
 end
 
 # sub entry method
-function _collecttoplevelitems!(mod::String, pathitemsmaps::PathItemsMaps)
-  m = getmodule(mod)
-  entrypath, paths = modulefiles(m)
+function _collecttoplevelitems!(mod::Module, pathitemsmaps::PathItemsMaps)
+  entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
     _collecttoplevelitems!([entrypath; paths], pathitemsmaps)
   else # if Revise-like approach fails, fallback to CSTParser-based approach
-    entrypath, line = moduledefinition(m)
-    mod = string(last(split(mod, '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
+    entrypath, line = moduledefinition(mod)
+    mod = string(last(split(string(mod), '.'))) # strip parent module prefixes e.g.: `"Main.Junk"`
     _collecttoplevelitems!(mod, entrypath, pathitemsmaps)
   end
 end
@@ -247,7 +255,7 @@ function updatesymbols(items, mod, path::Nothing, text) end # fallback case
 function updatesymbols(items, mod, path::String, text)
   # initialize the cache if there is no previous one
   if !haskey(SYMBOLSCACHE, mod)
-    SYMBOLSCACHE[mod] = collecttoplevelitems(mod, path, text)
+    SYMBOLSCACHE[mod] = collecttoplevelitems(getmodule(mod), path, text)
   end
   push!(SYMBOLSCACHE[mod], path => items)
 end
@@ -276,13 +284,13 @@ function regeneratesymbols()
   unloadedlen = length(unloaded)
   total = loadedlen + unloadedlen
 
-  for (i, m) in enumerate(Base.loaded_modules_array())
+  for (i, mod) in enumerate(Base.loaded_modules_array())
     try
-      mod = string(m)
-      mod == "__PackagePrecompilationStatementModule" && continue # will cause error
+      key = string(mod)
+      key == "__PackagePrecompilationStatementModule" && continue # will cause error
 
-      @logmsg -1 "Symbols: $mod ($i / $total)" progress=i/total _id=id
-      SYMBOLSCACHE[mod] = collecttoplevelitems(mod, nothing, "")
+      @logmsg -1 "Symbols: $key ($i / $total)" progress=i/total _id=id
+      SYMBOLSCACHE[key] = collecttoplevelitems(mod, nothing, "")
     catch err
       @error err
     end

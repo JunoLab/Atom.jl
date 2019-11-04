@@ -55,11 +55,11 @@
         let
             path = joinpath′(@__DIR__, "..", "src", "comm.jl")
             text = read(path, String)
-            items = todict.(globalgotoitems("Atom.handlers", "Atom", path, text))
+            items = todict.(globalgotoitems("Atom.handlers", Atom, path, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "handlers"
-            items = todict.(globalgotoitems("Main.Atom.handlers", "Atom", path, text))
+            items = todict.(globalgotoitems("Main.Atom.handlers", Atom, path, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "handlers"
@@ -67,18 +67,18 @@
             # can access the non-exported (non-method) bindings in the other module
             path = joinpath′(@__DIR__, "..", "src", "goto.jl")
             text = read(@__FILE__, String)
-            items = todict.(globalgotoitems("Atom.SYMBOLSCACHE", "Main", @__FILE__, text))
+            items = todict.(globalgotoitems("Atom.SYMBOLSCACHE", Main, @__FILE__, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "SYMBOLSCACHE"
         end
 
         @testset "goto modules" begin
-            let item = globalgotoitems("Atom", "Main", nothing, "")[1] |> todict
+            let item = globalgotoitems("Atom", Main, nothing, "")[1] |> todict
                 @test item[:file] == joinpath′(atomjldir, "Atom.jl")
                 @test item[:line] == 3
             end
-            let item = globalgotoitems("SubJunk", "Main.Junk", nothing, "")[1] |> todict
+            let item = globalgotoitems("SubJunk", Junk, nothing, "")[1] |> todict
                 @test item[:file] == subjunkspath
                 @test item[:line] == 3
             end
@@ -87,7 +87,8 @@
         @testset "goto toplevel symbols" begin
             ## where Revise approach works, i.e.: precompiled modules
             let path = joinpath′(atomjldir, "comm.jl")
-                mod = "Atom"
+                mod = Atom
+                key = "Atom"
                 word = "handlers"
 
                 # basic
@@ -98,10 +99,10 @@
                 end
 
                 # check caching works
-                @test haskey(SYMBOLSCACHE, mod)
+                @test haskey(SYMBOLSCACHE, key)
 
                 # check the Revise-like approach finds all files in Atom module
-                @test length(SYMBOLSCACHE[mod]) == length(atommodfiles)
+                @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
 
                 # when `path` isn't given, i.e. via docpane / workspace
                 let items = todict.(toplevelgotoitems(word, mod, nothing, ""))
@@ -111,7 +112,7 @@
                 end
 
                 # same as above, but without any previous cache -- falls back to CSTPraser-based module-walk
-                delete!(SYMBOLSCACHE, mod)
+                delete!(SYMBOLSCACHE, key)
 
                 let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
                     @test !isempty(items)
@@ -121,12 +122,13 @@
 
                 # check CSTPraser-based module-walk finds all the included files
                 # NOTE: webio.jl is excluded since `include("webio.jl")` is a toplevel call
-                @test length(SYMBOLSCACHE[mod]) == length(atommodfiles)
+                @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
             end
 
             ## where the Revise-like approach doesn't work, e.g. non-precompiled modules
             let path = junkpath
-                mod = "Main.Junk"
+                mod = Main.Junk
+                key = "Main.Junk"
                 word = "toplevelval"
 
                 # basic -- no need to pass a buffer text
@@ -138,7 +140,7 @@
                 end
 
                 # check caching works
-                @test haskey(Atom.SYMBOLSCACHE, mod)
+                @test haskey(Atom.SYMBOLSCACHE, key)
 
                 # when `path` isn't given, i.e.: via docpane / workspace
                 let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
@@ -152,7 +154,7 @@
             ## don't include bindings outside of a module
             let path = subjunkspath
                 text = read(subjunkspath, String)
-                mod = "Main.Junk.SubJunk"
+                mod = Main.Junk.SubJunk
                 word = "imwithdoc"
 
                 items = toplevelgotoitems(word, mod, path, text) .|> todict
@@ -167,7 +169,7 @@
             ## `Main` module -- use a passed buffer text
             let path = joinpath′(@__DIR__, "runtests.jl")
                 text = read(path, String)
-                mod = "Main"
+                mod = Main
                 word = "atomjldir"
 
                 items = toplevelgotoitems(word, mod, path, text) .|> todict
@@ -186,10 +188,11 @@
             end
 
             # check there is no cache before updating
-            mod = "Main.Junk"
+            mod = Main.Junk
+            key = "Main.Junk"
             path = junkpath
             text = read(path, String)
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == "toplevelval2"
             end |> isempty
 
@@ -198,10 +201,10 @@
             newtext = join(originallines[1:end - 1], '\n')
             word = "toplevelval2"
             newtext *= "\n$word = :youshoulderaseme\nend"
-            updatesymbols(mod, path, newtext)
+            updatesymbols(key, path, newtext)
 
             # check the cache is updated
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == word
             end |> !isempty
 
@@ -212,13 +215,13 @@
             end
 
             # re-update the cache
-            updatesymbols(mod, path, text)
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            updatesymbols(key, path, text)
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == word
             end |> isempty
 
             # don't error on fallback case
-            @test_nowarn @test updatesymbols(mod, nothing, text) === nothing
+            @test_nowarn @test updatesymbols(key, nothing, text) === nothing
         end
 
         @testset "regenerating toplevel symbols" begin
@@ -227,7 +230,7 @@
             @test haskey(SYMBOLSCACHE, "Base")
             @test length(keys(SYMBOLSCACHE["Base"])) > 100
             @test haskey(SYMBOLSCACHE, "Example") # cache symbols even if not loaded
-            @test toplevelgotoitems("hello", "Example", "", nothing) |> !isempty
+            @test toplevelgotoitems("hello", Example, "", nothing) |> !isempty
         end
 
         @testset "clear toplevel symbols" begin
@@ -264,13 +267,13 @@
         end
 
         ## both the original methods and the toplevel bindings that are overloaded in a context module should be shown
-        let items = globalgotoitems("isconst", "Main.Junk", nothing, "")
+        let items = globalgotoitems("isconst", Main.Junk, nothing, "")
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" in map(item -> item.text, items) # from Base
             @test "Base.isconst(::JunkType)" in map(item -> item.text, items) # from Junk
         end
 
         ## don't error on the fallback case
-        @test_nowarn @test globalgotoitems("word", "Main", nothing, "") == []
+        @test_nowarn @test globalgotoitems("word", Main, nothing, "") == []
     end
 end
