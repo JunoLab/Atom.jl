@@ -15,8 +15,7 @@ end
 
 # NOTE: update outline and symbols cache all in one go
 function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
-    parsed = CSTParser.parse(text, true)
-    items = toplevelitems(parsed, text)
+    items = toplevelitems(text)
 
     # update symbols cache
     # ref: https://github.com/JunoLab/Juno.jl/issues/407

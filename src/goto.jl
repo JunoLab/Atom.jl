@@ -194,8 +194,7 @@ function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, 
   _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps)
 end
 function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps)
-  parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text; mod = mod)
+  items = toplevelitems(text; mod = mod)
   push!(pathitemsmaps, entrypath => items)
 
   # looking for toplevel `include` calls

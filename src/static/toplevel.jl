@@ -24,10 +24,24 @@ struct ToplevelTupleH <: ToplevelItem
     lines::UnitRange{Int}
 end
 
-function toplevelitems(
-    expr, text, # necessary
+"""
+    toplevelitems(text; kwargs...)
+
+Returns [`ToplevelItem`](@ref)s in `text`.
+
+keyword arguments:
+- `mod::Union{Nothing, String}`: if not `nothing` don't return items within modules
+    other than `mod`, otherwise enter into every module.
+"""
+function toplevelitems(text; kwargs...)
+    parsed = CSTParser.parse(text, true)
+    _toplevelitems(text, parsed; kwargs...)
+end
+
+function _toplevelitems(
+    text, expr,
     items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1;
-    mod::Union{Nothing, String} = nothing, # if given, don't enter into modules other than `mod`
+    mod::Union{Nothing, String} = nothing,
 )
     # binding
     bind = CSTParser.bindingof(expr)
@@ -50,7 +64,7 @@ function toplevelitems(
     if shouldenter(expr, mod)
         if expr.args !== nothing
             for arg in expr.args
-                toplevelitems(arg, text, items, line, pos; mod = mod)
+                _toplevelitems(text, arg, items, line, pos; mod = mod)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
             end

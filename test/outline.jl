@@ -1,9 +1,5 @@
 @testset "outline" begin
-    function outline(str)
-        parsed = CSTParser.parse(str, true)
-        items = Atom.toplevelitems(parsed, str)
-        Atom.outline(items)
-    end
+    outline(text) = Atom.outline(Atom.toplevelitems(text))
 
     let str = """
         module Foo

@@ -182,8 +182,7 @@
 
         @testset "updating toplevel symbols" begin
             function updatesymbols(mod, path, text)
-                parsed = CSTParser.parse(text, true)
-                items = Atom.toplevelitems(parsed, text)
+                items = Atom.toplevelitems(text)
                 Atom.updatesymbols(items, mod, path, text)
             end
 

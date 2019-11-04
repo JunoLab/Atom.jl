@@ -199,8 +199,7 @@ function modulefiles(mod::String, entrypath::String, files = Vector{String}())
   push!(files, entrypath)
 
   text = read(entrypath, String)
-  parsed = CSTParser.parse(text, true)
-  items = toplevelitems(parsed, text; mod = mod)
+  items = toplevelitems(text; mod = mod)
 
   for item in items
     if item isa ToplevelCall
