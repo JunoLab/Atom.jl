@@ -120,7 +120,7 @@ const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
 """
     Atom.SYMBOLSCACHE
 
-"module" (`String`) ⟶ "path" (`String`) ⟶ "symbols" (`Vector{ToplevelItem}`) map
+"module" (`String`) ⟶ "path" (`String`) ⟶ "symbols" (`Vector{ToplevelItem}`) map.
 
 !!! note
     "module" should be canonical, i.e.: should be identical to names that are
@@ -146,43 +146,41 @@ function toplevelgotoitems(word, mod, path, text)
   return ret
 end
 
-# entry method
+# entry methods
 function collecttoplevelitems(mod::Module, path::String, text::String)
-  pathitemsmaps = PathItemsMaps()
   return if mod == Main || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
     # with a given buffer text, and don't check module validity
-    _collecttoplevelitems!(nothing, path, text, pathitemsmaps)
+    __collecttoplevelitems(nothing, path, text)
   else
-    _collecttoplevelitems!(mod, pathitemsmaps)
+    _collecttoplevelitems(mod)
   end
 end
+# when `path === nothing`, e.g.: called from docpane/workspace
+collecttoplevelitems(mod::Module, path::Nothing, text::String) = _collecttoplevelitems(mod)
 
-# entry method when called from docpane/workspace
-function collecttoplevelitems(mod::Module, path::Nothing, text::String)
-  pathitemsmaps = PathItemsMaps()
-  _collecttoplevelitems!(mod, pathitemsmaps)
-end
-
-# sub entry method
-function _collecttoplevelitems!(mod::Module, pathitemsmaps::PathItemsMaps)
+function _collecttoplevelitems(mod::Module)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
-    _collecttoplevelitems!(stripdotprefixes(string(mod)), entrypath, paths, pathitemsmaps)
+    __collecttoplevelitems(stripdotprefixes(string(mod)), [entrypath; paths])
   else # if Revise-like approach fails, fallback to CSTParser-based approach
     entrypath, line = moduledefinition(mod)
-    _collecttoplevelitems!(stripdotprefixes(string(mod)), entrypath, pathitemsmaps)
+    __collecttoplevelitems(stripdotprefixes(string(mod)), entrypath)
   end
 end
 
 # module-walk via Revise-like approach
-function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, paths::Vector{String}, pathitemsmaps::PathItemsMaps)
+function __collecttoplevelitems(mod::Union{Nothing, String}, paths::Vector{String})
+  pathitemsmaps = PathItemsMaps()
+
+  entrypath, paths = paths[1], paths[2:end]
+
   # ignore toplevel items outside of `mod`
   items = toplevelitems(read(entrypath, String); mod = mod)
   push!(pathitemsmaps, entrypath => items)
 
+  # collect symbols in included files (always in `mod`)
   for path in paths
-    # collect symbols in included files (always in `mod`)
     items = toplevelitems(read(path, String); mod = mod, inmod = true)
     push!(pathitemsmaps, path => items)
   end
@@ -190,13 +188,13 @@ function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, 
   pathitemsmaps
 end
 
-# module-walk based on CSTParser, looking for toplevel `installed` calls
-function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps; inmod = false)
+# module-walk based on CSTParser, looking for toplevel `included` calls
+function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps = PathItemsMaps(); inmod = false)
   isfile′(entrypath) || return
   text = read(entrypath, String)
-  _collecttoplevelitems!(mod, entrypath, text, pathitemsmaps; inmod = inmod)
+  __collecttoplevelitems(mod, entrypath, text, pathitemsmaps; inmod = inmod)
 end
-function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps; inmod = false)
+function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps = PathItemsMaps(); inmod = false)
   items = toplevelitems(text; mod = mod, inmod = inmod)
   push!(pathitemsmaps, entrypath => items)
 
@@ -209,7 +207,7 @@ function _collecttoplevelitems!(mod::Union{Nothing, String}, entrypath::String, 
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile′(nextentrypath) || continue
         # `nextentrypath` is always in `mod`
-        _collecttoplevelitems!(mod, nextentrypath, pathitemsmaps; inmod = true)
+        __collecttoplevelitems(mod, nextentrypath, pathitemsmaps; inmod = true)
       end
     end
   end
@@ -300,7 +298,7 @@ function regeneratesymbols()
       key == "__PackagePrecompilationStatementModule" && continue # will cause error
 
       @logmsg -1 "Symbols: $key ($i / $total)" progress=i/total _id=id
-      SYMBOLSCACHE[key] = collecttoplevelitems(mod, nothing, "")
+      SYMBOLSCACHE[key] = _collecttoplevelitems(mod)
     catch err
       @error err
     end
@@ -310,7 +308,7 @@ function regeneratesymbols()
     try
       @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
       path = Base.find_package(pkg)
-      SYMBOLSCACHE[pkg] = _collecttoplevelitems!(pkg, path, PathItemsMaps())
+      SYMBOLSCACHE[pkg] = __collecttoplevelitems(pkg, path)
     catch err
       @error err
     end
