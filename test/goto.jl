@@ -1,4 +1,6 @@
 @testset "goto symbols" begin
+    using Atom: todict
+
     @testset "goto local symbols" begin
         let str = """
             function localgotoitem(word, path, column, row, startRow, context) # L0
@@ -15,7 +17,7 @@
               end                                                              # L11
             end                                                                # L12
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> Dict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> todict
 
             let item = localgotoitem("row", 2)
                 @test item[:line] === 0
@@ -35,29 +37,29 @@
                 return val
             end
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> Dict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> todict
 
             @test localgotoitem("expr.args", 1)[:line] === 0
             @test localgotoitem("bind.val", 2)[:line] === 1
         end
 
         # don't error on fallback case
-        @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
+        @test_nowarn @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
     end
 
     @testset "goto global symbols" begin
-        using Atom: globalgotoitems, toplevelgotoitems, SYMBOLSCACHE,
-                    regeneratesymbols, methodgotoitems
+        using Atom: globalgotoitems, toplevelgotoitems, SYMBOLSCACHE, updatesymbols,
+                    clearsymbols, regeneratesymbols, methodgotoitems
 
         ## strip a dot-accessed modules
         let
             path = joinpath′(@__DIR__, "..", "src", "comm.jl")
             text = read(path, String)
-            items = Dict.(globalgotoitems("Atom.handlers", "Atom", text, path))
+            items = todict.(globalgotoitems("Atom.handlers", Atom, path, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "handlers"
-            items = Dict.(globalgotoitems("Main.Atom.handlers", "Atom", text, path))
+            items = todict.(globalgotoitems("Main.Atom.handlers", Atom, path, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "handlers"
@@ -65,33 +67,32 @@
             # can access the non-exported (non-method) bindings in the other module
             path = joinpath′(@__DIR__, "..", "src", "goto.jl")
             text = read(@__FILE__, String)
-            items = Dict.(globalgotoitems("Atom.SYMBOLSCACHE", "Main", text, @__FILE__))
+            items = todict.(globalgotoitems("Atom.SYMBOLSCACHE", Main, @__FILE__, text))
             @test !isempty(items)
             @test items[1][:file] == path
             @test items[1][:text] == "SYMBOLSCACHE"
         end
 
         @testset "goto modules" begin
-            let item = globalgotoitems("Atom", "Main", "", nothing)[1]
-                @test item.file == joinpath′(atomjldir, "Atom.jl")
-                @test item.line == 3
+            let item = globalgotoitems("Atom", Main, nothing, "")[1] |> todict
+                @test item[:file] == joinpath′(atomjldir, "Atom.jl")
+                @test item[:line] == 3
             end
-            let item = globalgotoitems("Junk2", "Main.Junk", "", nothing)[1]
-                @test item.file == joinpath′(junkpath)
-                @test item.line == 14
+            let item = globalgotoitems("SubJunk", Junk, nothing, "")[1] |> todict
+                @test item[:file] == subjunkspath
+                @test item[:line] == 3
             end
         end
 
         @testset "goto toplevel symbols" begin
             ## where Revise approach works, i.e.: precompiled modules
             let path = joinpath′(atomjldir, "comm.jl")
-                text = read(path, String)
                 mod = Atom
                 key = "Atom"
                 word = "handlers"
 
                 # basic
-                let items = toplevelgotoitems(word, mod, text, path) .|> Dict
+                let items = todict.(toplevelgotoitems(word, mod, path, ""))
                     @test !isempty(items)
                     @test items[1][:file] == path
                     @test items[1][:text] == word
@@ -104,7 +105,7 @@
                 @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
 
                 # when `path` isn't given, i.e. via docpane / workspace
-                let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
+                let items = todict.(toplevelgotoitems(word, mod, nothing, ""))
                     @test !isempty(items)
                     @test items[1][:file] == path
                     @test items[1][:text] == word
@@ -113,31 +114,28 @@
                 # same as above, but without any previous cache -- falls back to CSTPraser-based module-walk
                 delete!(SYMBOLSCACHE, key)
 
-                let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
+                let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
                     @test !isempty(items)
                     @test items[1][:file] == path
                     @test items[1][:text] == word
                 end
 
                 # check CSTPraser-based module-walk finds all the included files
-                # currently broken:
-                # - files in submodules are included
-                # - webio.jl is excluded since `include("webio.jl")` is a toplevel call
-                @test_broken length(SYMBOLSCACHE[key]) == length(atommoddir)
+                # NOTE: webio.jl is excluded since `include("webio.jl")` is a toplevel call
+                @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
             end
 
             ## where the Revise-like approach doesn't work, e.g. non-precompiled modules
             let path = junkpath
-                text = read(path, String)
                 mod = Main.Junk
                 key = "Main.Junk"
                 word = "toplevelval"
 
-                # basic
-                let items = toplevelgotoitems(word, mod, text, path) .|> Dict
+                # basic -- no need to pass a buffer text
+                let items = toplevelgotoitems(word, mod, path, "") .|> todict
                     @test !isempty(items)
                     @test items[1][:file] == path
-                    @test items[1][:line] == 16
+                    @test items[1][:line] == 14
                     @test items[1][:text] == word
                 end
 
@@ -145,27 +143,50 @@
                 @test haskey(Atom.SYMBOLSCACHE, key)
 
                 # when `path` isn't given, i.e.: via docpane / workspace
-                let items = toplevelgotoitems(word, mod, "", nothing) .|> Dict
+                let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
                     @test !isempty(items)
                     @test items[1][:file] == path
-                    @test items[1][:line] == 16
+                    @test items[1][:line] == 14
                     @test items[1][:text] == word
                 end
+            end
+
+            ## don't include bindings outside of a module
+            let path = subjunkspath
+                text = read(subjunkspath, String)
+                mod = Main.Junk.SubJunk
+                word = "imwithdoc"
+
+                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                @test length(items) === 1
+                if length(items) === 1
+                    @test items[1][:file] == path
+                    @test items[1][:line] == 6
+                    @test items[1][:text] == word
+                end
+            end
+
+            ## `Main` module -- use a passed buffer text
+            let path = joinpath′(@__DIR__, "runtests.jl")
+                text = read(path, String)
+                mod = Main
+                word = "atomjldir"
+
+                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                @test !isempty(items)
+                @test items[1][:file] == path
+                @test items[1][:line] == 5
+                @test items[1][:text] == word
             end
         end
 
         @testset "updating toplevel symbols" begin
-            mod = "Main.Junk"
+            # check there is no cache before updating
+            mod = Main.Junk
+            key = "Main.Junk"
             path = junkpath
             text = read(path, String)
-            function updatesymbols(mod, text, path)
-                parsed = CSTParser.parse(text, true)
-                items = Atom.toplevelitems(parsed, text)
-                Atom.updatesymbols(text, mod, path, items)
-            end
-
-            # check there is no cache before updating
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == "toplevelval2"
             end |> isempty
 
@@ -174,33 +195,42 @@
             newtext = join(originallines[1:end - 1], '\n')
             word = "toplevelval2"
             newtext *= "\n$word = :youshoulderaseme\nend"
-            updatesymbols(mod, newtext, path)
+            updatesymbols(key, path, newtext)
 
             # check the cache is updated
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == word
             end |> !isempty
 
-            let items = toplevelgotoitems(word, mod, newtext, path) .|> Dict
+            let items = toplevelgotoitems(word, mod, path, newtext) .|> todict
                 @test !isempty(items)
                 @test items[1][:file] == path
                 @test items[1][:text] == "toplevelval2"
             end
 
             # re-update the cache
-            updatesymbols(mod, text, path)
-            @test filter(SYMBOLSCACHE[mod][path]) do item
+            updatesymbols(key, path, text)
+            @test filter(SYMBOLSCACHE[key][path]) do item
                 Atom.str_value(item.expr) == word
             end |> isempty
+
+            # don't error on fallback case
+            @test_nowarn @test updatesymbols(key, nothing, text) === nothing
         end
 
-        @testset "regenerating symbols" begin
+        @testset "regenerating toplevel symbols" begin
             regeneratesymbols()
 
             @test haskey(SYMBOLSCACHE, "Base")
             @test length(keys(SYMBOLSCACHE["Base"])) > 100
             @test haskey(SYMBOLSCACHE, "Example") # cache symbols even if not loaded
-            @test toplevelgotoitems("hello", "Example", "", nothing) |> !isempty
+            @test toplevelgotoitems("hello", Example, "", nothing) |> !isempty
+        end
+
+        @testset "clear toplevel symbols" begin
+            clearsymbols()
+
+            @test length(keys(SYMBOLSCACHE)) === 0
         end
 
         @testset "goto methods" begin
@@ -212,7 +242,7 @@
             ## aggregate methods with default params
             @eval Main function funcwithdefaultargs(args, defarg = "default") end
 
-            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> Dict
+            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> todict
                 # should be handled as an unique method
                 @test length(items) === 1
                 # show a method with full arguments
@@ -221,7 +251,7 @@
 
             @eval Main function funcwithdefaultargs(args::String, defarg = "default") end
 
-            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> Dict
+            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> todict
                 # should be handled as different methods
                 @test length(items) === 2
                 # show methods with full arguments
@@ -231,13 +261,13 @@
         end
 
         ## both the original methods and the toplevel bindings that are overloaded in a context module should be shown
-        let items = globalgotoitems("isconst", "Main.Junk", "", nothing)
+        let items = globalgotoitems("isconst", Main.Junk, nothing, "")
             @test length(items) === 2
             @test "isconst(m::Module, s::Symbol)" in map(item -> item.text, items) # from Base
             @test "Base.isconst(::JunkType)" in map(item -> item.text, items) # from Junk
         end
 
         ## don't error on the fallback case
-        @test globalgotoitems("word", "Main", "", nothing) == []
+        @test_nowarn @test globalgotoitems("word", Main, nothing, "") == []
     end
 end

@@ -1,10 +1,10 @@
-using Atom, Test, JSON, Logging, CSTParser
+using Atom, Test, JSON, Logging, CSTParser, Example
 
 
 joinpath′(files...) = Atom.fullpath(joinpath(files...))
 
 atomjldir = joinpath′(@__DIR__, "..", "src")
-
+atommodfile = joinpath′(atomjldir, "Atom.jl")
 webiofile = joinpath′(atomjldir, "display", "webio.jl")
 
 # files in `Atom` module (except files in its submodules)
@@ -42,6 +42,7 @@ readmsg() = JSON.parse(String(take!(Atom.sock)))
 
 # mock Module
 junkpath = joinpath′(@__DIR__, "fixtures", "Junk.jl")
+subjunkspath = joinpath′(@__DIR__, "fixtures", "SubJunks.jl")
 include(junkpath)
 
 # basics

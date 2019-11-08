@@ -2,7 +2,7 @@ handle("updateeditor") do data
     @destruct [
         text || "",
         mod || "Main",
-        path || "untitled",
+        path || nothing,
         updateSymbols || true
     ] = data
 
@@ -14,16 +14,13 @@ handle("updateeditor") do data
 end
 
 # NOTE: update outline and symbols cache all in one go
-function updateeditor(text, mod = "Main", path = "untitled", updateSymbols = true)
-    parsed = CSTParser.parse(text, true)
-    items = toplevelitems(parsed, text)
-
+function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
     # update symbols cache
     # ref: https://github.com/JunoLab/Juno.jl/issues/407
-    updateSymbols && updatesymbols(text, mod, path, items)
+    updateSymbols && updatesymbols(mod, path, text)
 
     # return outline
-    outline(items)
+    outline(toplevelitems(text))
 end
 
 function outline(items)

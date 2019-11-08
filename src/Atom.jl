@@ -22,12 +22,12 @@ function __init__()
 
       # HACK: overloading this allows us to open remote files
       InteractiveUtils.eval(quote
-        function InteractiveUtils.edit(path::AbstractString, line::Integer=0)
+        function InteractiveUtils.edit(path::AbstractString, line::Integer = 0)
           if endswith(path, ".jl")
-              f = Base.find_source_file(path)
-              f !== nothing && (path = f)
+            f = Base.find_source_file(path)
+            f !== nothing && (path = f)
           end
-          $(msg)("openFile", Base.abspath(path), line-1)
+          $(msg)("openFile", Base.abspath(path), line - 1)
         end
       end)
     end

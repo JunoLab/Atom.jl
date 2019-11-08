@@ -2,7 +2,6 @@
 Find toplevel items (bind / call)
 
 - downstreams: modules.jl, outline.jl, goto.jl
-- TODO: crate `ToplevelScope` and allow to escape modules
 =#
 
 
@@ -25,10 +24,32 @@ struct ToplevelTupleH <: ToplevelItem
     lines::UnitRange{Int}
 end
 
-function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1)
+"""
+    toplevelitems(text; kwargs...)::Vector{ToplevelItem}
+
+Finds and returns toplevel "item"s (call and binding) in `text`.
+
+keyword arguments:
+- `mod::Union{Nothing, String}`: if not `nothing` don't return items within modules
+    other than `mod`, otherwise enter into every module.
+- `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
+"""
+function toplevelitems(text; kwargs...)
+    parsed = CSTParser.parse(text, true)
+    _toplevelitems(text, parsed; kwargs...)
+end
+
+function _toplevelitems(
+    text, expr,
+    items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1;
+    mod::Union{Nothing, String} = nothing,
+    inmod::Bool = false,
+)
+    shouldadd = mod === nothing || inmod
+
     # binding
     bind = CSTParser.bindingof(expr)
-    if bind !== nothing
+    if bind !== nothing && shouldadd
         lines = line:line+countlines(expr, text, pos, false)
         push!(items, ToplevelBinding(expr, bind, lines))
     end
@@ -36,18 +57,23 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     lines = line:line+countlines(expr, text, pos, false)
 
     # toplevel call
-    if iscallexpr(expr)
+    if iscallexpr(expr) && shouldadd
         push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
     end
 
     # destructure multiple returns
-    ismultiplereturn(expr) && push!(items, ToplevelTupleH(expr, lines))
+    if ismultiplereturn(expr) && shouldadd
+        push!(items, ToplevelTupleH(expr, lines))
+    end
 
     # look for more toplevel items in expr:
-    if shouldenter(expr)
+    if shouldenter(expr, mod)
         if expr.args !== nothing
+            if ismodule(expr) && shouldentermodule(expr, mod)
+                inmod = true
+            end
             for arg in expr.args
-                toplevelitems(arg, text, items, line, pos)
+                _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
             end
@@ -56,11 +82,13 @@ function toplevelitems(expr, text, items::Vector{ToplevelItem} = Vector{Toplevel
     return items
 end
 
-function shouldenter(expr::CSTParser.EXPR)
+function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})
     !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
-        expr.typ === CSTParser.ModuleH ||
-        expr.typ === CSTParser.BareModule ||
+        (ismodule(expr) && shouldentermodule(expr, mod)) ||
         isdoc(expr)
     ))
 end
+
+shouldentermodule(expr::CSTParser.EXPR, mod::Nothing) = true
+shouldentermodule(expr::CSTParser.EXPR, mod::String) = expr.binding.name == mod
