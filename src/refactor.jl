@@ -1,8 +1,8 @@
 handle("renamerefactor") do data
   @destruct [
-    old,
-    full,
-    new,
+    oldWord,
+    fullWord,
+    newWord,
     # local context
     column || 1,
     row || 1,
@@ -11,74 +11,71 @@ handle("renamerefactor") do data
     # module context
     mod || "Main",
   ] = data
-  renamerefactor(old, full, new, column, row, startRow, context, mod)
+  renamerefactor(oldWord, fullWord, newWord, column, row, startRow, context, mod)
 end
 
 # NOTE: invalid identifiers will be caught by frontend
 function renamerefactor(
-  old, full, new,
+  oldword, fullword, newword,
   column = 1, row = 1, startrow = 0, context = "",
   mod = "Main",
 )
   # catch keyword renaming
-  iskeyword(old) && return Dict(:warning => "Keywords can't be renamed: `$old`")
+  iskeyword(oldword) && return Dict(:warning => "Keywords can't be renamed: `$oldword`")
 
   mod = getmodule(mod)
-  hstr = first(split(full, '.'))
+  hstr = first(split(fullword, '.'))
   head = getfield′(mod, hstr)
 
   # catch field renaming
-  hstr ≠ old && !isa(head, Module) && return Dict(
-    :warning => "Rename refactoring on a field isn't available: `$hstr.$old`"
+  hstr ≠ oldword && !isa(head, Module) && return Dict(
+    :warning => "Rename refactoring on a field isn't available: `$hstr.$oldword`"
   )
 
   expr = CSTParser.parse(context)
+
   bind = let
-    if expr !== nothing
-      items = toplevelitems(expr, context)
-      ind = findfirst(item -> item isa ToplevelBinding, items)
-      ind === nothing ? nothing : items[ind].bind
-    else
-      nothing
-    end
+    items = toplevelitems(context, expr)
+    ind = findfirst(item -> item isa ToplevelBinding, items)
+    ind === nothing ? nothing : items[ind].bind
   end
 
   # local rename refactor if `old` isn't a toplevel binding
-  if islocalrefactor(bind, old)
+  if islocalrefactor(bind, oldword)
     try
-      refactored = localrenamerefactor(old, new, column, row, startrow, context, expr)
+      refactored = localrenamerefactor(oldword, newword, column, row, startrow, context, expr)
       return isempty(refactored) ?
         # NOTE: global refactoring not on definition, e.g.: on a call site, will be caught here
-        Dict(:info => contextdescription(old, mod, context)) :
+        Dict(:info => contextdescription(oldword, mod, context)) :
         Dict(
           :text    => refactored,
-          :success => "_Local_ rename refactoring `$old` ⟹ `$new` succeeded"
+          :success => "_Local_ rename refactoring `$oldword` ⟹ `$newword` succeeded"
         )
     catch err
-      return Dict(:error => errdescription(old, new, err))
+      return Dict(:error => errdescription(oldword, newword, err))
     end
   end
 
   # global rename refactor if the local rename refactor didn't happen
   try
-    kind, desc = globalrenamerefactor(old, new, mod, expr)
+    kind, desc = globalrenamerefactor(oldword, newword, mod, expr)
 
     # make description
     if kind === :success
-      val = getfield′(mod, full)
+      val = getfield′(mod, fullword)
       moddesc = if (head isa Module && head ≠ mod) ||
                    (applicable(parentmodule, val) && (head = parentmodule(val)) ≠ mod)
-        moduledescription(old, head)
+        moduledescription(oldword, head)
       else
         ""
       end
 
-      desc = join(("_Global_ rename refactoring `$mod.$old` ⟹ `$mod.$new` succeeded.", moddesc, desc), "\n\n")
+      desc = join(("_Global_ rename refactoring `$mod.$oldword` ⟹ `$mod.$newword` succeeded.", moddesc, desc), "\n\n")
     end
 
     return Dict(kind => desc)
   catch err
-    return Dict(:error => errdescription(old, new, err))
+    return Dict(:error => errdescription(oldword, newword, err))
   end
 end
 
@@ -87,22 +84,22 @@ islocalrefactor(bind, name) = bind === nothing || name ≠ bind.name
 # local refactor
 # --------------
 
-function localrenamerefactor(old, new, column, row, startrow, context, expr)
+function localrenamerefactor(oldword, newword, column, row, startrow, context, expr)
   bindings = localbindings(expr, context)
   line = row - startrow
-  scope = currentscope(old, bindings, byteoffset(context, line, column))
+  scope = currentscope(oldword, bindings, byteoffset(context, line, column))
   scope === nothing && return ""
 
   currentcontext = scope.bindstr
-  oldsym = Symbol(old)
-  newsym = Symbol(new)
   newcontext = MacroTools.textwalk(currentcontext) do sym
+  oldsym = Symbol(oldword)
+  newsym = Symbol(newword)
     sym === oldsym ? newsym : sym
   end
 
   replace(context, currentcontext => newcontext)
 end
-localrenamerefactor(old, new, column, row, startrow, context, expr::Nothing) = ""
+localrenamerefactor(oldword, newword, column, row, startrow, context, expr::Nothing) = ""
 
 function currentscope(name, bindings, byteoffset)
   for binding in bindings
@@ -124,14 +121,14 @@ end
 # global refactor
 # ---------------
 
-function globalrenamerefactor(old, new, mod, expr)
+function globalrenamerefactor(oldword, newword, mod, expr)
   entrypath, _ = if mod == Main
     MAIN_MODULE_LOCATION[]
   else
     moduledefinition(mod)
   end
 
-  files = modulefiles(entrypath)
+  files = modulefiles(string(mod), entrypath)
 
   # catch refactorings on an unsaved / non-existing file
   isempty(files) && return :warning, unsaveddescription()
@@ -143,14 +140,14 @@ function globalrenamerefactor(old, new, mod, expr)
   end
 
   with_logger(JunoProgressLogger()) do
-    _globalrenamerefactor(old, new, mod, expr, files)
+    _globalrenamerefactor(oldword, newword, mod, expr, files)
   end
 end
 
-function _globalrenamerefactor(old, new, mod, expr, files)
+function _globalrenamerefactor(oldword, newword, mod, expr, files)
   ismacro = CSTParser.defines_macro(expr)
-  oldsym = ismacro ? Symbol("@" * old) : Symbol(old)
-  newsym = ismacro ? Symbol("@" * new) : Symbol(new)
+  oldsym = ismacro ? Symbol("@" * oldword) : Symbol(oldword)
+  newsym = ismacro ? Symbol("@" * newword) : Symbol(newword)
 
   total  = length(files)
   # TODO: enable line location information (the upstream needs to be enhanced)
@@ -171,9 +168,9 @@ function _globalrenamerefactor(old, new, mod, expr, files)
         push!(modifiedfiles, fullpath(file))
         Expr(:., m, newsym)
       # macro case
-      elseif ismacro && @capture(ex, macro $(Symbol(old))(args__) body_ end)
+      elseif ismacro && @capture(ex, macro $(Symbol(oldword))(args__) body_ end)
         push!(modifiedfiles, fullpath(file))
-        Expr(:macro, :($(Symbol(new))($(args...))), :($body))
+        Expr(:macro, :($(Symbol(newword))($(args...))), :($body))
       else
         ex
       end
@@ -185,7 +182,7 @@ function _globalrenamerefactor(old, new, mod, expr, files)
   return if !isempty(modifiedfiles)
     :success, filesdescription(mod, modifiedfiles)
   else
-    :warning, "No rename refactoring occured on `$old` in `$mod` module."
+    :warning, "No rename refactoring occured on `$oldword` in `$mod` module."
   end
 end
 
@@ -239,9 +236,9 @@ function filesdescription(mod, files)
   """
 end
 
-function errdescription(old, new, err)
+function errdescription(oldword, newword, err)
   """
-  Rename refactoring `$old` ⟹ `$new` failed.
+  Rename refactoring `$oldword` ⟹ `$newword` failed.
 
   <details><summary>Error:</summary><pre><code>$(errmsg(err))</code></p></details>
   """
