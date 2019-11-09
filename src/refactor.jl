@@ -1,3 +1,5 @@
+using SourceWalk: textwalk, sourcewalk
+
 handle("renamerefactor") do data
   @destruct [
     oldWord,
@@ -91,9 +93,9 @@ function localrenamerefactor(oldword, newword, column, row, startrow, context, e
   scope === nothing && return ""
 
   currentcontext = scope.bindstr
-  newcontext = MacroTools.textwalk(currentcontext) do sym
   oldsym = Symbol(oldword)
   newsym = Symbol(newword)
+  newcontext = textwalk(currentcontext) do sym
     sym === oldsym ? newsym : sym
   end
 
@@ -159,7 +161,7 @@ function _globalrenamerefactor(oldword, newword, mod, expr, files)
   for (i, file) ∈ enumerate(files)
     @logmsg -1 "Refactoring: $file ($i / $total)" progress=i/total _id=id
 
-    MacroTools.sourcewalk(file) do ex
+    sourcewalk(file) do ex
       if ex === oldsym
         push!(modifiedfiles, fullpath(file))
         newsym
