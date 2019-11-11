@@ -45,25 +45,26 @@ function _toplevelitems(
     mod::Union{Nothing, String} = nothing,
     inmod::Bool = false,
 )
-    shouldadd = mod === nothing || inmod
+    # add items if `mod` isn't specified or in a target modle
+    if mod === nothing || inmod
+        # binding
+        bind = CSTParser.bindingof(expr)
+        if bind !== nothing
+            lines = line:line+countlines(expr, text, pos, false)
+            push!(items, ToplevelBinding(expr, bind, lines))
+        end
 
-    # binding
-    bind = CSTParser.bindingof(expr)
-    if bind !== nothing && shouldadd
         lines = line:line+countlines(expr, text, pos, false)
-        push!(items, ToplevelBinding(expr, bind, lines))
-    end
 
-    lines = line:line+countlines(expr, text, pos, false)
+        # toplevel call
+        if iscallexpr(expr)
+            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+        end
 
-    # toplevel call
-    if iscallexpr(expr) && shouldadd
-        push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
-    end
-
-    # destructure multiple returns
-    if ismultiplereturn(expr) && shouldadd
-        push!(items, ToplevelTupleH(expr, lines))
+        # destructure multiple returns
+        if ismultiplereturn(expr)
+            push!(items, ToplevelTupleH(expr, lines))
+        end
     end
 
     # look for more toplevel items in expr:
