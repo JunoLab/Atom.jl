@@ -13,7 +13,7 @@ function debugprompt()
               prompt_prefix = isCompileMode() ? compiled_prefix : normal_prefix,
               prompt_suffix = Base.text_colors[:normal],
               complete = JunoDebuggerRPELCompletionProvider(),
-              on_enter = s -> true)
+              on_enter = REPL.return_callback)
 
     panel.hist = REPL.REPLHistoryProvider(Dict{Symbol,Any}(:junodebug => panel))
     REPL.history_reset_state(panel.hist)
