@@ -220,15 +220,6 @@ function filtertoplevelitem(word, bind::ToplevelBinding)
   bind = bind.bind
   bind === nothing ? false : word == bind.name
 end
-function filtertoplevelitem(word, tupleh::ToplevelTupleH)
-  expr = tupleh.expr
-  for arg in expr.args
-    if str_value(arg) == word
-      return true
-    end
-  end
-  return false
-end
 
 function GotoItem(path::String, bind::ToplevelBinding)
   expr = bind.expr
@@ -238,13 +229,6 @@ function GotoItem(path::String, bind::ToplevelBinding)
     text = str_value(sig)
   end
   line = bind.lines.start - 1
-  secondary = string(path, ":", line + 1)
-  GotoItem(text, path, line, secondary)
-end
-function GotoItem(path::String, tupleh::ToplevelTupleH)
-  expr = tupleh.expr
-  text = str_value(expr)
-  line = tupleh.lines.start - 1
   secondary = string(path, ":", line + 1)
   GotoItem(text, path, line, secondary)
 end

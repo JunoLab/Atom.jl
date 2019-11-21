@@ -19,11 +19,6 @@ struct ToplevelCall <: ToplevelItem
     callstr::String
 end
 
-struct ToplevelTupleH <: ToplevelItem
-    expr::CSTParser.EXPR
-    lines::UnitRange{Int}
-end
-
 """
     toplevelitems(text; kwargs...)::Vector{ToplevelItem}
 
@@ -56,14 +51,18 @@ function _toplevelitems(
 
         lines = line:line+countlines(expr, text, pos, false)
 
-        # toplevel call
-        if iscallexpr(expr)
-            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+        # destructure multiple returns
+        if ismultiplereturn(expr) && shouldadd
+            for arg in expr.args
+                if (bind = CSTParser.bindingof(arg)) !== nothing
+                    push!(items, ToplevelBinding(arg, bind, lines))
+                end
+            end
         end
 
-        # destructure multiple returns
-        if ismultiplereturn(expr)
-            push!(items, ToplevelTupleH(expr, lines))
+        # toplevel call
+        if iscallexpr(expr) && shouldadd
+            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
         end
     end
 
