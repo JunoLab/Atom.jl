@@ -53,7 +53,7 @@ function _toplevelitems(
 
         # destructure multiple returns
         if ismultiplereturn(expr) && shouldadd
-            for arg in expr.args
+            for arg in expr
                 if (bind = CSTParser.bindingof(arg)) !== nothing
                     push!(items, ToplevelBinding(arg, bind, lines))
                 end
@@ -72,7 +72,7 @@ function _toplevelitems(
             if ismodule(expr) && shouldentermodule(expr, mod)
                 inmod = true
             end
-            for arg in expr.args
+            for arg in expr
                 _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
