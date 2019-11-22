@@ -50,18 +50,22 @@ function gotosymbol(
 end
 
 struct GotoItem
+  name::String
   text::String
   file::String
   line::Int
-  secondary::String
-  GotoItem(text, file, line = 0, secondary = "") = new(text, normpath(file), line, secondary)
-end
 
+  GotoItem(name::String, text::String, file::String, line::Int = 0) =
+    new(name, text, normpath(file), line)
+end
+GotoItem(name::String, file::String, line::Int = 0) = GotoItem(name, name, file, line)
+
+# for messaging over julia ⟷ Atom
 todict(gotoitem::GotoItem) = Dict(
   :text      => gotoitem.text,
   :file      => gotoitem.file,
   :line      => gotoitem.line,
-  :secondary => gotoitem.secondary,
+  :secondary => string(gotoitem.file, ':', gotoitem.line + 1),
 )
 
 ### local goto
@@ -75,9 +79,9 @@ function localgotoitem(word, path, column, row, startrow, context)
     l[:line] < position
   end
   map(ls) do l # there should be zero or one element in `ls`
-    text = l[:name]
+    name = l[:name]
     line = startrow + l[:line] - 1
-    GotoItem(text, path, line)
+    GotoItem(name, path, line)
   end
 end
 localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when called from docpane/workspace
@@ -109,28 +113,39 @@ end
 ## module goto
 
 function GotoItem(mod::Module)
+  name = string(mod)
   file, line = mod == Main ? MAIN_MODULE_LOCATION[] : moduledefinition(mod)
-  GotoItem(string(mod), file, line - 1)
+  GotoItem(name, file, line - 1)
 end
 
 ## toplevel goto
 
-const PathItemsMaps = Dict{String, Vector{ToplevelItem}}
+const PathItemsMap = Dict{String, Vector{GotoItem}}
+
+# NOTE:
+# this data structure should only keep "simple" data so that it doesn't eat
+# too much memory when the cache has got fat (like via `regeneratesymbols`)
+# TODO?:
+# maybe we will end up creating a more generic struct that represents a "symbol",
+# and wanting `SYMBOLSCACHE` to store them instead of `GotoItem`
+# (should be kept "simple" atst though, and ideally it handles both toplevel and local symbols)
+# so that we can use `SYMBOLSCACHE` as a general cache interface for various static features
+# like goto, find references, and so on.
 
 """
     Atom.SYMBOLSCACHE
 
-"module" (`String`) ⟶ "path" (`String`) ⟶ "symbols" (`Vector{ToplevelItem}`) map.
+"module" (`String`) ⟶ "path" (`String`) ⟶ "symbols" (`Vector{GotoItem}`) map.
 
 !!! note
     "module" should be canonical, i.e.: should be identical to names that are
       constructed from `string(mod::Module)`.
 """
-const SYMBOLSCACHE = Dict{String, PathItemsMaps}()
+const SYMBOLSCACHE = Dict{String, PathItemsMap}()
 
 function toplevelgotoitems(word, mod, path, text)
   key = string(mod)
-  pathitemsmaps = if haskey(SYMBOLSCACHE, key)
+  pathitemsmap = if haskey(SYMBOLSCACHE, key)
     SYMBOLSCACHE[key]
   else
     SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
@@ -138,12 +153,14 @@ function toplevelgotoitems(word, mod, path, text)
 
   ismacro(word) && (word = lstrip(word, '@'))
   ret = []
-  for (path, items) in pathitemsmaps
-    for item in filter(item -> filtertoplevelitem(word, item), items)
-      push!(ret, GotoItem(path, item))
-    end
+  for (_, items) in pathitemsmap
+    @>> filter(items) do item
+      let item = item
+        word == item.name
+      end
+    end append!(ret)
   end
-  return ret
+  ret
 end
 
 # entry methods
@@ -171,32 +188,32 @@ end
 
 # module-walk via Revise-like approach
 function __collecttoplevelitems(mod::Union{Nothing, String}, paths::Vector{String})
-  pathitemsmaps = PathItemsMaps()
+  pathitemsmap = PathItemsMap()
 
   entrypath, paths = paths[1], paths[2:end]
 
   # ignore toplevel items outside of `mod`
   items = toplevelitems(read(entrypath, String); mod = mod)
-  push!(pathitemsmaps, entrypath => items)
+  pathitemsmap[entrypath] = GotoItem.(entrypath, items)
 
   # collect symbols in included files (always in `mod`)
   for path in paths
     items = toplevelitems(read(path, String); mod = mod, inmod = true)
-    push!(pathitemsmaps, path => items)
+    pathitemsmap[path] = GotoItem.(path, items)
   end
 
-  pathitemsmaps
+  pathitemsmap
 end
 
 # module-walk based on CSTParser, looking for toplevel `included` calls
-function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, pathitemsmaps::PathItemsMaps = PathItemsMaps(); inmod = false)
+function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
   isfile′(entrypath) || return
   text = read(entrypath, String)
-  __collecttoplevelitems(mod, entrypath, text, pathitemsmaps; inmod = inmod)
+  __collecttoplevelitems(mod, entrypath, text, pathitemsmap; inmod = inmod)
 end
-function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmaps::PathItemsMaps = PathItemsMaps(); inmod = false)
+function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
   items = toplevelitems(text; mod = mod, inmod = inmod)
-  push!(pathitemsmaps, entrypath => items)
+  pathitemsmap[entrypath] = GotoItem.(entrypath, items)
 
   # looking for toplevel `include` calls
   for item in items
@@ -207,30 +224,24 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, 
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile′(nextentrypath) || continue
         # `nextentrypath` is always in `mod`
-        __collecttoplevelitems(mod, nextentrypath, pathitemsmaps; inmod = true)
+        __collecttoplevelitems(mod, nextentrypath, pathitemsmap; inmod = true)
       end
     end
   end
 
-  pathitemsmaps
+  pathitemsmap
 end
 
-filtertoplevelitem(word, item::ToplevelItem) = false
-function filtertoplevelitem(word, bind::ToplevelBinding)
-  bind = bind.bind
-  bind === nothing ? false : word == bind.name
-end
-
+GotoItem(path::String, item::ToplevelItem) = GotoItem("", path) # fallback case
 function GotoItem(path::String, bind::ToplevelBinding)
   expr = bind.expr
-  text = bind.bind.name
+  name = text = bind.bind.name
   if CSTParser.has_sig(expr)
     sig = CSTParser.get_sig(expr)
     text = str_value(sig)
   end
   line = bind.lines.start - 1
-  secondary = string(path, ":", line + 1)
-  GotoItem(text, path, line, secondary)
+  GotoItem(name, text, path, line)
 end
 
 ## update toplevel symbols cache
@@ -249,7 +260,7 @@ function updatesymbols(mod, path::String, text)
   entrypath, _ = moduledefinition(m)
   inmod = path != entrypath
   items = toplevelitems(text; mod = stripdotprefixes(mod), inmod = inmod)
-  push!(SYMBOLSCACHE[mod], path => items)
+  push!(SYMBOLSCACHE[mod], path => GotoItem.(path, items))
 end
 
 ## generate toplevel symbols cache
@@ -316,7 +327,7 @@ end
 
 ## method goto
 
-methodgotoitems(ml) = map(GotoItem, aggregatemethods(ml))
+methodgotoitems(ml) = GotoItem.(aggregatemethods(ml))
 
 # aggregate methods with default arguments to the ones with full arguments
 function aggregatemethods(ml)
@@ -326,11 +337,9 @@ function aggregatemethods(ml)
 end
 
 function GotoItem(m::Method)
+  text = replace(sprint(show, m), methodloc_regex => s"\g<sig>")
   _, link = view(m)
-  sig = sprint(show, m)
-  text = replace(sig, methodloc_regex => s"\g<sig>")
   file = link.file
   line = link.line - 1
-  secondary = join(link.contents)
-  GotoItem(text, file, line, secondary)
+  GotoItem(text, file, line)
 end
