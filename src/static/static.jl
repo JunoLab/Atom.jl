@@ -1,4 +1,5 @@
 using CSTParser
+using CSTParser: bindingof
 
 #=
 utilities
@@ -65,7 +66,7 @@ end
 function ismultiplereturn(expr::CSTParser.EXPR)
     expr.typ === CSTParser.TupleH &&
         expr.args !== nothing &&
-        !isempty(filter(a -> CSTParser.bindingof(a) !== nothing, expr.args))
+        !isempty(filter(a -> bindingof(a) !== nothing, expr.args))
 end
 
 function iswhereclause(expr::CSTParser.EXPR)

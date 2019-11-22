@@ -233,14 +233,12 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, 
 end
 
 GotoItem(path::String, item::ToplevelItem) = GotoItem("", path) # fallback case
-function GotoItem(path::String, bind::ToplevelBinding)
-  expr = bind.expr
-  name = text = bind.bind.name
-  if CSTParser.has_sig(expr)
-    sig = CSTParser.get_sig(expr)
-    text = str_value(sig)
-  end
-  line = bind.lines.start - 1
+function GotoItem(path::String, binding::ToplevelBinding)
+  expr = binding.expr
+  bind = binding.bind
+  name = bind.name
+  text = CSTParser.has_sig(expr) ? str_value(CSTParser.get_sig(expr)) : name
+  line = binding.lines.start - 1
   GotoItem(name, text, path, line)
 end
 

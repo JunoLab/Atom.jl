@@ -43,7 +43,7 @@ outlineitem(call::ToplevelCall) = begin
         :name  => call.str,
         :type  => "module",
         :icon  => "icon-file-code",
-        :lines => [first(call.lines), last(call.lines)],
+        :lines => [first(call.lines), last(call.lines)]
     )
 
     nothing
@@ -57,7 +57,7 @@ outlineitem(macrocall::ToplevelMacroCall) = begin
         :name  => strlimit(first(split(macrocall.str, '\n')), 100),
         :type  => "snippet",
         :icon  => "icon-mention",
-        :lines => [first(macrocall.lines), last(macrocall.lines)],
+        :lines => [first(macrocall.lines), last(macrocall.lines)]
     )
 end
 outlineitem(usage::ToplevelModuleUsage) = begin
