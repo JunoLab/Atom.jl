@@ -20,4 +20,7 @@ Base.isconst(::JunkType) = false
 
 include("SubJunks.jl")
 
+function samefoo(args) end
+macro samefoo(ex) end
+
 end
