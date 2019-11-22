@@ -76,3 +76,14 @@ function outlineitem(call::ToplevelCall)
 
     return nothing
 end
+
+function outlineitem(statement::ToplevelModuleUsage)
+    expr = statement.expr
+    lines = statement.lines
+    Dict(
+        :name  => replace(str_value(expr), ":" => ": "),
+        :type  => "mixin",
+        :icon  => "icon-package",
+        :lines => [first(lines), last(lines)]
+    )
+end

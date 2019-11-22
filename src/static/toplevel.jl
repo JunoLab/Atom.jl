@@ -19,6 +19,11 @@ struct ToplevelCall <: ToplevelItem
     callstr::String
 end
 
+struct ToplevelModuleUsage <: ToplevelItem
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
+end
+
 """
     toplevelitems(text; kwargs...)::Vector{ToplevelItem}
 
@@ -60,6 +65,9 @@ function _toplevelitems(
 
         # toplevel call
         iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+
+        # module usages
+        ismoduleusage(expr) && push!(items, ToplevelModuleUsage(expr, lines))
     end
 
     # look for more toplevel items in expr:

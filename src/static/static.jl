@@ -75,9 +75,13 @@ function iswhereclause(expr::CSTParser.EXPR)
 end
 
 function isconstexpr(expr::CSTParser.EXPR)
-    parent = CSTParser.parentof(expr)
-    parent === nothing ? false : parent.typ === CSTParser.Const
+    (parent = CSTParser.parentof(expr)) !== nothing &&
+        parent.typ === CSTParser.Const
 end
+
+ismoduleusage(expr::CSTParser.EXPR) = isimport(expr) || isexport(expr)
+isimport(expr::CSTParser.EXPR) = expr.typ === CSTParser.Import || expr.typ === CSTParser.Using
+isexport(expr::CSTParser.EXPR) = expr.typ === CSTParser.Export
 
 # string utilities
 # ----------------
@@ -122,6 +126,12 @@ function str_value(x::CSTParser.EXPR)
         return "; " * join(str_value(a) for a in x)
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
+    elseif x.typ === CSTParser.Using
+        "using " * join(str_value(a) for a in x)
+    elseif x.typ === CSTParser.Import
+        "import " * join(str_value(a) for a in x)
+    elseif x.typ === CSTParser.Export
+        "export " * join(str_value(a) for a in x)
     else
         return join(str_value(a) for a in x)
     end
