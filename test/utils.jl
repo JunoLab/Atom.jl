@@ -21,7 +21,7 @@ cd(dirname(@__FILE__))
 
     @test Atom.fullpath("untitled-asdj2cx3213") == "untitled-asdj2cx3213"
     @test Atom.fullpath("/test/foobar.jl") == "/test/foobar.jl"
-    @test joinpath(split(Atom.fullpath("foobar.jl"), Base.Filesystem.pathsep())[end-1:end]...)  == joinpath("base", "foobar.jl")
+    @test joinpath(split(Atom.fullpath("foobar.jl"), Base.Filesystem.path_separator)[end-1:end]...)  == joinpath("base", "foobar.jl")
 
     @test Atom.appendline("test.jl", -1) == "test.jl"
     @test Atom.appendline("test.jl", 0) == "test.jl"
