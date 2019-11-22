@@ -92,16 +92,28 @@
                     ),
                     Dict(
                         :type => "variable",
-                        :name => "a, b",
+                        :name => "a",
+                        :icon => "v",
+                        :lines => [2, 2],
+                    ),
+                    Dict(
+                        :type => "variable",
+                        :name => "b",
                         :icon => "v",
                         :lines => [2, 2],
                     ),
                     Dict(
                         :type => "constant",
-                        :name => "c1, c2",
+                        :name => "c1",
                         :icon => "c",
                         :lines => [3, 3],
                     ),
+                    Dict(
+                        :type => "constant",
+                        :name => "c2",
+                        :icon => "c",
+                        :lines => [3, 3],
+                    )
                 ]
                 @test o ∈ os
             end

@@ -187,7 +187,7 @@
             path = junkpath
             text = read(path, String)
             @test filter(SYMBOLSCACHE[key][path]) do item
-                Atom.str_value(item.expr) == "toplevelval2"
+                item.name == "toplevelval2"
             end |> isempty
 
             # mock updatesymbol handler
@@ -199,7 +199,7 @@
 
             # check the cache is updated
             @test filter(SYMBOLSCACHE[key][path]) do item
-                Atom.str_value(item.expr) == word
+                item.name == word
             end |> !isempty
 
             let items = toplevelgotoitems(word, mod, path, newtext) .|> todict
@@ -211,7 +211,7 @@
             # re-update the cache
             updatesymbols(key, path, text)
             @test filter(SYMBOLSCACHE[key][path]) do item
-                Atom.str_value(item.expr) == word
+                item.name == word
             end |> isempty
 
             # don't error on fallback case

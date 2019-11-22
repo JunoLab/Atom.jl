@@ -46,13 +46,13 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
 
         # destructure multiple returns
         if ismultiplereturn(expr)
-            for arg in expr.args
+            for arg in expr
                 # don't update `pos` & `line`, i.e.: treat all the multiple returns as same
                 localbindings(arg, text, bindings, pos, line)
             end
         # properly detect the parameters of a method with where clause: https://github.com/JunoLab/Juno.jl/issues/404
         elseif iswhereclause(expr)
-            for arg in expr.args
+            for arg in expr
                 localbindings(arg, text, bindings, pos, line)
                 line += countlines(arg, text, pos)
                 pos += arg.fullspan
@@ -65,12 +65,10 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
             name = bind === nothing ? "" : bind.name
 
             children = []
-            if expr.args !== nothing
-                for arg in expr.args
-                    localbindings(arg, text, children, pos, line)
-                    line += countlines(arg, text, pos)
-                    pos += arg.fullspan
-                end
+            for arg in expr
+                localbindings(arg, text, children, pos, line)
+                line += countlines(arg, text, pos)
+                pos += arg.fullspan
             end
 
             push!(bindings, LocalScope(name, bindstr, range, line, children, expr))
@@ -80,12 +78,10 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
     end
 
     # look for more local bindings if exists
-    if expr.args !== nothing
-        for arg in expr.args
-            localbindings(arg, text, bindings, pos, line)
-            line += countlines(arg, text, pos)
-            pos += arg.fullspan
-        end
+    for arg in expr
+        localbindings(arg, text, bindings, pos, line)
+        line += countlines(arg, text, pos)
+        pos += arg.fullspan
     end
 
     return bindings

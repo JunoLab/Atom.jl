@@ -3,10 +3,10 @@ finding all the included files for a module
 
 1. Revise-like approach
   * mostly adapted from https://github.com/timholy/Revise.jl/tree/b0c5c864ea78b93caaa820cb9cfc45eca47f43ff
-  * only works for precompiled modules
+  * reflects runtime information i.e. more precise
+  * NOTE: only works for precompiled modules
 2. CSTPraser-based approach
-  * static parsing -- works for all the files but costly
-  * TODO: excludes files in submodules when searched from the parent module
+  * static parsing -- works for all the modules
   * TODO: looks for non-toplevel `include` calls
 =#
 

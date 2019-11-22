@@ -76,18 +76,3 @@ function outlineitem(call::ToplevelCall)
 
     return nothing
 end
-function outlineitem(tupleh::ToplevelTupleH)
-    expr = tupleh.expr
-    lines = tupleh.lines
-
-    # `expr.parent` is always `CSTParser.EXPR`
-    type = isconstexpr(expr.parent) ? "constant" : "variable"
-    icon = isconstexpr(expr.parent) ? "c" : "v"
-
-    Dict(
-        :name  => str_value(expr),
-        :type  => type,
-        :icon  => icon,
-        :lines => [first(lines), last(lines)]
-    )
-end

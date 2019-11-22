@@ -19,11 +19,6 @@ struct ToplevelCall <: ToplevelItem
     callstr::String
 end
 
-struct ToplevelTupleH <: ToplevelItem
-    expr::CSTParser.EXPR
-    lines::UnitRange{Int}
-end
-
 """
     toplevelitems(text; kwargs...)::Vector{ToplevelItem}
 
@@ -56,31 +51,29 @@ function _toplevelitems(
 
         lines = line:line+countlines(expr, text, pos, false)
 
-        # toplevel call
-        if iscallexpr(expr)
-            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
-        end
-
         # destructure multiple returns
         if ismultiplereturn(expr)
-            push!(items, ToplevelTupleH(expr, lines))
+            for arg in expr
+                (bind = CSTParser.bindingof(arg)) !== nothing && push!(items, ToplevelBinding(arg, bind, lines))
+            end
         end
+
+        # toplevel call
+        iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
     end
 
     # look for more toplevel items in expr:
     if shouldenter(expr, mod)
-        if expr.args !== nothing
-            if ismodule(expr) && shouldentermodule(expr, mod)
-                inmod = true
-            end
-            for arg in expr.args
-                _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
-                line += countlines(arg, text, pos)
-                pos += arg.fullspan
-            end
+        if ismodule(expr) && shouldentermodule(expr, mod)
+            inmod = true
+        end
+        for arg in expr
+            _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
+            line += countlines(arg, text, pos)
+            pos += arg.fullspan
         end
     end
-    return items
+    items
 end
 
 function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})

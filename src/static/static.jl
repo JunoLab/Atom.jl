@@ -44,7 +44,7 @@ ismacrocall(expr::CSTParser.EXPR) = expr.typ === CSTParser.MacroCall
 
 function isinclude(expr::CSTParser.EXPR)
     expr.typ === CSTParser.Call &&
-        length(expr.args) === 4 &&
+        length(expr) === 4 &&
         expr.args[1].val == "include" &&
         expr.args[3].val isa String &&
         endswith(expr.args[3].val, ".jl")
@@ -55,7 +55,7 @@ ismodule(expr::CSTParser.EXPR) =
 
 function isdoc(expr::CSTParser.EXPR)
     expr.typ === CSTParser.MacroCall &&
-        length(expr.args) >= 1 &&
+        length(expr) >= 1 &&
         (
             expr.args[1].typ === CSTParser.GlobalRefDoc ||
             str_value(expr.args[1]) == "@doc"
