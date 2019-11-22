@@ -178,6 +178,22 @@
                 @test items[1][:line] == 5
                 @test items[1][:text] == word
             end
+
+            # don't mix a function and a macro with the same name
+            let items = toplevelgotoitems("samefoo", Main.Junk, nothing, "")
+                @test length(items) == 1
+                @test items[1].name == "samefoo"
+                @test items[1].text == "samefoo(args)"
+                @test items[1].file == junkpath
+                @test items[1].line == 22
+            end
+            let items = toplevelgotoitems("@samefoo", Main.Junk, nothing, "")
+                @test length(items) === 1
+                @test items[1].name == "@samefoo"
+                @test items[1].text == "samefoo(ex)"
+                @test items[1].file == junkpath
+                @test items[1].line == 23
+            end
         end
 
         @testset "updating toplevel symbols" begin

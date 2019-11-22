@@ -81,7 +81,7 @@ function _toplevelitems(
 
     # look for more toplevel items in expr:
     if shouldenter(expr, mod)
-        if ismodule(expr) && shouldentermodule(expr, mod)
+        if CSTParser.defines_module(expr) && shouldentermodule(expr, mod)
             inmod = true
         end
         for arg in expr
@@ -96,7 +96,7 @@ end
 function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})
     !(scopeof(expr) !== nothing && !(
         expr.typ === CSTParser.FileH ||
-        (ismodule(expr) && shouldentermodule(expr, mod)) ||
+        (CSTParser.defines_module(expr) && shouldentermodule(expr, mod)) ||
         isdoc(expr)
     ))
 end

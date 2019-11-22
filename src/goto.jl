@@ -151,7 +151,6 @@ function toplevelgotoitems(word, mod, path, text)
     SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
   end
 
-  ismacro(word) && (word = lstrip(word, '@'))
   ret = []
   for (_, items) in pathitemsmap
     @>> filter(items) do item
@@ -236,7 +235,7 @@ GotoItem(path::String, item::ToplevelItem) = GotoItem("", path) # fallback case
 function GotoItem(path::String, binding::ToplevelBinding)
   expr = binding.expr
   bind = binding.bind
-  name = bind.name
+  name = CSTParser.defines_macro(expr) ? string('@', bind.name) : bind.name
   text = CSTParser.has_sig(expr) ? str_value(CSTParser.get_sig(expr)) : name
   line = binding.lines.start - 1
   GotoItem(name, text, path, line)

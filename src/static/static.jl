@@ -51,9 +51,6 @@ function isinclude(expr::CSTParser.EXPR)
         endswith(expr.args[3].val, ".jl")
 end
 
-ismodule(expr::CSTParser.EXPR) =
-    expr.typ === CSTParser.ModuleH || expr.typ === CSTParser.BareModule
-
 function isdoc(expr::CSTParser.EXPR)
     ismacrocall(expr) &&
         length(expr) >= 1 &&
