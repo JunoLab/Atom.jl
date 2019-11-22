@@ -23,67 +23,48 @@ function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
     outline(toplevelitems(text))
 end
 
-function outline(items)
-    filter!(map(outlineitem, items)) do item
-        item !== nothing
-    end
-end
+outline(items) = filter!(item -> item !== nothing, outlineitem.(items))
 
-function outlineitem(binding::ToplevelBinding)
+outlineitem(item::ToplevelItem) = nothing # fallback case
+outlineitem(binding::ToplevelBinding) = begin
     expr = binding.expr
     bind = binding.bind
-    lines = binding.lines
-
-    name = bind.name
-    if CSTParser.has_sig(expr)
-        name = str_value(CSTParser.get_sig(expr))
-    end
-    type = static_type(bind)
-    icon = static_icon(bind)
+    name = CSTParser.has_sig(expr) ? str_value(CSTParser.get_sig(expr)) : bind.name
     Dict(
         :name  => name,
-        :type  => type,
-        :icon  => icon,
-        :lines => [first(lines), last(lines)]
+        :type  => static_type(bind),
+        :icon  => static_icon(bind),
+        :lines => [first(binding.lines), last(binding.lines)]
     )
 end
-function outlineitem(call::ToplevelCall)
-    expr = call.expr
-    lines = call.lines
+outlineitem(call::ToplevelCall) = begin
+    # show includes
+    isinclude(call.expr) && return Dict(
+        :name  => call.str,
+        :type  => "module",
+        :icon  => "icon-file-code",
+        :lines => [first(call.lines), last(call.lines)],
+    )
 
+    nothing
+end
+outlineitem(macrocall::ToplevelMacroCall) = begin
     # don't show doc strings
-    isdoc(expr) && return nothing
+    isdoc(macrocall.expr) && return nothing
 
     # show first line verbatim of macro calls
-    if ismacrocall(expr)
-        return Dict(
-            :name  => strlimit(first(split(call.callstr, '\n')), 100),
-            :type  => "snippet",
-            :icon  => "icon-mention",
-            :lines => [first(lines), last(lines)],
-        )
-    end
-
-    # show includes
-    if isinclude(expr)
-        return Dict(
-            :name  => call.callstr,
-            :type  => "module",
-            :icon  => "icon-file-code",
-            :lines => [first(lines), last(lines)],
-        )
-    end
-
-    return nothing
-end
-
-function outlineitem(statement::ToplevelModuleUsage)
-    expr = statement.expr
-    lines = statement.lines
     Dict(
-        :name  => replace(str_value(expr), ":" => ": "),
+        :name  => strlimit(first(split(macrocall.str, '\n')), 100),
+        :type  => "snippet",
+        :icon  => "icon-mention",
+        :lines => [first(macrocall.lines), last(macrocall.lines)],
+    )
+end
+outlineitem(usage::ToplevelModuleUsage) = begin
+    Dict(
+        :name  => replace(str_value(usage.expr), ":" => ": "),
         :type  => "mixin",
         :icon  => "icon-package",
-        :lines => [first(lines), last(lines)]
+        :lines => [first(usage.lines), last(usage.lines)]
     )
 end

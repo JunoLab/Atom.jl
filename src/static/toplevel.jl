@@ -16,7 +16,13 @@ end
 struct ToplevelCall <: ToplevelItem
     expr::CSTParser.EXPR
     lines::UnitRange{Int}
-    callstr::String
+    str::String
+end
+
+struct ToplevelMacroCall <: ToplevelItem
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
+    str::String
 end
 
 struct ToplevelModuleUsage <: ToplevelItem
@@ -65,6 +71,9 @@ function _toplevelitems(
 
         # toplevel call
         iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+
+        # toplevel macro call
+        ismacrocall(expr) && push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
 
         # module usages
         ismoduleusage(expr) && push!(items, ToplevelModuleUsage(expr, lines))

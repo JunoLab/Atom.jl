@@ -38,12 +38,12 @@ end
 # is utilities
 # ------------
 
-iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call || expr.typ === CSTParser.MacroCall
+iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call
 
 ismacrocall(expr::CSTParser.EXPR) = expr.typ === CSTParser.MacroCall
 
 function isinclude(expr::CSTParser.EXPR)
-    expr.typ === CSTParser.Call &&
+    iscallexpr(expr) &&
         length(expr) === 4 &&
         expr.args[1].val == "include" &&
         expr.args[3].val isa String &&
@@ -54,7 +54,7 @@ ismodule(expr::CSTParser.EXPR) =
     expr.typ === CSTParser.ModuleH || expr.typ === CSTParser.BareModule
 
 function isdoc(expr::CSTParser.EXPR)
-    expr.typ === CSTParser.MacroCall &&
+    ismacrocall(expr) &&
         length(expr) >= 1 &&
         (
             expr.args[1].typ === CSTParser.GlobalRefDoc ||
