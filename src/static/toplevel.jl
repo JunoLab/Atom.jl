@@ -52,34 +52,28 @@ function _toplevelitems(
         lines = line:line+countlines(expr, text, pos, false)
 
         # destructure multiple returns
-        if ismultiplereturn(expr) && shouldadd
+        if ismultiplereturn(expr)
             for arg in expr
-                if (bind = CSTParser.bindingof(arg)) !== nothing
-                    push!(items, ToplevelBinding(arg, bind, lines))
-                end
+                (bind = CSTParser.bindingof(arg)) !== nothing && push!(items, ToplevelBinding(arg, bind, lines))
             end
         end
 
         # toplevel call
-        if iscallexpr(expr) && shouldadd
-            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
-        end
+        iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
     end
 
     # look for more toplevel items in expr:
     if shouldenter(expr, mod)
-        if expr.args !== nothing
-            if ismodule(expr) && shouldentermodule(expr, mod)
-                inmod = true
-            end
-            for arg in expr
-                _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
-                line += countlines(arg, text, pos)
-                pos += arg.fullspan
-            end
+        if ismodule(expr) && shouldentermodule(expr, mod)
+            inmod = true
+        end
+        for arg in expr
+            _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
+            line += countlines(arg, text, pos)
+            pos += arg.fullspan
         end
     end
-    return items
+    items
 end
 
 function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})
