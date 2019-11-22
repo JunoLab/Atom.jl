@@ -76,8 +76,8 @@ function iswhereclause(expr::CSTParser.EXPR)
 end
 
 function isconstexpr(expr::CSTParser.EXPR)
-    (parent = CSTParser.parentof(expr)) !== nothing &&
-        parent.typ === CSTParser.Const
+    parent = CSTParser.parentof(expr)
+    parent !== nothing && parent.typ === CSTParser.Const
 end
 
 ismoduleusage(expr::CSTParser.EXPR) = isimport(expr) || isexport(expr)
@@ -95,12 +95,11 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     count(c -> c === eol, text[s:e])
 end
 
+# adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
 """
     str_value(x::CSTParser.EXPR)
 
-Reconstruct source code from a `CSTParser.EXPR`.
-
-Adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108.
+_Reconstruct_ a source code from `x`.
 """
 function str_value(x::CSTParser.EXPR)
     if x.typ === CSTParser.PUNCTUATION
@@ -128,11 +127,11 @@ function str_value(x::CSTParser.EXPR)
     elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
         return CSTParser.str_value(x)
     elseif x.typ === CSTParser.Using
-        "using " * join(str_value(a) for a in x)
+        return "using " * join(str_value(a) for a in x)
     elseif x.typ === CSTParser.Import
-        "import " * join(str_value(a) for a in x)
+        return "import " * join(str_value(a) for a in x)
     elseif x.typ === CSTParser.Export
-        "export " * join(str_value(a) for a in x)
+        return "export " * join(str_value(a) for a in x)
     else
         return join(str_value(a) for a in x)
     end
@@ -141,8 +140,7 @@ end
 """
     str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
 
-Extract `expr`'s source from `text`, starting at `pos`. Similar to `str_value`, but doesn't
-*reconstruct* the source code.
+_Extract_ a source code from `text` that corresponds to `expr`.
 """
 function str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
     endpos = pos + expr.span
