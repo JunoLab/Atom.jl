@@ -33,7 +33,7 @@ end
 
 function localbindings(expr, text, bindings = [], pos = 1, line = 1)
     # binding
-    bind = CSTParser.bindingof(expr)
+    bind = bindingof(expr)
     scope = scopeof(expr)
     if bind !== nothing && scope === nothing
         bindstr = str_value_as_is(bind, text, pos)

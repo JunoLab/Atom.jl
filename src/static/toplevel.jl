@@ -16,7 +16,18 @@ end
 struct ToplevelCall <: ToplevelItem
     expr::CSTParser.EXPR
     lines::UnitRange{Int}
-    callstr::String
+    str::String
+end
+
+struct ToplevelMacroCall <: ToplevelItem
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
+    str::String
+end
+
+struct ToplevelModuleUsage <: ToplevelItem
+    expr::CSTParser.EXPR
+    lines::UnitRange{Int}
 end
 
 """
@@ -43,7 +54,7 @@ function _toplevelitems(
     # add items if `mod` isn't specified or in a target modle
     if mod === nothing || inmod
         # binding
-        bind = CSTParser.bindingof(expr)
+        bind = bindingof(expr)
         if bind !== nothing
             lines = line:line+countlines(expr, text, pos, false)
             push!(items, ToplevelBinding(expr, bind, lines))
@@ -54,12 +65,18 @@ function _toplevelitems(
         # destructure multiple returns
         if ismultiplereturn(expr)
             for arg in expr
-                (bind = CSTParser.bindingof(arg)) !== nothing && push!(items, ToplevelBinding(arg, bind, lines))
+                (bind = bindingof(arg)) !== nothing && push!(items, ToplevelBinding(arg, bind, lines))
             end
         end
 
         # toplevel call
         iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+
+        # toplevel macro call
+        ismacrocall(expr) && push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
+
+        # module usages
+        ismoduleusage(expr) && push!(items, ToplevelModuleUsage(expr, lines))
     end
 
     # look for more toplevel items in expr:

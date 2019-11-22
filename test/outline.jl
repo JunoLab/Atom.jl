@@ -220,4 +220,42 @@
             @test call[:icon] == "icon-file-code"
         end
     end
+
+    # module usages
+    let str = """
+        module Mock
+        using Atom
+        using Atom: SYMBOLSCACHE
+        import Base: iterate
+        export mock
+        mock = :mock
+        end
+        """
+        items = outline(str)
+        @test length(items) === 6
+        let usage = items[2]
+            @test usage[:type] == "mixin"
+            @test usage[:name] == "using Atom"
+            @test usage[:icon] == "icon-package"
+            @test usage[:lines] == [2, 2]
+        end
+        let usage = items[3]
+            @test usage[:type] == "mixin"
+            @test usage[:name] == "using Atom: SYMBOLSCACHE"
+            @test usage[:icon] == "icon-package"
+            @test usage[:lines] == [3, 3]
+        end
+        let usage = items[4]
+            @test usage[:type] == "mixin"
+            @test usage[:name] == "import Base: iterate"
+            @test usage[:icon] == "icon-package"
+            @test usage[:lines] == [4, 4]
+        end
+        let usage = items[5]
+            @test usage[:type] == "mixin"
+            @test usage[:name] == "export mock"
+            @test usage[:icon] == "icon-package"
+            @test usage[:lines] == [5, 5]
+        end
+    end
 end
