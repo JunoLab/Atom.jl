@@ -195,7 +195,7 @@ function contextdescription(old, mod, context)
   gotouri = urigoto(mod, old)
   """
   `$old` isn't found in local bindings in the current context:
-  <details><summary>Context:</summary><pre><code>$(strip(context))</code></p></details>
+  <details><summary>Context:</summary><pre><code>$(strip(context))</code></pre></details>
 
   If you want a global rename refactoring on `$mod.$old`, you need to run this command
   from its definition. <button>[Go to `$mod.$old`]($gotouri)</button>
@@ -242,6 +242,6 @@ function errdescription(oldword, newword, err)
   """
   Rename refactoring `$oldword` ⟹ `$newword` failed.
 
-  <details><summary>Error:</summary><pre><code>$(errmsg(err))</code></p></details>
+  <details><summary>Error:</summary><pre><code>$(errmsg(err))</code></pre></details>
   """
 end
