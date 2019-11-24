@@ -153,11 +153,9 @@ function toplevelgotoitems(word, mod, path, text)
 
   ret = []
   for (_, items) in pathitemsmap
-    @>> filter(items) do item
-      let item = item
-        word == item.name
-      end
-    end append!(ret)
+    @>> filter(let name = word
+      item -> name == item.name
+    end, items) append!(ret)
   end
   ret
 end
