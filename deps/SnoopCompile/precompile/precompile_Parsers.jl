@@ -1,0 +1,18 @@
+function _precompile_()
+    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
+    precompile(Tuple{typeof(Parsers.pow10), Type{Float64}, Int64})
+    precompile(Tuple{typeof(Parsers.pow10), Type{Float64}, Base.GMP.BigInt})
+    precompile(Tuple{typeof(Parsers.scale), Type{Float64}, Base.GMP.BigInt, Int64})
+    precompile(Tuple{typeof(Parsers.pow10), Type{Float64}, Int128})
+    precompile(Tuple{typeof(Parsers._typeparser), Type{Float64}, Base.CodeUnits{UInt8, String}, Int64, Int64, UInt8, Int16, Parsers.Options{false, false, false, Nothing, Nothing, Nothing}, Type{Int128}})
+    precompile(Tuple{typeof(Parsers.xparse), Type{Float64}, String, Int64, Int64, Parsers.Options{false, false, false, Nothing, Nothing, Nothing}})
+    precompile(Tuple{typeof(Parsers._typeparser), Type{Float64}, Base.CodeUnits{UInt8, String}, Int64, Int64, UInt8, Int16, Parsers.Options{false, false, false, Nothing, Nothing, Nothing}, Type{Base.GMP.BigInt}})
+    precompile(Tuple{typeof(Parsers.scale), Type{Float64}, Base.GMP.BigInt, Base.GMP.BigInt})
+    precompile(Tuple{typeof(Parsers.scale), Type{Float64}, Int128, Int64})
+    precompile(Tuple{typeof(Parsers.BigInt!), Base.GMP.BigInt, Int64})
+    precompile(Tuple{typeof(Parsers.roundQuotient), Base.GMP.BigInt, Base.GMP.BigInt})
+    precompile(Tuple{typeof(Parsers.scale), Type{Float64}, Int128, Int128})
+    precompile(Tuple{typeof(Parsers.__init__)})
+    precompile(Tuple{typeof(Parsers.scale), Type{Float64}, Int64, Int64})
+    precompile(Tuple{typeof(Parsers.BigInt!), Base.GMP.BigInt, Int128})
+end

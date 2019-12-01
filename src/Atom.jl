@@ -62,4 +62,9 @@ include("debugger/debugger.jl")
 include("profiler/profiler.jl")
 include("profiler/traceur.jl")
 
+# precompile
+include("../deps/SnoopCompile/precompile/precompile_Atom.jl")
+_precompile_()
+
+
 end # module
