@@ -36,11 +36,7 @@ atommodfiles = let
     files
 end
 
-# mock a listener
-Core.eval(Atom, Meta.parse("sock = IOBuffer()"))
-readmsg() = JSON.parse(String(take!(Atom.sock)))
-
-# mock Module
+# mock modules
 junkpath = joinpath′(@__DIR__, "fixtures", "Junk.jl")
 subjunkspath = joinpath′(@__DIR__, "fixtures", "SubJunks.jl")
 include(junkpath)
