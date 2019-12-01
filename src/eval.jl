@@ -12,9 +12,19 @@ withpath(f, path) =
 const evallock = ReentrantLock()
 
 handle("evalshow") do data
+  @destruct [
+    text,
+    line,
+    path,
+    mod
+  ] = data
+  evalshow(text, line, path, mod)
+  nothing
+end
+
+function evalshow(text, line, path, mod)
   fixjunodisplays()
   @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod] = data
     mod = getmodule(mod)
 
     lock(evallock)
@@ -38,15 +48,23 @@ handle("evalshow") do data
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
       display ≠ Editor() && result !== nothing && @ierrs render(display, result)
     end
-
-    nothing
   end
 end
 
 handle("eval") do data
+  @destruct [
+    text,
+    line,
+    path,
+    mod,
+    errorinrepl = :errorInRepl || false
+  ] = data
+  eval(text, line, path, mod, errorinrepl)
+end
+
+function eval(text, line, path, mod, errorinrepl = false)
   fixjunodisplays()
   @dynamic let Media.input = Editor()
-    @destruct [text, line, path, mod, errorInRepl || false] = data
     mod = getmodule(mod)
 
     lock(evallock)
@@ -54,7 +72,7 @@ handle("eval") do data
       with_logger(JunoProgressLogger()) do
         withpath(path) do
           res = @errs include_string(mod, text, path, line)
-          if errorInRepl && res isa EvalError
+          if errorinrepl && res isa EvalError
             try
               Base.showerror(IOContext(stderr, :limit => true), res)
             catch err
@@ -80,11 +98,20 @@ handle("evalrepl") do data
 end
 
 handle("evalall") do data
+  @destruct [
+    code,
+    mod = :module || nothing,
+    path || "untitled"
+  ] = data
+  evalall(code, mod, path)
+  nothing
+end
+
+function evalall(code, mod = nothing, path = "untitled")
   fixjunodisplays()
   @dynamic let Media.input = Editor()
-    @destruct [setmod = :module || nothing, path || "untitled", code] = data
-    mod = if setmod !== nothing
-       getmodule(setmod)
+    mod = if mod !== nothing
+       getmodule(mod)
     elseif isabspath(path)
       getmodule(CodeTools.filemodule(path))
     else
@@ -117,7 +144,6 @@ handle("evalall") do data
     end
     unlock(evallock)
   end
-  return
 end
 
 handle("docs") do data
@@ -137,8 +163,10 @@ function docs(word, mod = "Main")
       []
     end
 
-  Dict(:error    => false,
-       :type     => :dom,
-       :tag      => :div,
-       :contents =>  map(x -> render(Inline(), x), [docstring; mtable]))
+  Dict(
+    :error    => false,
+    :type     => :dom,
+    :tag      => :div,
+    :contents =>  map(x -> render(Inline(), x), [docstring; mtable])
+  )
 end
