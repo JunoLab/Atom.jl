@@ -1,4 +1,8 @@
 @testset "basic message handling" begin
+    # mock a listener
+    Core.eval(Atom, Meta.parse("sock = IOBuffer()"))
+    readmsg() = JSON.parse(String(take!(Atom.sock)))
+
     cb = 0  # callback count
     function handle(type, args...)
         Atom.handlemsg(Dict("type"     => type,
