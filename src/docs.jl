@@ -37,7 +37,7 @@ function renderitem(x)
   else
     val = getfield′(mod, name)
     # @NOTE: DocSeeker can show docs for non-loaded packages via `createdocsdb()`
-    nativetype = val isa Undefined ? "Undefined or not loaded yet" : x.typ
+    nativetype = isundefined(val) ? "Undefined or not loaded yet" : x.typ
     wstype(mod, name, val), wsicon(mod, name, val), nativetype
   end
   r
