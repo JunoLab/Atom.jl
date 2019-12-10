@@ -167,7 +167,6 @@ using CodeTools
 """
     getfield′(mod::Module, name::AbstractString, default = undefined)
     getfield′(mod::Module, name::Symbol, default = undefined)
-    getfield′(mod::AbstractString, name::Symbol, default = undefined)
     getfield′(object, name::Symbol, default = undefined)
     getfield′(object, name::AbstractString, default = undefined)
 
@@ -176,7 +175,6 @@ or `default` if no such a field is found.
 """
 getfield′(mod::Module, name::AbstractString, default = undefined) = CodeTools.getthing(mod, name, default)
 getfield′(mod::Module, name::Symbol, default = undefined) = getfield′(mod, string(name), default)
-getfield′(mod::AbstractString, name::Symbol, default = undefined) = getfield′(getmodule(mod), string(name), default)
 getfield′(@nospecialize(object), name::Symbol, default = undefined) = isdefined(object, name) ? getfield(object, name) : default
 getfield′(@nospecialize(object), name::AbstractString, default = undefined) = isdefined(object, name) ? getfield(object, Symbol(name)) : default
 
