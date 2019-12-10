@@ -156,6 +156,8 @@ singleton type representing undefined values
 """
 struct Undefined end
 const undefined = Undefined()
+isundefined(::Any) = false
+isundefined(::Undefined) = true
 
 # get utilities
 # -------------
