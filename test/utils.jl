@@ -53,6 +53,12 @@ end
 cd(old_pwd)
 end
 
+@testset "Undefined" begin
+    using Atom: isundefined, undefined
+    @test isundefined(undefined)
+    @test !isundefined(isundefined)
+end
+
 @testset "get utilities" begin
     # TODO: others
 
@@ -76,6 +82,19 @@ end
             # don't error even if `@doc` is not defined for a fallback module
             @test getdocs(mod, "imwithdoc", mod) isa MD
         end
+    end
+
+    @testset "getfield′" begin
+        using Atom: getfield′, isundefined
+        # find a thing in module
+        @test getfield′(Atom, :getfield′) === getfield′
+        @test getfield′(Atom, "getfield′") === getfield′
+        # find a field in object
+        @test getfield′(r"pat", :pattern) == "pat"
+        @test getfield′(r"pat", "pattern") == "pat"
+        # fallback default value
+        @test isundefined(getfield′(Atom, :iwillfallback2undefined))
+        @test !isundefined(getfield′(Atom, :iwillfallback2undefined, isdefined))
     end
 end
 
