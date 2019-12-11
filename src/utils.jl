@@ -150,12 +150,20 @@ shortstr(val) = strlimit(string(val), 20)
 stripdotprefixes(str::AbstractString)  = string(last(split(str, '.')))
 
 """
-    Undefined
+    struct Undefined end
+    const undefined = Undefined()
 
-singleton type representing undefined values
+The singleton instance that represents a binding to an undefined value.
+
+See also: [`getthing′`](@ref)
 """
-struct Undefined end
-const undefined = Undefined()
+(struct Undefined end, const undefined = Undefined())
+
+"""
+    isundefined(x)
+
+Return `true` if `x === undefined`, and return `false` if not.
+"""
 isundefined(::Any) = false
 isundefined(::Undefined) = true
 
@@ -171,7 +179,7 @@ using CodeTools
     getfield′(object, name::AbstractString, default = undefined)
 
 Returns the specified field of a given `Module` or some arbitrary `object`,
-or `default` if no such a field is found.
+or `default` (set to [`undefined`](@ref) by default) if no such a field is found.
 """
 getfield′(mod::Module, name::AbstractString, default = undefined) = CodeTools.getthing(mod, name, default)
 getfield′(mod::Module, name::Symbol, default = undefined) = getfield′(mod, string(name), default)
