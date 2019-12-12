@@ -38,35 +38,35 @@ end
 
 using Pkg, OrderedCollections
 function finddevpackages()
-    usage_file = joinpath(Pkg.logdir(), "manifest_usage.toml")
-    manifests = Set{String}()
-    if isfile(usage_file)
-        for (manifest_file, infos) in Pkg.TOML.parse(String(read(usage_file)))
-            push!(manifests, manifest_file)
-        end
-    else
-        push!(manifests, Pkg.Types.Context().env.manifest_file)
+  usage_file = joinpath(Pkg.logdir(), "manifest_usage.toml")
+  manifests = Set{String}()
+  if isfile(usage_file)
+    for (manifest_file, infos) in Pkg.TOML.parse(String(read(usage_file)))
+      push!(manifests, manifest_file)
     end
+  else
+    push!(manifests, Pkg.Types.Context().env.manifest_file)
+  end
 
-    devpkgs = OrderedDict{String, String}()
-    for manifest in manifests
-        isfile(manifest) || continue
-        try
-          for (pkg, infos) in Pkg.Types.read_manifest(manifest)
-              if isdefined(infos, :path)
-                if infos.path ≠ nothing
-                  devpkgs[infos.name] = infos.path
-                end
-              else
-                haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
-              end
+  devpkgs = OrderedDict{String,String}()
+  for manifest in manifests
+    isfile(manifest) || continue
+    try
+      for (pkg, infos) in Pkg.Types.read_manifest(manifest)
+        if isdefined(infos, :path)
+          if infos.path ≠ nothing
+            devpkgs[infos.name] = infos.path
           end
-        catch err
-          @debug("Error reading manifest.", exception=err)
+        else
+          haskey(first(infos), "path") && (devpkgs[pkg] = first(infos)["path"])
         end
+      end
+    catch err
+      @debug("Error reading manifest.", exception = err)
     end
+  end
 
-    sort(devpkgs)
+  sort(devpkgs)
 end
 
 function basepath(file)
@@ -105,12 +105,12 @@ end
 using Markdown: MD, HorizontalRule
 function md_hlines(md)
   if !isa(md, MD) || !haskey(md.meta, :results) || isempty(md.meta[:results])
-      return md
+    return md
   end
   v = Any[]
   for (n, doc) in enumerate(md.content)
-      push!(v, doc)
-      n == length(md.content) || push!(v, HorizontalRule())
+    push!(v, doc)
+    n == length(md.content) || push!(v, HorizontalRule())
   end
   return MD(v)
 end
