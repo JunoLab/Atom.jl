@@ -157,7 +157,7 @@ The singleton instance that represents a binding to an undefined value.
 
 See also: [`getthing′`](@ref)
 """
-(struct Undefined end, const undefined = Undefined())
+struct Undefined end, const undefined = Undefined()
 
 """
     isundefined(x)
