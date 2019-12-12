@@ -165,7 +165,6 @@ completiontype(c) = "variable"
 completiontype(c::REPLCompletions.ModuleCompletion) = begin
   ct = completion_text(c)
   ismacro(ct) && return "snippet"
-  ct == "Vararg" && return ""
   mod, name = c.parent, Symbol(ct)
   val = getfield′(mod, name)
   wstype(mod, name, val)
