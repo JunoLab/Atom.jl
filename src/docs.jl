@@ -9,12 +9,17 @@ handle("searchdocs") do data
     exportedonly = exportedOnly || false,
     allPackages || false
   ] = data
-  _searchdocs(
+  searchdocs′(
     needle;
     # kwargs to be passed to `DocSeeker.searchdocs`:
     # TODO: configuration for `maxreturns`
     loaded = !allPackages, mod = mod, exportedonly = exportedonly, name_only = name_only
   )
+end
+
+function searchdocs′(needle; kwargs...)
+  items = _searchdocs(needle; kwargs...)
+  return processdocs(items)
 end
 
 function _searchdocs(needle; kwargs...)
@@ -30,9 +35,11 @@ function _searchdocs(needle; kwargs...)
     return _searchdocs(nextneedle; nextkwargs...)
   end
 
-  items = @errs searchdocs(needle; kwargs...)
+  return items = @errs searchdocs(needle; kwargs...)
+end
 
-  if items isa EvalError
+function processdocs(items)
+  return if items isa EvalError
     errstr = sprint(showerror, items.err)
     err = startswith(errstr, "Please regenerate the") ?
             """
@@ -71,12 +78,16 @@ end
 
 handle("moduleinfo") do data
   @destruct [mod] = data
+  moduleinfo(mod)
+end
+
+function moduleinfo(mod)
   d, items = getmoduleinfo(mod)
   items = [renderitem(i) for i in items]
   Dict(:doc => view(d), :items => items)
 end
 
-getmoduleinfo(mod) = ispackage(mod) ? packageinfo(mod) : moduleinfo(mod)
+getmoduleinfo(mod) = ispackage(mod) ? packageinfo(mod) : modinfo(mod)
 ispackage(mod) = Base.find_package(mod) ≠ nothing
 
 function packageinfo(mod)
@@ -90,14 +101,13 @@ function packageinfo(mod)
           ), modulesymbols(mod)
 end
 
-function moduleinfo(mod)
-  header = if mod ∈ ("Core", "Base", "Main") || first(split(mod, '.')) == "Base"
-    "## Standard module `$(mod)`"
-  else
+function modinfo(mod)
+  header = (mod in ("Core", "Base", "Main") || first(split(mod, '.')) == "Base") ?
+    "## Standard module `$(mod)`" :
     "## Module `$mod`"
-  end * "\n---\n## Defined symbols:" |> renderMD
+  header *= "\n---\n## Defined symbols:"
 
-  header, modulesymbols(mod)
+  return renderMD(header), modulesymbols(mod)
 end
 
 function modulesymbols(mod)
@@ -108,7 +118,8 @@ end
 using Logging: with_logger
 using .Progress: JunoProgressLogger
 
-handle("regeneratedocs") do
+handle(() -> regeneratedocs(), "regeneratedocs")
+function regeneratedocs()
   with_logger(JunoProgressLogger()) do
     @errs DocSeeker.createdocsdb()
   end
