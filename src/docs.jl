@@ -2,9 +2,35 @@ using DocSeeker
 import Markdown
 
 handle("searchdocs") do data
-  @destruct [mod || Main, nameOnly || false, exportedOnly || false, allPackages || false, query] = data
-  items = @errs DocSeeker.searchdocs(query, mod = mod, exportedonly = exportedOnly,
-                                     loaded = !allPackages, name_only = nameOnly)
+  @destruct [
+    needle = query,
+    mod || "Main",
+    name_only = nameOnly || false,
+    exportedonly = exportedOnly || false,
+    allPackages || false
+  ] = data
+  _searchdocs(
+    needle;
+    # kwargs to be passed to `DocSeeker.searchdocs`:
+    # TODO: configuration for `maxreturns`
+    loaded = !allPackages, mod = mod, exportedonly = exportedonly, name_only = name_only
+  )
+end
+
+function _searchdocs(needle; kwargs...)
+  modstr = get(kwargs, :mod, "Main")
+  mod = getmodule(modstr)
+  identifiers = split(needle, '.')
+  head = string(identifiers[1])
+  if head ≠ needle && (nextmod = getfield′(mod, head)) isa Module
+    # if `head` is a module, update `needle` and `mod`
+    nextneedle = join(identifiers[2:end], '.')
+    nextmod = string(nextmod)
+    nextkwargs = Dict(k === :mod ? k => nextmod : k => v for (k, v) in kwargs)
+    return _searchdocs(nextneedle; nextkwargs...)
+  end
+
+  items = @errs searchdocs(needle; kwargs...)
 
   if items isa EvalError
     errstr = sprint(showerror, items.err)
