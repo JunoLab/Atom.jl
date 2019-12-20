@@ -61,16 +61,17 @@ end
 
 using Pkg: status
 handle("reportinfo") do
-  io = IOBuffer()
-  versioninfo(io)
-  println(io)
+  versioninfoio = IOBuffer()
+  versioninfo(versioninfoio)
 
   old = stdout
   rd, wr = redirect_stdout()
   Pkg.status()
   redirect_stdout(old)
   close(wr)
-  println(io, String(read(rd)))
 
-  String(take!(io))
+  Dict(
+    :versioninfo => String(take!(versioninfoio)),
+    :pkgstatus   => String(read(rd))
+  )
 end
