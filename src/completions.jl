@@ -145,6 +145,7 @@ completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
 end
 # always show completion summary for `MethodCompletion`
 completionsummary(mod, c::REPLCompletions.MethodCompletion, suppress) = begin
+  mod = c.method.module
   ct = Symbol(c.func)
   cangetdocs(mod, ct) || return ""
   docs = try
