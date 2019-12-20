@@ -1,12 +1,12 @@
 @testset "completions" begin
     using REPL.REPLCompletions: completions
 
-    comps(line; mod = Main, force = false, lineNumber = 1, column = 1, text = "") =
-        Atom.basecompletionadapter(line, mod, force, lineNumber, column, text)[1]
+    comps(line; mod = "Main", context = "", row = 1, column = 1, force = false) =
+        Atom.basecompletionadapter(line, mod, context, row, column, force)[1]
 
     @testset "module completion" begin
         ## basic
-        let line = "@", cs = comps(line, mod = Atom)
+        let line = "@", cs = comps(line, mod = "Atom")
             # test no error occurs in completion processing
             @test length(cs) == length(completions(line, lastindex(line), Atom)[1])
             # test detecting all the macros in Atom module
@@ -20,7 +20,7 @@
         end
 
         ## advanced
-        let cs = comps("match(code", mod = Atom)
+        let cs = comps("match(code", mod = "Atom")
             filter(cs) do c
                 c[:text] == "codeblock_regex" &&
                 c[:rightLabel] == "Atom"
@@ -93,7 +93,7 @@
         @test map(comps("dict.")) do c
             c[:type] == "property" &&
             c[:rightLabel] == "Main" &&
-            c[:text] ∈ string.(propertynames(dict))
+            c[:text] in string.(propertynames(dict))
         end |> all
     end
 
@@ -101,8 +101,8 @@
         @test map(comps("split(\"\", \"\")[1].")) do c
             c[:type] == "property" &&
             c[:rightLabel] == "SubString{String}" &&
-            c[:leftLabel] ∈ string.(ntuple(i -> fieldtype(SubString{String}, i), fieldcount(SubString{String}))) &&
-            c[:text] ∈ string.(fieldnames(SubString{String}))
+            c[:leftLabel] in string.(ntuple(i -> fieldtype(SubString{String}, i), fieldcount(SubString{String}))) &&
+            c[:text] in string.(fieldnames(SubString{String}))
         end |> all
     end
 
@@ -138,15 +138,22 @@
     end
 
     # completion suppressing
-    @testset "suppressing: $(troublemaker)" for troublemaker ∈ [" ", "(", "[", "\$"]
-        @test length(comps(troublemaker, force = false)) == 0 # surpressed
-        @test length(comps(troublemaker, force = true)) > Atom.MAX_COMPLETIONS # invoked
+    troublemakers = [" ", "(", "[", "\$"]
+    @testset "suppressing: $t" for t in troublemakers
+        @test length(comps(t, force = false)) === 0 # surpressed
+        @test length(comps(t, force = true)) === Atom.MAX_COMPLETIONS # invoked
     end
+
+    # don't error on fallback case
+    @test_nowarn @test Atom.basecompletionadapter("") == ([], "")
 end
 
 @testset "local completions" begin
+    type = "attribute"
+    icon = "icon-chevron-right"
+
     # local completions ordered by proximity
-    let str = """
+    let context = """
         function foo(x)
             aaa = 3
             a
@@ -157,9 +164,32 @@ end
             a
         end
         """
-        @test Atom.basecompletionadapter("a", Main, true, 3, 6, str)[1][1][:text] == "aaa"
-        @test Atom.basecompletionadapter("a", Main, true, 6, 6, str)[1][1][:text] == "aaa"
-        @test Atom.basecompletionadapter("a", Main, true, 8, 6, str)[1][1][:text] == "abc"
+        prefix = "a"
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 3, 6)[1][1]
+            @test c[:text] == "aaa"
+            @test c[:rightLabel] == "foo"
+            @test c[:type] == type
+            @test c[:icon] == icon
+        end
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 6, 6)[1][1]
+            @test c[:text] == "aaa"
+            @test c[:rightLabel] == "foo"
+            @test c[:type] == type
+            @test c[:icon] == icon
+        end
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 8, 6)[1][1]
+            @test c[:text] == "abc"
+            @test c[:rightLabel] == "foo"
+            @test c[:type] == type
+            @test c[:icon] == icon
+        end
+
+        # show all the local bindings in order when forcibly invoked
+        let cs = Atom.basecompletionadapter("", "Main", context, 6, 6, true)[1]
+            inds = findall(c -> c[:type] == type && c[:icon] == icon, cs)
+            @test inds == [1, 2, 3, 4]
+            @test map(c -> c[:text], cs[inds]) == ["foo", "aaa", "x", "abc"]
+        end
     end
 
     # don't error on fallback case
