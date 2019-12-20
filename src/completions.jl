@@ -1,74 +1,104 @@
 handle("completions") do data
-  @destruct [path || nothing,
-             mod || "Main",
-             editorContent || "",
-             lineNumber || 1,
-             startLine || 0,
-             column || 1,
-             line, force] = data
+  @destruct [
+    # general
+    line,
+    mod || "Main",
+    path || nothing,
+    # local context
+    context || "",
+    row || 1,
+    startRow || 0,
+    column || 1,
+    # configurations
+    force || false
+  ] = data
 
   withpath(path) do
-    m = getmodule(mod)
+    comps, prefix = basecompletionadapter(
+      # general
+      line, mod,
+      # local context
+      context, row - startRow, column,
+      # configurations
+      force
+    )
 
-    cs, pre = basecompletionadapter(line, m, force, lineNumber - startLine, column, editorContent)
-
-    Dict(:completions => cs,
-         :prefix      => string(pre))
+    Dict(
+      :completions => comps,
+      :prefix      => prefix
+    )
   end
 end
 
 using REPL.REPLCompletions
 
-function basecompletionadapter(line, mod, force, lineNumber, column, text)
-  comps, replace, shouldcomplete = try
+# as an heuristic, suppress completions if there are over 500 completions,
+# ref: currently `completions("", 0)` returns **1132** completions as of v1.3
+const SUPPRESS_COMPLETION_THRESHOLD = 500
+
+# autocomplete-plus seems to show **200** completions at most
+const MAX_COMPLETIONS = 200
+
+function basecompletionadapter(
+  # general
+  line, mod = "Main",
+  # local context
+  context = "", row = 1, column = 1,
+  # configurations
+  force = false
+)
+  mod = getmodule(mod)
+
+  cs, replace, shouldcomplete = try
     completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
-    [], 1:0, false
+    REPLCompletions.Completion[], 1:0, false
   end
 
-  # Suppress completions if there are too many of them unless activated manually
-  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
-  #        in advance and drop this check
-  if !force && length(comps) > MAX_COMPLETIONS
-    comps = []
+  # suppress completions if there are too many of them unless activated manually
+  # e.g. when invoked with `$|`, `(|`, etc.
+  # TODO: check whether `line` is a valid text to complete in frontend
+  if !force && length(cs) > SUPPRESS_COMPLETION_THRESHOLD
+    cs = REPLCompletions.Completion[]
     replace = 1:0
   end
 
-  pre = line[replace]
-  d = []
-  for c in comps
+  # initialize suggestions with local completions so that they show up first
+  prefix = line[replace]
+  comps = if force || !isempty(prefix)
+    filter!(let p = prefix
+      c -> startswith(c[:text], p)
+    end, localcompletions(context, row, column))
+  else
+    Dict[]
+  end
+
+  cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  suppresss = length(cs) > 30
+  for c in cs
     if REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
       c isa REPLCompletions.PackageCompletion || continue
     end
     try
-      push!(d, completion(mod, c))
+      push!(comps, completion(mod, c, suppresss))
     catch err
       continue
     end
   end
 
-  # completions from the local code block:
-  for c in localcompletions(text, lineNumber, column)
-    if (force || !isempty(pre)) && startswith(c[:text], pre)
-      pushfirst!(d, c)
-    end
-  end
-
-  d, pre
+  return comps, prefix
 end
 
-const MAX_COMPLETIONS = 500
-
-function completion(mod, c)
-  return Dict(:type               => completiontype(c),
-              :icon               => completionicon(c),
-              :rightLabel         => completionmodule(mod, c),
-              :leftLabel          => completionreturntype(c),
-              :text               => completiontext(c),
-              :description        => completionsummary(mod, c),
-              :descriptionMoreURL => completionurl(c))
-end
+completion(mod, c, suppress) = Dict(
+  :type               => completiontype(c),
+  :icon               => completionicon(c),
+  :rightLabel         => completionmodule(mod, c),
+  :leftLabel          => completionreturntype(c),
+  :text               => completiontext(c),
+  :description        => completionsummary(mod, c, suppress),
+  :descriptionMoreURL => completionurl(c)
+)
 
 completiontext(c) = completion_text(c)
 completiontext(c::REPLCompletions.MethodCompletion) = begin
@@ -105,6 +135,7 @@ completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 
 using Base.Docs
 
+completionsummary(mod, c, suppress) = suppress ? "" : completionsummary(mod, c)
 completionsummary(mod, c) = ""
 completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   m, word = c.parent, c.mod
@@ -112,7 +143,8 @@ completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
   docs = getdocs(m, word, mod)
   description(docs)
 end
-completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
+# always show completion summary for `MethodCompletion`
+completionsummary(mod, c::REPLCompletions.MethodCompletion, suppress) = begin
   ct = Symbol(c.func)
   cangetdocs(mod, ct) || return ""
   docs = try
@@ -122,8 +154,7 @@ completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
   end
   description(docs)
 end
-completionsummary(mod, c::REPLCompletions.KeywordCompletion) =
-  description(getdocs(mod, c.keyword))
+completionsummary(mod, c::REPLCompletions.KeywordCompletion) = description(getdocs(mod, c.keyword))
 
 using Markdown
 
@@ -187,11 +218,7 @@ end
 completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
-function localcompletions(text, line, col)
-  ls = locals(text, line, col)
-  reverse!(ls)
-  map(localcompletion, ls)
-end
+localcompletions(text, row, col) = localcompletion.(locals(text, row, col))
 
 function localcompletion(l)
   return Dict(
@@ -202,10 +229,4 @@ function localcompletion(l)
     :text        => l[:name],
     :description => ""
   )
-end
-
-handle("cacheCompletions") do mod
-  # m = getthing(mod)
-  # m = isa(m, Module) ? m : Main
-  # CodeTools.completions(m)
 end
