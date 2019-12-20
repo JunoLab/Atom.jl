@@ -23,31 +23,31 @@ handle("completions") do data
       force
     )
 
-    Dict(
-      :completions => comps,
-      :prefix      => prefix
-    )
+    Dict(:completions => comps, :prefix => prefix)
   end
 end
 
 using REPL.REPLCompletions
 
+const CompletionSuggetion = Dict{Symbol, String}
+
 # as an heuristic, suppress completions if there are over 500 completions,
 # ref: currently `completions("", 0)` returns **1132** completions as of v1.3
 const SUPPRESS_COMPLETION_THRESHOLD = 500
 
-# autocomplete-plus seems to show **200** completions at most
+# autocomplete-plus only shows at most 200 completions
+# ref: https://github.com/atom/autocomplete-plus/blob/master/lib/suggestion-list-element.js#L49
 const MAX_COMPLETIONS = 200
 
 function basecompletionadapter(
   # general
-  line, mod = "Main",
+  line, m = "Main",
   # local context
   context = "", row = 1, column = 1,
   # configurations
   force = false
 )
-  mod = getmodule(mod)
+  mod = getmodule(m)
 
   cs, replace, shouldcomplete = try
     completions(line, lastindex(line), mod)
@@ -71,7 +71,7 @@ function basecompletionadapter(
       c -> startswith(c[:text], p)
     end, localcompletions(context, row, column))
   else
-    Dict[]
+    CompletionSuggetion[]
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
@@ -90,7 +90,7 @@ function basecompletionadapter(
   return comps, prefix
 end
 
-completion(mod, c, suppress) = Dict(
+completion(mod, c, suppress) = CompletionSuggetion(
   :type               => completiontype(c),
   :icon               => completionicon(c),
   :rightLabel         => completionmodule(mod, c),
@@ -220,14 +220,11 @@ completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
 localcompletions(text, row, col) = localcompletion.(locals(text, row, col))
-
-function localcompletion(l)
-  return Dict(
-    :type        => l[:type] == "variable" ? "attribute" : l[:type],
-    :icon        => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
-    :rightLabel  => l[:root],
-    :leftLabel   => "",
-    :text        => l[:name],
-    :description => ""
-  )
-end
+localcompletion(l) = CompletionSuggetion(
+  :type        => l[:type] == "variable" ? "attribute" : l[:type],
+  :icon        => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
+  :rightLabel  => l[:root],
+  :leftLabel   => "",
+  :text        => l[:name],
+  :description => ""
+)
