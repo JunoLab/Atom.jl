@@ -2,7 +2,7 @@
     using REPL.REPLCompletions: completions
 
     comps(line; mod = "Main", context = "", row = 1, column = 1, force = false) =
-        Atom.basecompletionadapter(line, mod, context, row, column, force)[1]
+        Atom.basecompletionadapter(line, mod, context, row, column, force)
 
     @testset "module completion" begin
         ## basic
@@ -131,7 +131,7 @@
     end
 
     # don't error on fallback case
-    @test_nowarn @test Atom.basecompletionadapter("") == ([], "")
+    @test_nowarn @test Atom.basecompletionadapter("") == []
 end
 
 @testset "local completions" begin
@@ -151,19 +151,19 @@ end
         end
         """
         prefix = "a"
-        let c = Atom.basecompletionadapter(prefix, "Main", context, 3, 6)[1][1]
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 3, 6)[1]
             @test c[:text] == "aaa"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
             @test c[:icon] == icon
         end
-        let c = Atom.basecompletionadapter(prefix, "Main", context, 6, 6)[1][1]
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 6, 6)[1]
             @test c[:text] == "aaa"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
             @test c[:icon] == icon
         end
-        let c = Atom.basecompletionadapter(prefix, "Main", context, 8, 6)[1][1]
+        let c = Atom.basecompletionadapter(prefix, "Main", context, 8, 6)[1]
             @test c[:text] == "abc"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
@@ -171,7 +171,7 @@ end
         end
 
         # show all the local bindings in order when forcibly invoked
-        let cs = Atom.basecompletionadapter("", "Main", context, 6, 6, true)[1]
+        let cs = Atom.basecompletionadapter("", "Main", context, 6, 6, true)
             inds = findall(c -> c[:type] == type && c[:icon] == icon, cs)
             @test inds == [1, 2, 3, 4]
             @test map(c -> c[:text], cs[inds]) == ["foo", "aaa", "x", "abc"]
@@ -179,5 +179,5 @@ end
     end
 
     # don't error on fallback case
-    @test_nowarn @test Atom.localcompletions("", 1, 1) == []
+    @test_nowarn @test Atom.localcompletions("", 1, 1, "") == []
 end

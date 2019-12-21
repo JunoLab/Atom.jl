@@ -14,7 +14,7 @@ handle("completions") do data
   ] = data
 
   withpath(path) do
-    comps, prefix = basecompletionadapter(
+    basecompletionadapter(
       # general
       line, mod,
       # local context
@@ -22,8 +22,6 @@ handle("completions") do data
       # configurations
       force
     )
-
-    Dict(:completions => comps, :prefix => prefix)
   end
 end
 
@@ -69,7 +67,7 @@ function basecompletionadapter(
   comps = if force || !isempty(prefix)
     filter!(let p = prefix
       c -> startswith(c[:text], p)
-    end, localcompletions(context, row, column))
+    end, localcompletions(context, row, column, prefix))
   else
     CompletionSuggetion[]
   end
@@ -81,23 +79,24 @@ function basecompletionadapter(
       c isa REPLCompletions.PackageCompletion || continue
     end
     try
-      push!(comps, completion(mod, c, suppresss))
+      push!(comps, completion(mod, c, suppresss, prefix))
     catch err
       continue
     end
   end
 
-  return comps, prefix
+  return comps
 end
 
-completion(mod, c, suppress) = CompletionSuggetion(
+completion(mod, c, suppress, prefix) = CompletionSuggetion(
   :type               => completiontype(c),
   :icon               => completionicon(c),
   :rightLabel         => completionmodule(mod, c),
   :leftLabel          => completionreturntype(c),
   :text               => completiontext(c),
   :description        => completionsummary(mod, c, suppress),
-  :descriptionMoreURL => completionurl(c)
+  :descriptionMoreURL => completionurl(c),
+  :replacementPrefix  => prefix
 )
 
 completiontext(c) = completion_text(c)
@@ -219,12 +218,13 @@ end
 completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
-localcompletions(text, row, col) = localcompletion.(locals(text, row, col))
-localcompletion(l) = CompletionSuggetion(
-  :type        => l[:type] == "variable" ? "attribute" : l[:type],
-  :icon        => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
-  :rightLabel  => l[:root],
-  :leftLabel   => "",
-  :text        => l[:name],
-  :description => ""
+localcompletions(text, row, col, prefix) = localcompletion.(locals(text, row, col), prefix)
+localcompletion(l, prefix) = CompletionSuggetion(
+  :type              => l[:type] == "variable" ? "attribute" : l[:type],
+  :icon              => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
+  :rightLabel        => l[:root],
+  :leftLabel         => "",
+  :text              => l[:name],
+  :description       => "",
+  :replacementPrefix => prefix
 )
