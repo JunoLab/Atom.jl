@@ -1,3 +1,5 @@
+### baseline completions ###
+
 handle("completions") do data
   @destruct [
     # general
@@ -73,30 +75,28 @@ function basecompletionadapter(
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  suppresss = length(cs) > 30
+  afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
-    if REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
+    if afterusing
       c isa REPLCompletions.PackageCompletion || continue
     end
-    try
-      push!(comps, completion(mod, c, suppresss, prefix))
-    catch err
-      continue
-    end
+    push!(comps, completion(mod, c, prefix))
   end
 
   return comps
 end
 
-completion(mod, c, suppress, prefix) = CompletionSuggetion(
+completion(mod, c, prefix) = CompletionSuggetion(
+  :replacementPrefix  => prefix,
+  # suggestion body
+  :text               => completiontext(c),
   :type               => completiontype(c),
   :icon               => completionicon(c),
   :rightLabel         => completionmodule(mod, c),
   :leftLabel          => completionreturntype(c),
-  :text               => completiontext(c),
-  :description        => completionsummary(mod, c, suppress),
   :descriptionMoreURL => completionurl(c),
-  :replacementPrefix  => prefix
+  # for `getSuggestionDetailsOnSelect` API
+  :detailtype         => completiondetailtype(c)
 )
 
 completiontext(c) = completion_text(c)
@@ -108,68 +108,16 @@ end
 completiontext(c::REPLCompletions.DictCompletion) = rstrip(completion_text(c), [']', '"'])
 completiontext(c::REPLCompletions.PathCompletion) = rstrip(completion_text(c), '"')
 
-using JuliaInterpreter: sparam_syms
-
 completionreturntype(c) = ""
-completionreturntype(c::REPLCompletions.MethodCompletion) = begin
-  m = c.method
-  atypes = m.sig
-  sparams = Core.svec(sparam_syms(m)...)
-  wa = Core.Compiler.Params(typemax(UInt))  # world age
-  inf = try
-    Core.Compiler.typeinf_type(m, atypes, sparams, wa)
-  catch err
-    nothing
-  end
-  inf in (nothing, Any, Union{}) && return ""
-  shortstr(inf)
-end
-completionreturntype(c::REPLCompletions.PropertyCompletion) =
+completionreturntype(c::REPLCompletions.PropertyCompletion) = begin
+  isdefined(c.value, c.property) || return ""
   shortstr(typeof(getproperty(c.value, c.property)))
+end
 completionreturntype(c::REPLCompletions.FieldCompletion) =
   shortstr(fieldtype(c.typ, c.field))
 completionreturntype(c::REPLCompletions.DictCompletion) =
   shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
-
-using Base.Docs
-
-completionsummary(mod, c, suppress) = suppress ? "" : completionsummary(mod, c)
-completionsummary(mod, c) = ""
-completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
-  m, word = c.parent, c.mod
-  cangetdocs(m, word) || return ""
-  docs = getdocs(m, word, mod)
-  description(docs)
-end
-# always show completion summary for `MethodCompletion`
-completionsummary(mod, c::REPLCompletions.MethodCompletion, suppress) = begin
-  mod = c.method.module
-  ct = Symbol(c.func)
-  cangetdocs(mod, ct) || return ""
-  docs = try
-    Docs.doc(Docs.Binding(mod, ct), Base.tuple_type_tail(c.method.sig))
-  catch err
-    ""
-  end
-  description(docs)
-end
-completionsummary(mod, c::REPLCompletions.KeywordCompletion) = description(getdocs(mod, c.keyword))
-
-using Markdown
-
-description(docs) = ""
-description(docs::Markdown.MD) = begin
-  md = CodeTools.flatten(docs).content
-  for part in md
-    if part isa Markdown.Paragraph
-      desc = Markdown.plain(part)
-      occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, 200)
-    end
-  end
-  return ""
-end
 
 completionurl(c) = ""
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
@@ -218,13 +166,101 @@ end
 completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
+completiondetailtype(c) = ""
+completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
+completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
+completiondetailtype(c::REPLCompletions.MethodCompletion) =
+  string(c.method.name) * "," * repr(hash(c.method)) # hash string to identify this method
+
 localcompletions(text, row, col, prefix) = localcompletion.(locals(text, row, col), prefix)
 localcompletion(l, prefix) = CompletionSuggetion(
-  :type              => l[:type] == "variable" ? "attribute" : l[:type],
-  :icon              => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
-  :rightLabel        => l[:root],
-  :leftLabel         => "",
-  :text              => l[:name],
-  :description       => "",
-  :replacementPrefix => prefix
+  :replacementPrefix  => prefix,
+  # suggestion body
+  :text               => l[:name],
+  :type               => l[:type] == "variable" ? "attribute" : l[:type],
+  :icon               => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
+  :rightLabel         => l[:root],
+  # for `getSuggestionDetailsOnSelect` API
+  :detailtype         => "", # shouldn't complete
 )
+
+### completion details on selection ###
+
+handle("completiondetail") do _comp
+  comp = Dict(Symbol(k) => v for (k, v) in _comp)
+  completiondetail!(comp)
+  return comp
+end
+
+function completiondetail!(comp)
+  isempty(comp[:detailtype]) && return comp
+
+  if comp[:detailtype] == "module"
+    completiondetail_module!(comp)
+  elseif comp[:detailtype] == "keyword"
+    completiondetail_keyword!(comp)
+  else # detail for method completion
+    completiondetail_method!(comp)
+  end
+
+  comp[:detailtype] = ""
+end
+
+function completiondetail_module!(comp)
+  mod = getmodule(comp[:rightLabel])
+  word = comp[:text]
+  cangetdocs(mod, word) || return
+  comp[:description] = completiondescription(getdocs(mod, word))
+end
+
+function completiondetail_keyword!(comp)
+  comp[:description] = completiondescription(getdocs(Main, comp[:text]))
+end
+
+using JuliaInterpreter: sparam_syms
+using Base.Docs
+
+function completiondetail_method!(comp)
+  mod = getmodule(comp[:rightLabel])
+  fstr, fhash = split(comp[:detailtype], ',')
+  f = getfield′(mod, Symbol(fstr))
+  isundefined(f) && return
+  # HACK: reconstruct a Method object from its hash string
+  ms = collect(methods(f))
+  (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
+  m = ms[i]
+
+  argtypes = Base.tuple_type_tail(m.sig)
+  sparams = Core.svec(sparam_syms(m)...)
+  wa = Core.Compiler.Params(typemax(UInt))  # world age
+  inf = try
+    Core.Compiler.typeinf_type(m, argtypes, sparams, wa)
+  catch err
+    nothing
+  end
+  comp[:leftLabel] = inf in (nothing, Any, Union{}) ? "" : shortstr(inf)
+
+  fsym = Symbol(f)
+  cangetdocs(mod, fsym) || return
+  docs = try
+    Docs.doc(Docs.Binding(mod, fsym), argtypes)
+  catch err
+    ""
+  end
+  comp[:description] = completiondescription(docs)
+end
+
+using Markdown
+
+completiondescription(docs) = ""
+completiondescription(docs::Markdown.MD) = begin
+  md = CodeTools.flatten(docs).content
+  for part in md
+    if part isa Markdown.Paragraph
+      desc = Markdown.plain(part)
+      occursin("No documentation found.", desc) && return ""
+      return strlimit(desc, 200)
+    end
+  end
+  return ""
+end
