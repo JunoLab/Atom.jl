@@ -9,19 +9,6 @@
 # restart Julia
 
 # now compare the result
-
-################################################################
-function timesum(snoop)
-
-    timeSum = 0
-    for x in snoop
-        timeSum+=x[1]
-    end
-
-    println(timeSum)
-
-    return timeSum
-end
 ################################################################
 using SnoopCompile
 
