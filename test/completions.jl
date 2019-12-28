@@ -128,7 +128,7 @@
 
     @testset "path completion" begin
         let line = "\"", cs = comps(line)
-            @test length(cs) ==
+            @test_skip length(cs) ==
                   length(completions(line, lastindex(line))[1]) ==
                   length(readdir(@__DIR__))
             @test filter(cs) do c
