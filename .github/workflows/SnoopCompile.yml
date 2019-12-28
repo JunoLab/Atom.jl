@@ -22,7 +22,7 @@ jobs:
       - name : Add SnoopCompile and current package
         run: julia -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/aminya/SnoopCompile.jl", rev ="packageSnooper")); Pkg.develop(PackageSpec(; path=pwd()));'
       - name: Install Test dependencies
-        run: julia --project=@. -e 'using SnoopCompile; SnoopCompile.addtestdep()'
+        run: julia -e 'using SnoopCompile; SnoopCompile.addtestdep()'
       - name: Generating precompile files
         run: julia --project=@. -e 'include("deps/SnoopCompile/snoopCompile.jl")'
 
