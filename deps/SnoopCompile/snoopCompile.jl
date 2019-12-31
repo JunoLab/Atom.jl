@@ -21,8 +21,7 @@ file = open("test/runtests.jl","w")
 Base.write(file, testEdited)
 close(file)
 ################################################################
-println("Examples/Tests infer benchmark")
-@snoopiBot "Atom"
+@snoopiBot(BotConfig("Atom"))
 ################################################################
 
 # enabling back inlcude modules/goto
