@@ -13,7 +13,11 @@ handle("echo") do data
 end
 
 handle("cd") do path
-  cd(path)
+  hideprompt() do
+    cd(path)
+    printstyled("Working"; color = :green, bold = true)
+    println(" in `$path`")
+  end
 end
 
 handle("activateProject") do path
