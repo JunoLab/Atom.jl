@@ -15,8 +15,7 @@ end
 handle("cd") do path
   hideprompt() do
     cd(path)
-    printstyled("Working"; color = :green, bold = true)
-    println(" in `$path`")
+    @info "Changed working directory to `$path`"
   end
 end
 
