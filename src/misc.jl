@@ -13,7 +13,10 @@ handle("echo") do data
 end
 
 handle("cd") do path
-  cd(path)
+  hideprompt() do
+    cd(path)
+    @info "Changed working directory to `$path`"
+  end
 end
 
 handle("activateProject") do path
