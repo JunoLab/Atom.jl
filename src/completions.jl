@@ -230,11 +230,10 @@ function completiondetail_method!(comp)
   (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
   m = ms[i]
 
-  argtypes = Base.tuple_type_tail(m.sig)
   sparams = Core.svec(sparam_syms(m)...)
   wa = Core.Compiler.Params(typemax(UInt))  # world age
   inf = try
-    Core.Compiler.typeinf_type(m, argtypes, sparams, wa)
+    Core.Compiler.typeinf_type(m, m.sig, sparams, wa)
   catch err
     nothing
   end
@@ -243,7 +242,7 @@ function completiondetail_method!(comp)
   fsym = Symbol(f)
   cangetdocs(mod, fsym) || return
   docs = try
-    Docs.doc(Docs.Binding(mod, fsym), argtypes)
+    Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
   catch err
     ""
   end
