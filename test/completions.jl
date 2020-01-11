@@ -3,6 +3,8 @@
 
     comps(line; mod = "Main", context = "", row = 1, column = 1, force = false) =
         Atom.basecompletionadapter(line, mod, context, row, column, force)
+    # emurate `getSuggestionDetailsOnSelect`
+    add_details!(c) = Atom.completiondetail!(c)
 
     @testset "module completion" begin
         ## basic
@@ -55,6 +57,7 @@
             # - shows module where the method defined in right label
             # - shows the infered return type in left label
             @test filter(comps(line)) do c
+                add_details!(c)
                 c[:type] == "method" &&
                 c[:rightLabel] == string(mod) &&
                 c[:leftLabel] == "String" &&
@@ -66,6 +69,7 @@
                 push!(::Singleton) = ""
             end
             @test filter(comps(line)) do c
+                add_details!(c)
                 c[:type] == "method" &&
                 c[:rightLabel] == string(mod) &&
                 c[:leftLabel] == "String" &&
@@ -115,9 +119,10 @@
 
     @testset "keyword completion" begin
         @test filter(comps("begin")) do c
+            add_details!(c)
             c[:type] == "keyword" &&
-            c[:rightLabel] |> isempty &&
-            c[:description] |> !isempty
+            isempty(c[:rightLabel]) &&
+            !isempty(c[:description])
         end |> !isempty
     end
 
