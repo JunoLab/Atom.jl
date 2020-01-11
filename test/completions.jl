@@ -47,20 +47,21 @@
             end |> length == length(methods(push!))
         end
 
-        ## advanced features
-        # - dynamic method addition
-        # - shows module where the method defined in right label
-        # - shows the infered return type in left label
+        ## advances
         # HACK: this allows testing this in a same julia runtime
-        let mod = Main.eval(:(module $(gensym("tempmod"))
-                struct Singleton end
-            end))
+        let mod = Main.eval(:(module $(gensym("tempmod")) end))
+            # advanced features
+            # - dynamic method addition
+            # - shows module where the method defined in right label
+            # - shows the infered return type in left label
             @test filter(comps(line)) do c
                 c[:type] == "method" &&
                 c[:rightLabel] == string(mod) &&
-                c[:leftLabel] == "String"
+                c[:leftLabel] == "String" &&
+                c[:text] == "push!(::$(mod).Singleton)"
             end |> isempty
             @eval mod begin
+                struct Singleton end
                 import Base: push!
                 push!(::Singleton) = ""
             end
@@ -70,6 +71,16 @@
                 c[:leftLabel] == "String" &&
                 c[:text] == "push!(::$(mod).Singleton)"
             end |> !isempty
+
+            # don't segfault on generate function
+            @eval mod begin
+                @generated g(x) = :(return $x)
+            end
+            @test_nowarn let cs = comps("g("; mod = string(mod))
+                @test !isempty(cs)
+                @test cs[1][:type] == "method"
+                @test cs[1][:text] == "g(x)"
+            end
         end
     end
 
