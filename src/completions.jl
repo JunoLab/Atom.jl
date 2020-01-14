@@ -1,74 +1,103 @@
+### baseline completions ###
+
 handle("completions") do data
-  @destruct [path || nothing,
-             mod || "Main",
-             editorContent || "",
-             lineNumber || 1,
-             startLine || 0,
-             column || 1,
-             line, force] = data
+  @destruct [
+    # general
+    line,
+    mod || "Main",
+    path || nothing,
+    # local context
+    context || "",
+    row || 1,
+    startRow || 0,
+    column || 1,
+    # configurations
+    force || false
+  ] = data
 
   withpath(path) do
-    m = getmodule(mod)
-
-    cs, pre = basecompletionadapter(line, m, force, lineNumber - startLine, column, editorContent)
-
-    Dict(:completions => cs,
-         :prefix      => string(pre))
+    basecompletionadapter(
+      # general
+      line, mod,
+      # local context
+      context, row - startRow, column,
+      # configurations
+      force
+    )
   end
 end
 
 using REPL.REPLCompletions
 
-function basecompletionadapter(line, mod, force, lineNumber, column, text)
-  comps, replace, shouldcomplete = try
+const CompletionSuggetion = Dict{Symbol, String}
+
+# as an heuristic, suppress completions if there are over 500 completions,
+# ref: currently `completions("", 0)` returns **1132** completions as of v1.3
+const SUPPRESS_COMPLETION_THRESHOLD = 500
+
+# autocomplete-plus only shows at most 200 completions
+# ref: https://github.com/atom/autocomplete-plus/blob/master/lib/suggestion-list-element.js#L49
+const MAX_COMPLETIONS = 200
+
+function basecompletionadapter(
+  # general
+  line, m = "Main",
+  # local context
+  context = "", row = 1, column = 1,
+  # configurations
+  force = false
+)
+  mod = getmodule(m)
+
+  cs, replace, shouldcomplete = try
     completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
-    [], 1:0, false
+    REPLCompletions.Completion[], 1:0, false
   end
 
-  # Suppress completions if there are too many of them unless activated manually
-  # @TODO: Checking whether `line` is a valid text to be completed in atom-julia-client
-  #        in advance and drop this check
-  if !force && length(comps) > MAX_COMPLETIONS
-    comps = []
+  # suppress completions if there are too many of them unless activated manually
+  # e.g. when invoked with `$|`, `(|`, etc.
+  # TODO: check whether `line` is a valid text to complete in frontend
+  if !force && length(cs) > SUPPRESS_COMPLETION_THRESHOLD
+    cs = REPLCompletions.Completion[]
     replace = 1:0
   end
 
-  pre = line[replace]
-  d = []
-  for c in comps
-    if REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
+  # initialize suggestions with local completions so that they show up first
+  prefix = line[replace]
+  comps = if force || !isempty(prefix)
+    filter!(let p = prefix
+      c -> startswith(c[:text], p)
+    end, localcompletions(context, row, column, prefix))
+  else
+    CompletionSuggetion[]
+  end
+
+  cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
+  for c in cs
+    if afterusing
       c isa REPLCompletions.PackageCompletion || continue
     end
-    try
-      push!(d, completion(mod, c))
-    catch err
-      continue
-    end
+    push!(comps, completion(mod, c, prefix))
   end
 
-  # completions from the local code block:
-  for c in localcompletions(text, lineNumber, column)
-    if (force || !isempty(pre)) && startswith(c[:text], pre)
-      pushfirst!(d, c)
-    end
-  end
-
-  d, pre
+  return comps
 end
 
-const MAX_COMPLETIONS = 500
-
-function completion(mod, c)
-  return Dict(:type               => completiontype(c),
-              :icon               => completionicon(c),
-              :rightLabel         => completionmodule(mod, c),
-              :leftLabel          => completionreturntype(c),
-              :text               => completiontext(c),
-              :description        => completionsummary(mod, c),
-              :descriptionMoreURL => completionurl(c))
-end
+completion(mod, c, prefix) = CompletionSuggetion(
+  :replacementPrefix  => prefix,
+  # suggestion body
+  :text               => completiontext(c),
+  :type               => completiontype(c),
+  :icon               => completionicon(c),
+  :rightLabel         => completionmodule(mod, c),
+  :leftLabel          => completionreturntype(c),
+  :descriptionMoreURL => completionurl(c),
+  # for `getSuggestionDetailsOnSelect` API
+  :detailtype         => completiondetailtype(c)
+)
 
 completiontext(c) = completion_text(c)
 completiontext(c::REPLCompletions.MethodCompletion) = begin
@@ -79,66 +108,16 @@ end
 completiontext(c::REPLCompletions.DictCompletion) = rstrip(completion_text(c), [']', '"'])
 completiontext(c::REPLCompletions.PathCompletion) = rstrip(completion_text(c), '"')
 
-using JuliaInterpreter: sparam_syms
-
 completionreturntype(c) = ""
-completionreturntype(c::REPLCompletions.MethodCompletion) = begin
-  m = c.method
-  atypes = m.sig
-  sparams = Core.svec(sparam_syms(m)...)
-  wa = Core.Compiler.Params(typemax(UInt))  # world age
-  inf = try
-    Core.Compiler.typeinf_type(m, atypes, sparams, wa)
-  catch err
-    nothing
-  end
-  inf in (nothing, Any, Union{}) && return ""
-  shortstr(inf)
-end
-completionreturntype(c::REPLCompletions.PropertyCompletion) =
+completionreturntype(c::REPLCompletions.PropertyCompletion) = begin
+  isdefined(c.value, c.property) || return ""
   shortstr(typeof(getproperty(c.value, c.property)))
+end
 completionreturntype(c::REPLCompletions.FieldCompletion) =
   shortstr(fieldtype(c.typ, c.field))
 completionreturntype(c::REPLCompletions.DictCompletion) =
   shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
-
-using Base.Docs
-
-completionsummary(mod, c) = ""
-completionsummary(mod, c::REPLCompletions.ModuleCompletion) = begin
-  m, word = c.parent, c.mod
-  cangetdocs(m, word) || return ""
-  docs = getdocs(m, word, mod)
-  description(docs)
-end
-completionsummary(mod, c::REPLCompletions.MethodCompletion) = begin
-  ct = Symbol(c.func)
-  cangetdocs(mod, ct) || return ""
-  docs = try
-    Docs.doc(Docs.Binding(mod, ct), Base.tuple_type_tail(c.method.sig))
-  catch err
-    ""
-  end
-  description(docs)
-end
-completionsummary(mod, c::REPLCompletions.KeywordCompletion) =
-  description(getdocs(mod, c.keyword))
-
-using Markdown
-
-description(docs) = ""
-description(docs::Markdown.MD) = begin
-  md = CodeTools.flatten(docs).content
-  for part in md
-    if part isa Markdown.Paragraph
-      desc = Markdown.plain(part)
-      occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, 200)
-    end
-  end
-  return ""
-end
 
 completionurl(c) = ""
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
@@ -187,25 +166,100 @@ end
 completionicon(::REPLCompletions.DictCompletion) = "icon-key"
 completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 
-function localcompletions(text, line, col)
-  ls = locals(text, line, col)
-  reverse!(ls)
-  map(localcompletion, ls)
+completiondetailtype(c) = ""
+completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
+completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
+completiondetailtype(c::REPLCompletions.MethodCompletion) =
+  string(c.method.name) * "," * repr(hash(c.method)) # hash string to identify this method
+
+localcompletions(text, row, col, prefix) = localcompletion.(locals(text, row, col), prefix)
+localcompletion(l, prefix) = CompletionSuggetion(
+  :replacementPrefix  => prefix,
+  # suggestion body
+  :text               => l[:name],
+  :type               => l[:type] == "variable" ? "attribute" : l[:type],
+  :icon               => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
+  :rightLabel         => l[:root],
+  # for `getSuggestionDetailsOnSelect` API
+  :detailtype         => "", # shouldn't complete
+)
+
+### completion details on selection ###
+
+handle("completiondetail") do _comp
+  comp = Dict(Symbol(k) => v for (k, v) in _comp)
+  completiondetail!(comp)
+  return comp
 end
 
-function localcompletion(l)
-  return Dict(
-    :type        => l[:type] == "variable" ? "attribute" : l[:type],
-    :icon        => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
-    :rightLabel  => l[:root],
-    :leftLabel   => "",
-    :text        => l[:name],
-    :description => ""
-  )
+function completiondetail!(comp)
+  isempty(comp[:detailtype]) && return comp
+
+  if comp[:detailtype] == "module"
+    completiondetail_module!(comp)
+  elseif comp[:detailtype] == "keyword"
+    completiondetail_keyword!(comp)
+  else # detail for method completion
+    completiondetail_method!(comp)
+  end
+
+  comp[:detailtype] = ""
 end
 
-handle("cacheCompletions") do mod
-  # m = getthing(mod)
-  # m = isa(m, Module) ? m : Main
-  # CodeTools.completions(m)
+function completiondetail_module!(comp)
+  mod = getmodule(comp[:rightLabel])
+  word = comp[:text]
+  cangetdocs(mod, word) || return
+  comp[:description] = completiondescription(getdocs(mod, word))
+end
+
+function completiondetail_keyword!(comp)
+  comp[:description] = completiondescription(getdocs(Main, comp[:text]))
+end
+
+using JuliaInterpreter: sparam_syms
+using Base.Docs
+
+function completiondetail_method!(comp)
+  mod = getmodule(comp[:rightLabel])
+  fstr, fhash = split(comp[:detailtype], ',')
+  f = getfield′(mod, Symbol(fstr))
+  isundefined(f) && return
+  # HACK: reconstruct a Method object from its hash string
+  ms = collect(methods(f))
+  (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
+  m = ms[i]
+
+  sparams = Core.svec(sparam_syms(m)...)
+  wa = Core.Compiler.Params(typemax(UInt))  # world age
+  inf = try
+    Core.Compiler.typeinf_type(m, m.sig, sparams, wa)
+  catch err
+    nothing
+  end
+  comp[:leftLabel] = inf in (nothing, Any, Union{}) ? "" : shortstr(inf)
+
+  fsym = Symbol(f)
+  cangetdocs(mod, fsym) || return
+  docs = try
+    Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
+  catch err
+    ""
+  end
+  comp[:description] = completiondescription(docs)
+end
+
+using Markdown
+
+completiondescription(docs) = ""
+completiondescription(docs::Markdown.MD) = begin
+  md = CodeTools.flatten(docs).content
+  for part in md
+    if part isa Markdown.Paragraph
+      desc = Markdown.plain(part)
+      occursin("No documentation found.", desc) && return ""
+      return strlimit(desc, 200)
+    end
+  end
+  return ""
 end

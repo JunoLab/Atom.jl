@@ -187,13 +187,13 @@ getfield′(@nospecialize(object), name::Symbol, default = undefined) = isdefine
 getfield′(@nospecialize(object), name::AbstractString, default = undefined) = getfield′(object, Symbol(name), default)
 
 """
-    getmodule(mod::AbstractString)
-    getmodule(parent::Union{Nothing, Module}, mod::AbstractString)
-    getmodule(code::AbstractString, pos; filemod)
+    getmodule(mod::AbstractString)::Module
+    getmodule(parent::Union{Nothing, Module}, mod::AbstractString)::Module
+    getmodule(code::AbstractString, pos; filemod)::Module
 
 Calls `CodeTools.getmodule(args...)`, but returns `Main` instead of `nothing` in a fallback case.
 """
-getmodule(args...) = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
+getmodule(args...)::Module = (m = CodeTools.getmodule(args...)) === nothing ? Main : m
 
 """
     getmethods(mod::Module, word::AbstractString)
