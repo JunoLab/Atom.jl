@@ -5,7 +5,7 @@ handle("ping") do
 end
 
 handle("args") do args
-  if length((!isempty).(args)) == 0
+  if length(filter!(!isempty, args)) !== 0
     append!(Base.ARGS, args)
   end
 end
