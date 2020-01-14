@@ -48,6 +48,23 @@ end
     @test Atom.finddevpackages() isa AbstractDict
 end
 
+@testset "finding project file" begin
+    using Atom: find_project_file
+
+    # when exists
+    atomjl_project_file_path = joinpath′(atomjldir, "Project.toml")
+    @test atomjl_project_file_path == find_project_file(atomjldir)
+    @test atomjl_project_file_path == find_project_file(atomsrcdir)
+    @test atomjl_project_file_path == find_project_file(joinpath′(atomsrcdir, "debugger"))
+    @test atomjl_project_file_path == find_project_file(@__DIR__)
+    @test atomjl_project_file_path == find_project_file(joinpath′(@__DIR__, "fixtures"))
+
+    # when unexist
+    @test nothing === find_project_file("")
+    @test nothing === find_project_file("/home/user/foo/")
+    @test nothing === find_project_file("C:\\Users\\foo") # don't fail into infinite calls
+end
+
 # TODO: baselink, edit
 
 cd(old_pwd)

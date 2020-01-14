@@ -3,16 +3,17 @@ using Atom, Test, JSON, Logging, CSTParser, Example
 
 joinpath′(files...) = Atom.fullpath(joinpath(files...))
 
-atomjldir = joinpath′(@__DIR__, "..", "src")
-atommodfile = joinpath′(atomjldir, "Atom.jl")
-webiofile = joinpath′(atomjldir, "display", "webio.jl")
+atomjldir = joinpath′(@__DIR__, "..")
+atomsrcdir = joinpath′(atomjldir, "src")
+atomjlfile = joinpath′(atomsrcdir, "Atom.jl")
+webiofile = joinpath′(atomsrcdir, "display", "webio.jl")
 
 # files in `Atom` module (except files in its submodules)
 atommodfiles = let
     files = []
-    debuggerdir = joinpath′(atomjldir, "debugger")
-    profilerdir = joinpath′(atomjldir, "profiler")
-    for (d, ds, fs) in walkdir(atomjldir)
+    debuggerdir = joinpath′(atomsrcdir, "debugger")
+    profilerdir = joinpath′(atomsrcdir, "profiler")
+    for (d, ds, fs) in walkdir(atomsrcdir)
         # NOTE: update directories below when you create an new submodule
         # the 2 files below are in Atom module
         if d == debuggerdir
