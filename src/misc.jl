@@ -5,7 +5,9 @@ handle("ping") do
 end
 
 handle("args") do args
-  append!(ARGS, args)
+  if length((!isempty).(args)) == 0
+    append!(Base.ARGS, args)
+  end
 end
 
 handle("echo") do data
