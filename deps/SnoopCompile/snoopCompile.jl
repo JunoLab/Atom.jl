@@ -1,30 +1,28 @@
 using SnoopCompile
 
-# using runtests:
-# @snoopiBot "Atom"
 # using runtests except modules/goto
 ################################################################
 # disabling inlcude modules/goto
 a1 = "include(\"modules.jl\")"
 a2 = "include(\"goto.jl\")"
 
-file = open("test/runtests.jl","r")
-testText = Base.read(file, String)
-close(file)
+testText = Base.read("test/runtests.jl", String)
 testEdited = foldl(replace,
                      (
                       a1 => "#"*a1,
                       a2 => "#"*a2,
                      ),
                      init = testText)
-file = open("test/runtests.jl","w")
-Base.write(file, testEdited)
-close(file)
+Base.write("test/runtests.jl", testEdited)
 ################################################################
-@snoopiBot(BotConfig("Atom"))
+# botconfig = BotConfig("Atom", blacklist = [" "," "])
+botconfig = BotConfig("Atom")
+@snoopiBot botconfig
 ################################################################
-
 # enabling back inlcude modules/goto
-file = open("test/runtests.jl","w")
-Base.write(file, testText)
-close(file)
+Base.write("test/runtests.jl", testText)
+
+
+################################################################
+# using runtests:
+# @snoopiBot "Atom"
