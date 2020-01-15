@@ -21,6 +21,12 @@ end
 
 handle("activateProject") do dir
   hideprompt() do
+    Pkg.activate(dir)
+  end
+end
+
+handle("activateParentProject") do dir
+  hideprompt() do
     if (path = find_project_file(dir)) === nothing
       @warn "No project file found for `$dir`"
       return
