@@ -26,7 +26,7 @@ const plain_mimes = [
 
 const plotpane_mime = "application/prs.juno.plotpane+html"
 const jlpane_mime = "application/prs.juno.jlpane"
-
+using HTTP
 function displayinplotpane(x)
   # allow openening a new pane in Atom
   if showable("application/prs.juno.jlpane", x)
@@ -49,7 +49,7 @@ function displayinplotpane(x)
     try
       io = IOBuffer()
       show(plotpane_io_ctx(io), legacy_plotpane ? "application/juno+plotpane" : plotpane_mime, x)
-      str = String(take!(io))
+      str = HTTP.URIs.escapeuri(String(take!(io)))
       startswith(str, "data:") || (str = string("data:text/html,", str))
       @msg ploturl(str)
       return true
@@ -61,8 +61,13 @@ function displayinplotpane(x)
   if showable("image/svg+xml", x)
     try
       io = IOBuffer()
+
       # render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
-      @msg ploturl(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io))))
+      io = IOBuffer()
+      show(plotpane_io_ctx(io), "image/svg+xml", x)
+      str = HTTP.URIs.escapeuri(String(take!(io)))
+      startswith(str, "data:") || (str = string("data:image/svg+xml,", str))
+      @msg ploturl(str)
       return true
     catch err
       err isa MethodError && err.f == Base.show || rethrow(err)
