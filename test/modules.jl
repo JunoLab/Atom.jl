@@ -3,7 +3,7 @@
         using Atom: moduledefinition
 
         let (path, line) = moduledefinition(Atom)
-            @test path == atommodfile
+            @test path == atomjlfile
             @test line == 4
         end
         let (path, line) = moduledefinition(Junk)
@@ -34,7 +34,7 @@
         @test_broken junkpath == modulefiles(Junk)[1]
 
         ## CSTPraser-based module file detection
-        let included_files = normpath.(modulefiles("Atom", atommodfile))
+        let included_files = normpath.(modulefiles("Atom", atomjlfile))
             # finds all the files in Atom module except display/webio.jl
             for f in atommodfiles
                 f == webiofile && continue

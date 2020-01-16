@@ -75,7 +75,7 @@
 
         @testset "goto modules" begin
             let item = globalgotoitems("Atom", Main, nothing, "")[1] |> todict
-                @test item[:file] == joinpath′(atomjldir, "Atom.jl")
+                @test item[:file] == joinpath′(atomsrcdir, "Atom.jl")
                 @test item[:line] == 3
             end
             let item = globalgotoitems("SubJunk", Junk, nothing, "")[1] |> todict
@@ -86,7 +86,7 @@
 
         @testset "goto toplevel symbols" begin
             ## where Revise approach works, i.e.: precompiled modules
-            let path = joinpath′(atomjldir, "comm.jl")
+            let path = joinpath′(atomsrcdir, "comm.jl")
                 mod = Atom
                 key = "Atom"
                 word = "handlers"
@@ -170,12 +170,12 @@
             let path = joinpath′(@__DIR__, "runtests.jl")
                 text = read(path, String)
                 mod = Main
-                word = "atomjldir"
+                word = "atomsrcdir"
 
                 items = toplevelgotoitems(word, mod, path, text) .|> todict
                 @test !isempty(items)
                 @test items[1][:file] == path
-                @test items[1][:line] == 5
+                @test items[1][:line] == 6
                 @test items[1][:text] == word
             end
 

@@ -69,14 +69,13 @@ function finddevpackages()
   sort(devpkgs)
 end
 
-function basepath(file)
-  srcdir = joinpath(Sys.BINDIR,"..","..","base")
-  releasedir = joinpath(Sys.BINDIR,"..","share","julia","base")
-  normpath(joinpath(isdir(srcdir) ? srcdir : releasedir, file))
-end
+const SRC_DIR = joinpath(Sys.BINDIR,"..","..","base")
+const RELEASE_DIR = joinpath(Sys.BINDIR,"..","share","julia","base")
+basepath(file) =
+  normpath(joinpath((@static isdir(SRC_DIR) ? SRC_DIR : RELEASE_DIR), file))
 
 fullpath(path) =
-  (isuntitled(path) || isabspath(path) ? path : basepath(path)) |> realpath′
+  realpath′(isuntitled(path) || isabspath(path) ? path : basepath(path))
 
 function pkgpath(path)
   m = match(r"((?:[^/\\]+[/\\]){2}src[/\\].*)$", path)
