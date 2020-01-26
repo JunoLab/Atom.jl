@@ -15,8 +15,7 @@ testEdited = foldl(replace,
                      init = testText)
 Base.write("test/runtests.jl", testEdited)
 ################################################################
-# BotConfig("Atom", blacklist = [" "," "])
-@snoopiBot BotConfig("Atom")
+@snoopiBot BotConfig("Atom", blacklist = ["realpath′","modulefiles"])
 ################################################################
 # enabling back inlcude modules/goto
 Base.write("test/runtests.jl", testText)
