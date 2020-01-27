@@ -15,7 +15,7 @@ atommodfiles = let
     files = []
     debuggerdir = joinpath′(atomsrcdir, "debugger")
     profilerdir = joinpath′(atomsrcdir, "profiler")
-    precompileDeactivated = !isnothing(match(r"\#(.?)include\(\"\.\.\/deps\/SnoopCompile\/precompile\/precompile_Atom\.jl\"\)", Base.read(atomjlfile, String)))
+    precompileDeactivated = match(r"\#(.?)include\(\"\.\.\/deps\/SnoopCompile\/precompile\/precompile_Atom\.jl\"\)", Base.read(atomjlfile, String)) !== nothing
     precompiledir = joinpath′(atomjldir, "deps", "SnoopCompile","precompile")
 
     if !precompileDeactivated
