@@ -21,7 +21,11 @@ function tojson(node::FlameGraphs.Node)
   )
 end
 
-profiler(data = Profile.fetch() ;kwargs...) = @msg profile(tojson(FlameGraphs.flamegraph(data ;kwargs...)))
+function profiler(data = Profile.fetch() ;kwargs...)
+  graph = FlameGraphs.flamegraph(data ;kwargs...)
+  graph === nothing && return
+  @msg profile(tojson(graph))
+end
 
 handle("loadProfileTrace") do path
   if path === nothing
