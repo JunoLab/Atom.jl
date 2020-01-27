@@ -6,10 +6,11 @@ import ..Atom:  expandpath, @msg, handle
 
 function tojson(node::FlameGraphs.Node)
   name, path = expandpath(string(node.data.sf.file))
-  classes = [
-    node.data.status & 0x01 ≠ 0 ? "isdispatch" : "",
-    node.data.status & 0x02 ≠ 0 ? "isgc" : ""
-  ]
+  classes = []
+
+  node.data.status & 0x01 ≠ 0 && push!(classes, "isdispatch")
+  node.data.status & 0x02 ≠ 0 && push!(classes, "isgc")
+  
   Dict(
     :path => path,
     :location => name,
