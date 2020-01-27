@@ -1,6 +1,6 @@
 using SnoopCompile
 
-@snoopiBot BotConfig("Atom", blacklist = ["realpath′"])
+@snoopiBot BotConfig("Atom", blacklist = ["realpath′","restart_copyto_nonleaf!","allocatedinline"])
 
 
 # template for exlcuding tests files from precompilation (kept for the record)
