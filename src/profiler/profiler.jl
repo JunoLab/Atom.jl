@@ -8,8 +8,8 @@ function tojson(node::FlameGraphs.Node, root = false)
   name, path = expandpath(string(node.data.sf.file))
   classes = []
 
-  node.data.status & 0x01 ≠ 0 && push!(classes, "isdispatch")
-  node.data.status & 0x02 ≠ 0 && push!(classes, "isgc")
+  node.data.status & 0x01 ≠ 0 && push!(classes, "dynamic-dispatch")
+  node.data.status & 0x02 ≠ 0 && push!(classes, "garbage-collection")
 
   Dict(
     :path => path,
