@@ -1,73 +1,89 @@
 module Profiler
 
-using Profile, JSON
+using Profile, JSON, FlameGraphs
 
-using JSON
-using Lazy, Juno, Hiccup
-import Juno: Row, LazyTree, SubTree, icon
-import ..Atom: baselink, cliptrace, expandpath, @msg, handle
-using Base.StackTraces
+import ..Atom:  expandpath, @msg, handle
 
-include("tree.jl")
+function tojson(node::FlameGraphs.Node, root = false)
+  name, path = expandpath(string(node.data.sf.file))
+  classes = []
 
-function traces()
-  traces, stacks = Profile.flatten(Profile.retrieve()...)
-  @>>(split(traces, 0, keep = false),
-      map(trace -> @>> trace map(x->stacks[x]) reverse),
-      map(trace -> filter(x->!x.from_c, trace)),
-      filter(x->!isempty(x)))
+  node.data.status & 0x01 ≠ 0 && push!(classes, "dynamic-dispatch")
+  node.data.status & 0x02 ≠ 0 && push!(classes, "garbage-collection")
+
+  Dict(
+    :path => path,
+    :location => name,
+    :func => node.data.sf.func,
+    :line => node.data.sf.line,
+    :count => root ? sum(length(c.data.span) for c in node) : length(node.data.span),
+    :classes => classes,
+    :children => [tojson(c) for c in node]
+  )
 end
 
-const NULLFRAME = StackFrame(Symbol(""), Symbol(""), -1)
-
-struct ProfileFrame
-  frame::StackFrame
-  count::Int
+function profiler(data = Profile.fetch() ;kwargs...)
+  graph = FlameGraphs.flamegraph(data ;kwargs...)
+  graph === nothing && return
+  pruneinternal!(graph)
+  prunetask!(graph)
+  @msg profile(tojson(graph, true))
 end
 
-ProfileFrame(frame::StackFrame) = ProfileFrame(frame, 1)
-
-const ProfileTree = Tree{ProfileFrame}
-
-tobranch(trace::StackTrace) = Tree(ProfileFrame(NULLFRAME), [branch(ProfileFrame.(trace))])
-
-mergetrace!(a, b) = merge!(a, b,
-                           (==) = (a, b) -> a.frame == b.frame,
-                           merge = (a, b) -> ProfileFrame(a.frame, a.count + b.count))
-
-rawtree()::ProfileTree = reduce(mergetrace!, tobranch.(traces()))
-
-function cleantree(tree::ProfileTree)
-  postwalk(tree) do x
-    length(x.children) == 1 ? Tree(x.head, x.children[1].children) : x
+function prunetask!(node)
+  for c in node
+    if (
+          (
+            c.data.sf.func == :task_done_hook &&
+            endswith(string(c.data.sf.file), "task.jl")
+          ) ||
+          (
+            # REPL
+            c.data.sf.func == :eval &&
+            FlameGraphs.isleaf(c) &&
+            endswith(string(c.data.sf.file), "boot.jl")
+          )
+       )
+      FlameGraphs.prunebranch!(c)
+    end
   end
 end
 
-tree() = isempty(Profile.fetch()) ? error("No profile data") : cleantree(rawtree())
+function pruneinternal!(node)
+  for c in node
+    if (
+        (
+          # REPL evaluation
+          c.data.sf.func == :eval &&
+          c.parent.data.sf.func == :repleval &&
+          endswith(string(c.parent.data.sf.file), "repl.jl")
+        ) ||
+        (
+          # inline evaluation
+          c.data.sf.func == :include_string &&
+          c.parent.data.sf.func == :include_string &&
+          endswith(string(c.parent.parent.data.sf.file), "eval.jl")
+        )
+       )
 
-head(s::StackFrame) =
-  Row(span(".syntax--support.syntax--function", string(s.func)),
-      text" at ",
-      baselink(string(s.file), s.line))
-
-@render Juno.Inline prof::ProfileTree begin
-  h = prof.head.frame == NULLFRAME ?
-    icon("history") :
-    Row(prof.head.count, text" ", head(prof.head.frame))
-  isempty(prof.children) ? SubTree(h, text"") : LazyTree(h, ()->prof.children)
+      # Add children directly to the root node
+      root = node
+      replchild = c
+      while !FlameGraphs.isroot(root)
+          root = root.parent
+          replchild = replchild.parent
+      end
+      FlameGraphs.graftchildren!(root, c)
+      # Eliminate all nodes in between. This might include some that don't
+      # call REPL code, but as this is also internal it seems OK.
+      FlameGraphs.prunebranch!(replchild)
+      return true
+    else
+      pruneinternal!(c) && return true
+    end
+  end
+  return false
 end
-
-function tojson(prof::ProfileTree)
-  name, path = expandpath(string(prof.head.frame.file))
-  Dict(:path => path,
-       :location => name,
-       :func => prof.head.frame.func,
-       :line => prof.head.frame.line,
-       :count => prof.head.count,
-       :children => map(tojson, prof.children))
-end
-
-profiler() = @msg profile(tojson(tree()))
 
 handle("loadProfileTrace") do path
   if path === nothing
