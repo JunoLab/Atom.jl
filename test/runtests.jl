@@ -8,11 +8,20 @@ atomsrcdir = joinpath′(atomjldir, "src")
 atomjlfile = joinpath′(atomsrcdir, "Atom.jl")
 webiofile = joinpath′(atomsrcdir, "display", "webio.jl")
 
+
+
 # files in `Atom` module (except files in its submodules)
 atommodfiles = let
     files = []
     debuggerdir = joinpath′(atomsrcdir, "debugger")
     profilerdir = joinpath′(atomsrcdir, "profiler")
+    precompileDeactivated = match(r"\#(.?)include\(\"\.\.\/deps\/SnoopCompile\/precompile\/precompile_Atom\.jl\"\)", Base.read(atomjlfile, String)) !== nothing
+    precompiledir = joinpath′(atomjldir, "deps", "SnoopCompile","precompile")
+
+    if !precompileDeactivated
+        push!(files, joinpath′(precompiledir, "precompile_Atom.jl"))
+    end
+
     for (d, ds, fs) in walkdir(atomsrcdir)
         # NOTE: update directories below when you create an new submodule
         # the 2 files below are in Atom module
@@ -25,6 +34,7 @@ atommodfiles = let
             push!(files, joinpath′(d, "traceur.jl"))
             continue
         end
+
         for f in fs
             # NOTE: currently both Revise-like and CSTPraser-based approach fails
             # to detect display/webio.jl as a file in Atom module
