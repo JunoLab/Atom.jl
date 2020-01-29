@@ -17,21 +17,25 @@
     end
 
     @testset "find module files" begin
-        using Atom: modulefiles
+        using Atom: modulefiles, use_compiled_modules
 
-        ## Revise-like module file detection
-        # works for precompiled packages
-        let (parentfile, included_files) = modulefiles(Atom)
-            expected = Set(atommodfiles)
-            actual = Set((parentfile, included_files...))
-            @test actual == expected
+        if use_compiled_modules()
+            ## Revise-like module file detection
+            # works for precompiled packages
+            let (parentfile, included_files) = modulefiles(Atom)
+                expected = Set(atommodfiles)
+                actual = Set((parentfile, included_files...))
+                @test actual == expected
 
-            # can't detect display/webio.jl
-            @test_broken webiofile in modfiles
+                # can't detect display/webio.jl
+                @test_broken webiofile in modfiles
+            end
+
+            # fails for non-precompiled packages
+            @test_broken junkpath == modulefiles(Junk)[1]
+        else
+            @warn "skipped Revise-like module file detection test (precompiled modules are currently not used)"
         end
-
-        # fails for non-precompiled packages
-        @test_broken junkpath == modulefiles(Junk)[1]
 
         ## CSTPraser-based module file detection
         let included_files = normpath.(modulefiles("Atom", atomjlfile))

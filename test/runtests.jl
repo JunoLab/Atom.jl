@@ -15,12 +15,6 @@ atommodfiles = let
     files = []
     debuggerdir = joinpath′(atomsrcdir, "debugger")
     profilerdir = joinpath′(atomsrcdir, "profiler")
-    precompileDeactivated = match(r"\#(.?)include\(\"\.\.\/deps\/SnoopCompile\/precompile\/precompile_Atom\.jl\"\)", Base.read(atomjlfile, String)) !== nothing
-    precompiledir = joinpath′(atomjldir, "deps", "SnoopCompile","precompile")
-
-    if !precompileDeactivated
-        push!(files, joinpath′(precompiledir, "precompile_Atom.jl"))
-    end
 
     for (d, ds, fs) in walkdir(atomsrcdir)
         # NOTE: update directories below when you create an new submodule
@@ -44,6 +38,12 @@ atommodfiles = let
             endswith(f, ".jl") && push!(files, joinpath′(d, f))
         end
     end
+
+    # precompilation file
+    if !occursin("# include(\"../deps/SnoopCompile/precompile/precompile_Atom.jl\")", Base.read(atomjlfile, String))
+        push!(files, joinpath′(atomjldir, "deps", "SnoopCompile", "precompile"))
+    end
+
     files
 end
 
