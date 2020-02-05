@@ -1,10 +1,10 @@
 using SnoopCompile
 
 println("load infer benchmark:")
-@snoopiBench "Atom" begin
+@snoopi_bench "Atom" begin
     using Atom
 end
 
 
 println("Examples/Tests infer benchmark")
-@snoopiBench "Atom"
+@snoopi_bench "Atom"

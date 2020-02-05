@@ -1,6 +1,6 @@
 using SnoopCompile
 
-@snoopiBot BotConfig("Atom", blacklist = ["realpath′","restart_copyto_nonleaf!","allocatedinline"])
+@snoopi_bot BotConfig("Atom", blacklist = ["realpath′","restart_copyto_nonleaf!","allocatedinline"])
 
 
 # template for exlcuding tests files from precompilation (kept for the record)
@@ -17,10 +17,10 @@ using SnoopCompile
 #                      init = testText)
 # Base.write("test/runtests.jl", testEdited)
 ################################################################
-# @snoopiBot BotConfig("Atom", blacklist = ["realpath′"])
+# @snoopi_bot BotConfig("Atom", blacklist = ["realpath′"])
 ################################################################
 # enabling back inlcude goto
 # Base.write("test/runtests.jl", testText)
 ################################################################
 # using runtests:
-# @snoopiBot "Atom"
+# @snoopi_bot "Atom"
