@@ -16,6 +16,12 @@ atommodfiles = let
     debuggerdir = joinpath′(atomsrcdir, "debugger")
     profilerdir = joinpath′(atomsrcdir, "profiler")
 
+    # precompilation file
+    if match(r"\#(.?)include\(\"\.\.\/deps\/SnoopCompile\/precompile\/precompile_Atom\.jl\"\)", Base.read(atomjlfile, String)) === nothing
+        println("precompile file is added to `files` because precompilation is active now.")
+        push!(files, joinpath′(atomjldir, "deps", "SnoopCompile", "precompile","precompile_Atom.jl"))
+    end
+
     for (d, ds, fs) in walkdir(atomsrcdir)
         # NOTE: update directories below when you create an new submodule
         # the 2 files below are in Atom module
@@ -37,11 +43,6 @@ atommodfiles = let
             # .jl check is needed for travis, who creates hoge.cov files
             endswith(f, ".jl") && push!(files, joinpath′(d, f))
         end
-    end
-
-    # precompilation file
-    if !occursin("# include(\"../deps/SnoopCompile/precompile/precompile_Atom.jl\")", Base.read(atomjlfile, String))
-        push!(files, joinpath′(atomjldir, "deps", "SnoopCompile", "precompile"))
     end
 
     files
