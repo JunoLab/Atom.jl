@@ -1,5 +1,5 @@
 @testset "outline" begin
-    outline(text) = Atom.outline(Atom.toplevelitems(text))
+    outline(text) = Atom.todict.(Atom.outline(Atom.toplevelitems(text)))
 
     let str = """
         module Foo
