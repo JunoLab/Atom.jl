@@ -38,7 +38,8 @@ todict(item::OutlineItem) = Dict(
     :name  => item.name,
     :type  => item.type,
     :icon  => item.icon,
-    :lines => [item.start, item.stop]
+    :start => item.start,
+    :stop  => item.stop
 )
 
 outline(items)::Vector{OutlineItem} = filter!(item -> item !== nothing, outlineitem.(items))
