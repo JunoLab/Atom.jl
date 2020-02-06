@@ -199,12 +199,14 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, paths::Vector{Strin
     pathitemsmap[path] = GotoItem.(path, items)
   end
 
-  pathitemsmap
+  return pathitemsmap
 end
 
 # module-walk based on CSTParser, looking for toplevel `included` calls
 function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
-  isfile′(entrypath) || return
+  isfile′(entrypath) || return pathitemsmap
+  # escape recursive `include` loops
+  entrypath in keys(pathitemsmap) && return pathitemsmap
   text = read(entrypath, String)
   __collecttoplevelitems(mod, entrypath, text, pathitemsmap; inmod = inmod)
 end
@@ -226,7 +228,7 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, 
     end
   end
 
-  pathitemsmap
+  return pathitemsmap
 end
 
 GotoItem(path::String, item::ToplevelItem) = GotoItem("", path) # fallback case

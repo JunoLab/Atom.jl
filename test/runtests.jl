@@ -47,8 +47,9 @@ atommodfiles = let
 end
 
 # mock modules
-junkpath = joinpath′(@__DIR__, "fixtures", "Junk.jl")
-subjunkspath = joinpath′(@__DIR__, "fixtures", "SubJunks.jl")
+fixturedir = joinpath′(@__DIR__, "fixtures")
+junkpath = joinpath′(fixturedir, "Junk.jl")
+subjunkspath = joinpath′(fixturedir, "SubJunks.jl")
 include(junkpath)
 
 # basics

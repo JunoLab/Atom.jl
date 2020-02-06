@@ -151,6 +151,12 @@
                 end
             end
 
+            ## escape recursive `include` loop
+            let
+                @test (Atom.__collecttoplevelitems(nothing, joinpath′(fixturedir, "self_recur.jl"); inmod = true); true)
+                @test (Atom.__collecttoplevelitems(nothing, joinpath′(fixturedir, "mutual_recur.jl"); inmod = true); true)
+            end
+
             ## don't include bindings outside of a module
             let path = subjunkspath
                 text = read(subjunkspath, String)

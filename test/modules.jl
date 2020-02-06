@@ -19,8 +19,9 @@
     @testset "find module files" begin
         using Atom: modulefiles, use_compiled_modules
 
+        ## Revise-like module file detection
+        # NOTE: only test when using compiled modules
         if use_compiled_modules()
-            ## Revise-like module file detection
             # works for precompiled packages
             let (parentfile, included_files) = modulefiles(Atom)
                 expected = Set(atommodfiles)
@@ -38,6 +39,7 @@
         end
 
         ## CSTPraser-based module file detection
+        # basic
         let included_files = normpath.(modulefiles("Atom", atomjlfile))
             # finds all the files in Atom module except display/webio.jl
             for f in atommodfiles
@@ -51,5 +53,9 @@
             # can't look for non-toplevel `include` calls
             @test_broken webiofile in included_files
         end
+
+        # safety checks for recursive `include`s
+        @test (modulefiles("Main", joinpath′(fixturedir, "self_recur.jl"); inmod = true); true)
+        @test (modulefiles("Main", joinpath′(fixturedir, "mutual_recur.jl"); inmod = true); true)
     end
 end
