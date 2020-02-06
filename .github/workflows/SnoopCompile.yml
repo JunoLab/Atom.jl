@@ -3,13 +3,12 @@ name: SnoopCompile
 on:
   - push
 
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: ['nightly']
+        julia-version: ['1.4.0-rc1']
         julia-arch: [x64]
         os: [ubuntu-latest]
     steps:
@@ -20,13 +19,13 @@ jobs:
       - name: Install dependencies
         run: julia --project -e 'using Pkg; Pkg.instantiate();'
       - name : Add SnoopCompile and current package
-        run: julia -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/timholy/SnoopCompile.jl", rev ="master")); Pkg.develop(PackageSpec(; path=pwd()));'
+        run: julia -e 'using Pkg; Pkg.add("SnoopCompile"); Pkg.develop(PackageSpec(; path=pwd()));'
       - name: Install Test dependencies
         run: julia -e 'using SnoopCompile; SnoopCompile.addtestdep()'
       - name: Generating precompile files
-        run: julia --project=@. -e 'include("deps/SnoopCompile/snoopCompile.jl")'
+        run: julia --project=@. -e 'include("deps/SnoopCompile/compile.jl")'
       - name: Running Benchmark
-        run: julia --project=@. -e 'include("deps/SnoopCompile/snoopBenchmark.jl")'
+        run: julia --project=@. -e 'include("deps/SnoopCompile/benchmark.jl")'
 
       # https://github.com/marketplace/actions/create-pull-request
       - name: Create Pull Request
