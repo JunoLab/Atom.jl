@@ -8,8 +8,6 @@ atomsrcdir = joinpath′(atomjldir, "src")
 atomjlfile = joinpath′(atomsrcdir, "Atom.jl")
 webiofile = joinpath′(atomsrcdir, "display", "webio.jl")
 
-
-
 # files in `Atom` module (except files in its submodules)
 atommodfiles = let
     files = []
@@ -40,9 +38,10 @@ atommodfiles = let
     end
 
     # precompilation file
-    if !occursin("# include(\"../deps/SnoopCompile/precompile/precompile_Atom.jl\")", Base.read(atomjlfile, String))
-        push!(files, joinpath′(atomjldir, "deps", "SnoopCompile", "precompile"))
-    end
+    pl = "../deps/SnoopCompile/precompile/precompile_Atom.jl"
+    ls = filter!(l -> occursin("include(\"$pl\")", l), readlines(atomjlfile))
+    @assert length(ls) === 1
+    startswith(ls[1], '#') || push!(files, joinpath′(atomsrcdir, splitpath(pl)...))
 
     files
 end
