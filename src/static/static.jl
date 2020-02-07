@@ -51,6 +51,12 @@ function isinclude(expr::CSTParser.EXPR)
         endswith(expr.args[3].val, ".jl")
 end
 
+function isprecompile(expr::CSTParser.EXPR)
+    iscallexpr(expr) &&
+        length(expr) >= 1 &&
+        expr.args[1].val == "__precompile__"
+end
+
 function isdoc(expr::CSTParser.EXPR)
     ismacrocall(expr) &&
         length(expr) >= 1 &&

@@ -53,10 +53,13 @@ outlineitem(binding::ToplevelBinding) = begin
 end
 outlineitem(call::ToplevelCall) = begin
     # show includes
-    if isinclude(call.expr)
-        return OutlineItem(call.str, "module", "icon-file-code", call)
+    return if isinclude(call.expr)
+        OutlineItem(call.str, "module", "icon-file-code", call)
+    elseif isprecompile(call.expr)
+        OutlineItem(call.str, "module", "icon-file-binary", call)
+    else
+        nothing
     end
-    nothing
 end
 outlineitem(macrocall::ToplevelMacroCall) = begin
     # don't show doc strings
