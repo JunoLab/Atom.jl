@@ -1,6 +1,8 @@
 @testset "outline" begin
+    using Atom: OutlineItem
     outline(text) = Atom.outline(Atom.toplevelitems(text))
 
+    # basic
     let str = """
         module Foo
         foo(x) = x
@@ -11,33 +13,59 @@
         end
         """
         let os = Set(outline(str))
-            for o ∈ [
+            for o in [
+                    OutlineItem("Foo", "module", "icon-package", 1, 7)
+                    OutlineItem("foo(x)", "function", "λ", 2, 2)
+                    OutlineItem("bar(x::Int)", "function", "λ", 3, 5)
+                    OutlineItem("sss", "constant", "c", 6, 6)
+                ]
+                @test o in os
+            end
+        end
+    end
+
+    # todict check
+    let str = """
+        module Foo
+        foo(x) = x
+        function bar(x::Int)
+            2x
+        end
+        const sss = 3
+        end
+        """
+        let os = Set(Atom.todict.(outline(str)))
+            for o in [
                     Dict(
                         :type => "module",
                         :name => "Foo",
                         :icon => "icon-package",
-                        :lines => [1, 7],
+                        :start => 1,
+                        :stop => 7
                     )
                     Dict(
                         :type => "function",
                         :name => "foo(x)",
                         :icon => "λ",
-                        :lines => [2, 2],
+                        :start => 2,
+                        :stop => 2
                     )
                     Dict(
                         :type => "function",
                         :name => "bar(x::Int)",
                         :icon => "λ",
-                        :lines => [3, 5],
+                        :start => 3,
+                        :stop => 5
                     )
                     Dict(
                         :type => "constant",
                         :name => "sss",
                         :icon => "c",
-                        :lines => [6, 6],
+                        :start => 6,
+                        :stop => 6
                     )
                 ]
-                @test o ∈ os
+                @test o in os
             end
         end
     end
@@ -51,27 +79,12 @@
         const bar = (asd=3, bsd=4)
         """
         let os = Set(outline(str))
-            for o ∈ [
-                    Dict(
-                        :type => "function",
-                        :name => "bar(foo = 3)",
-                        :icon => "λ",
-                        :lines => [1, 3],
-                    )
-                    Dict(
-                        :type => "constant",
-                        :name => "foo",
-                        :icon => "c",
-                        :lines => [4, 4],
-                    )
-                    Dict(
-                        :type => "constant",
-                        :name => "bar",
-                        :icon => "c",
-                        :lines => [5, 5],
-                    )
+            for o in [
+                    OutlineItem("bar(foo = 3)", "function", "λ", 1, 3)
+                    OutlineItem("foo", "constant", "c", 4, 4)
+                    OutlineItem("bar", "constant", "c", 5, 5)
                 ]
-                @test o ∈ os
+                @test o in os
             end
         end
     end
@@ -83,39 +96,14 @@
         const c1, c2 = tuple # static constantness checks
         """
         let os = Set(outline(str))
-            for o ∈ [
-                    Dict(
-                        :type => "variable",
-                        :name => "tuple",
-                        :icon => "v",
-                        :lines => [1, 1],
-                    ),
-                    Dict(
-                        :type => "variable",
-                        :name => "a",
-                        :icon => "v",
-                        :lines => [2, 2],
-                    ),
-                    Dict(
-                        :type => "variable",
-                        :name => "b",
-                        :icon => "v",
-                        :lines => [2, 2],
-                    ),
-                    Dict(
-                        :type => "constant",
-                        :name => "c1",
-                        :icon => "c",
-                        :lines => [3, 3],
-                    ),
-                    Dict(
-                        :type => "constant",
-                        :name => "c2",
-                        :icon => "c",
-                        :lines => [3, 3],
-                    )
+            for o in [
+                    OutlineItem("tuple", "variable", "v", 1, 1)
+                    OutlineItem("a", "variable", "v", 2, 2)
+                    OutlineItem("b", "variable", "v", 2, 2)
+                    OutlineItem("c1", "constant", "c", 3, 3)
+                    OutlineItem("c2", "constant", "c", 3, 3)
                 ]
-                @test o ∈ os
+                @test o in os
             end
         end
     end
@@ -128,7 +116,7 @@
             val = nothing
         end
         """
-        let names = Set(map(d -> d[:name], outline(str)))
+        let names = Set(map(d -> d.name, outline(str)))
             @test length(names) === 2
             @test names == Set(("ex", "q"))
         end
@@ -140,7 +128,7 @@
         withchar(char = 'c') = char
         withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2) = defarg * kwarg
         """
-        topbinds = map(b -> b[:name], outline(str))
+        topbinds = map(b -> b.name, outline(str))
         @test topbinds[1] == "withstrings(single = \"1\", triple = \"\"\"3\"\"\")"
         @test topbinds[2] == "withchar(char = 'c')"
         @test topbinds[3] == "withkwarg(arg, defarg = 0; kwarg1 = 1, kwarg2 = 2)"
@@ -165,12 +153,14 @@
         items = outline(str)
         @test length(items) === 2
         @test filter(items) do item
-            item[:name] == "withdocmacro()" &&
-            item[:lines] == [6, 6]
+            item.name == "withdocmacro()" &&
+            item.start === 6 &&
+            item.stop === 6
         end |> !isempty
         @test filter(items) do item
-            item[:name] == "withdocstring" &&
-            item[:lines] == [13, 13]
+            item.name == "withdocstring" &&
+            item.start === 13 &&
+            item.stop === 13
         end |> !isempty
     end
 
@@ -191,19 +181,19 @@
 
         @test !isempty(calls)
         let call = calls[1] # single line
-            @test call[:name] == "@generate f(x) = x"
-            @test call[:type] == "snippet"
-            @test call[:icon] == "icon-mention"
+            @test call.name == "@generate f(x) = x"
+            @test call.type == "snippet"
+            @test call.icon == "icon-mention"
         end
         let call = calls[2] # multiple lines
-            @test call[:name] == "@render i::Inline x::Complex begin" # just shows the first line
-            @test call[:type] == "snippet"
-            @test call[:icon] == "icon-mention"
+            @test call.name == "@render i::Inline x::Complex begin" # just shows the first line
+            @test call.type == "snippet"
+            @test call.icon == "icon-mention"
         end
         let call = calls[3] # no argument
-            @test call[:name] == "@nospecialize"
-            @test call[:type] == "snippet"
-            @test call[:icon] == "icon-mention"
+            @test call.name == "@nospecialize"
+            @test call.type == "snippet"
+            @test call.icon == "icon-mention"
         end
     end
 
@@ -215,9 +205,9 @@
         items = outline(str)
         @test length(items) == 2
         let call = items[1]
-            @test call[:type] == "module"
-            @test call[:name] == "include(\"test.jl\")"
-            @test call[:icon] == "icon-file-code"
+            @test call.type == "module"
+            @test call.name == "include(\"test.jl\")"
+            @test call.icon == "icon-file-code"
         end
     end
 
@@ -234,28 +224,32 @@
         items = outline(str)
         @test length(items) === 6
         let usage = items[2]
-            @test usage[:type] == "mixin"
-            @test usage[:name] == "using Atom"
-            @test usage[:icon] == "icon-package"
-            @test usage[:lines] == [2, 2]
+            @test usage.type == "mixin"
+            @test usage.name == "using Atom"
+            @test usage.icon == "icon-package"
+            @test usage.start === 2
+            @test usage.stop === 2
         end
         let usage = items[3]
-            @test usage[:type] == "mixin"
-            @test usage[:name] == "using Atom: SYMBOLSCACHE"
-            @test usage[:icon] == "icon-package"
-            @test usage[:lines] == [3, 3]
+            @test usage.type == "mixin"
+            @test usage.name == "using Atom: SYMBOLSCACHE"
+            @test usage.icon == "icon-package"
+            @test usage.start === 3
+            @test usage.stop === 3
         end
         let usage = items[4]
-            @test usage[:type] == "mixin"
-            @test usage[:name] == "import Base: iterate"
-            @test usage[:icon] == "icon-package"
-            @test usage[:lines] == [4, 4]
+            @test usage.type == "mixin"
+            @test usage.name == "import Base: iterate"
+            @test usage.icon == "icon-package"
+            @test usage.start === 4
+            @test usage.stop === 4
         end
         let usage = items[5]
-            @test usage[:type] == "mixin"
-            @test usage[:name] == "export mock"
-            @test usage[:icon] == "icon-package"
-            @test usage[:lines] == [5, 5]
+            @test usage.type == "mixin"
+            @test usage.name == "export mock"
+            @test usage.icon == "icon-package"
+            @test usage.start === 5
+            @test usage.stop === 5
         end
     end
 end

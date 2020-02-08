@@ -23,6 +23,12 @@ function isinclude(expr::EXPR)
         endswith(filename, ".jl")
 end
 
+function isprecompile(expr::EXPR)
+    iscallexpr(expr) &&
+        length(expr) >= 1 &&
+        valof(expr.args[1]) == "__precompile__"
+end
+
 function isdoc(expr::EXPR)
     ismacrocall(expr) &&
         length(expr) >= 1 &&
