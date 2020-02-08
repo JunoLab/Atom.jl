@@ -17,7 +17,7 @@
               end                                                              # L11
             end                                                                # L12
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> todict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1] |> todict
 
             let item = localgotoitem("row", 2)
                 @test item[:line] === 0
@@ -37,7 +37,7 @@
                 return val
             end
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", Inf, line + 1, 0, str)[1] |> todict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1] |> todict
 
             @test localgotoitem("expr.args", 1)[:line] === 0
             @test localgotoitem("bind.val", 2)[:line] === 1

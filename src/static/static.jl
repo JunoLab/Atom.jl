@@ -1,90 +1,58 @@
 using CSTParser
-using CSTParser: bindingof
+using CSTParser.Tokens
+using CSTParser: EXPR, typof, kindof, valof, parentof
 
-#=
-utilities
-=#
+# meta information
+# ----------------
 
-# scope
-# -----
-
-function scopeof(expr::CSTParser.EXPR)
-    scope = CSTParser.scopeof(expr)
-    if scope !== nothing
-        return scope
-    else
-        if expr.typ == CSTParser.Call && expr.parent !== nothing && scopeof(expr.parent) == nothing
-            return :call
-        end
-
-        if expr.typ == CSTParser.TupleH && expr.parent !== nothing && scopeof(expr.parent) == nothing
-            return :tupleh
-        end
-
-        if iswhereclause(expr)
-            return :where
-        end
-
-        if expr.typ == CSTParser.MacroCall
-            return :macro
-        end
-
-        if expr.typ == CSTParser.Quote
-            return :quote
-        end
-    end
-    return nothing
-end
+include("bindings.jl")
+include("scope.jl")
 
 # is utilities
 # ------------
 
-iscallexpr(expr::CSTParser.EXPR) = expr.typ === CSTParser.Call
+iscallexpr(expr::EXPR) = typof(expr) === CSTParser.Call
 
-ismacrocall(expr::CSTParser.EXPR) = expr.typ === CSTParser.MacroCall
+ismacrocall(expr::EXPR) = typof(expr) === CSTParser.MacroCall
 
-function isinclude(expr::CSTParser.EXPR)
+function isinclude(expr::EXPR)
     iscallexpr(expr) &&
         length(expr) === 4 &&
-        expr.args[1].val == "include" &&
-        expr.args[3].val isa String &&
-        endswith(expr.args[3].val, ".jl")
+        valof(expr.args[1]) == "include" &&
+        (filename = valof(expr.args[3])) isa String &&
+        endswith(filename, ".jl")
 end
 
-function isdoc(expr::CSTParser.EXPR)
+function isdoc(expr::EXPR)
     ismacrocall(expr) &&
         length(expr) >= 1 &&
-        (
-            expr.args[1].typ === CSTParser.GlobalRefDoc ||
-            str_value(expr.args[1]) == "@doc"
-        )
+        (typof(expr.args[1]) === CSTParser.GlobalRefDoc || str_value(expr.args[1]) == "@doc")
 end
 
-function ismultiplereturn(expr::CSTParser.EXPR)
-    expr.typ === CSTParser.TupleH &&
+function ismultiplereturn(expr::EXPR)
+    typof(expr) === CSTParser.TupleH &&
         expr.args !== nothing &&
         !isempty(filter(a -> bindingof(a) !== nothing, expr.args))
 end
 
-function iswhereclause(expr::CSTParser.EXPR)
-    expr.typ === CSTParser.WhereOpCall &&
-        expr.parent !== nothing &&
+function iswhereclause(expr::EXPR)
+    typof(expr) === CSTParser.WhereOpCall &&
+        parentof(expr) !== nothing &&
         expr.args !== nothing
 end
 
-function isconstexpr(expr::CSTParser.EXPR)
-    parent = CSTParser.parentof(expr)
-    parent !== nothing && parent.typ === CSTParser.Const
+function isconstexpr(expr::EXPR)
+    (parent = parentof(expr)) !== nothing && typof(parent) === CSTParser.Const
 end
 
-ismoduleusage(expr::CSTParser.EXPR) = isimport(expr) || isexport(expr)
-isimport(expr::CSTParser.EXPR) = expr.typ === CSTParser.Import || expr.typ === CSTParser.Using
-isexport(expr::CSTParser.EXPR) = expr.typ === CSTParser.Export
+ismoduleusage(expr::EXPR) = isimport(expr) || isexport(expr)
+isimport(expr::EXPR) = (t = typof(expr)) === CSTParser.Import || t === CSTParser.Using
+isexport(expr::EXPR) = typof(expr) === CSTParser.Export
 
 # string utilities
 # ----------------
 
-function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
+function Base.countlines(expr::EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
     endpos = pos + (full ? expr.fullspan : expr.span)
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
@@ -92,42 +60,44 @@ function Base.countlines(expr::CSTParser.EXPR, text::String, pos::Int, full::Boo
     count(c -> c === eol, text[s:e])
 end
 
-# adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/b7e22ca47254007b5e7dd3c678ba27d8744d1b1f/src/passes.jl#L108
+# adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/90c35540f48330fe1453c5ac1a62d8bc5df017b7/src/passes.jl#L112-L134
 """
-    str_value(x::CSTParser.EXPR)
+    str_value(x::EXPR)
 
 _Reconstruct_ a source code from `x`.
 """
-function str_value(x::CSTParser.EXPR)
-    if x.typ === CSTParser.PUNCTUATION
-        x.kind == CSTParser.Tokens.LPAREN && return "("
-        x.kind == CSTParser.Tokens.LBRACE && return "{"
-        x.kind == CSTParser.Tokens.LSQUARE && return "["
-        x.kind == CSTParser.Tokens.RPAREN && return ")"
-        x.kind == CSTParser.Tokens.RBRACE && return "}"
-        x.kind == CSTParser.Tokens.RSQUARE && return "]"
-        x.kind == CSTParser.Tokens.COMMA && return ", "
-        x.kind == CSTParser.Tokens.SEMICOLON && return ";"
-        x.kind == CSTParser.Tokens.AT_SIGN && return "@"
-        x.kind == CSTParser.Tokens.DOT && return "."
+function str_value(x::EXPR)::String
+    t = typof(x)
+    k = kindof(x)
+    if t === CSTParser.PUNCTUATION
+        k === Tokens.LPAREN && return "("
+        k === Tokens.LBRACE && return "{"
+        k === Tokens.LSQUARE && return "["
+        k === Tokens.RPAREN && return ")"
+        k === Tokens.RBRACE && return "}"
+        k === Tokens.RSQUARE && return "]"
+        k === Tokens.COMMA && return ", "
+        k === Tokens.SEMICOLON && return ";"
+        k === Tokens.AT_SIGN && return "@"
+        k === Tokens.DOT && return "."
         return ""
-    elseif x.kind === CSTParser.Tokens.TRIPLE_STRING
-        return string("\"\"\"", x.val, "\"\"\"")
-    elseif x.kind === CSTParser.Tokens.STRING
+    elseif k === Tokens.TRIPLE_STRING
+        return string("\"\"\"", valof(x), "\"\"\"")
+    elseif k === Tokens.STRING
         return string("\"", x.val, "\"")
-    elseif x.kind === CSTParser.Tokens.EQ
+    elseif k === Tokens.EQ
         return " = "
-    elseif x.kind === CSTParser.Tokens.WHERE
+    elseif k === Tokens.WHERE
         return " where "
-    elseif x.typ === CSTParser.Parameters
+    elseif t === CSTParser.Parameters
         return "; " * join(str_value(a) for a in x)
-    elseif x.typ === CSTParser.IDENTIFIER || x.typ === CSTParser.LITERAL || x.typ === CSTParser.OPERATOR || x.typ === CSTParser.KEYWORD
+    elseif t === CSTParser.IDENTIFIER || t === CSTParser.LITERAL || t === CSTParser.OPERATOR || t === CSTParser.KEYWORD
         return CSTParser.str_value(x)
-    elseif x.typ === CSTParser.Using
+    elseif t === CSTParser.Using
         return "using " * join(str_value(a) for a in x)
-    elseif x.typ === CSTParser.Import
+    elseif t === CSTParser.Import
         return "import " * join(str_value(a) for a in x)
-    elseif x.typ === CSTParser.Export
+    elseif t === CSTParser.Export
         return "export " * join(str_value(a) for a in x)
     else
         return join(str_value(a) for a in x)
@@ -135,26 +105,26 @@ function str_value(x::CSTParser.EXPR)
 end
 
 """
-    str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
+    str_value_as_is(expr::EXPR, text::String, pos::Int)
 
 _Extract_ a source code from `text` that corresponds to `expr`.
 """
-function str_value_as_is(expr::CSTParser.EXPR, text::String, pos::Int)
+function str_value_as_is(expr::EXPR, text::String, pos::Int)
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
     strip(text[s:e])
 end
-str_value_as_is(bind::CSTParser.Binding, text::String, pos::Int) = str_value_as_is(bind.val, text, pos)
+str_value_as_is(bind::Binding, text::String, pos::Int) = str_value_as_is(bind.val, text, pos)
 str_value_as_is(bind, text::String, pos::Int) = ""
 
 # atom icon & types
 # -----------------
 # NOTE: need to keep this consistent with wstype/wsicon
 
-static_type(bind::CSTParser.Binding) = static_type(bind.val)
-function static_type(val::CSTParser.EXPR)
+static_type(bind::Binding) = static_type(bind.val)
+function static_type(val::EXPR)
     if CSTParser.defines_function(val)
         "function"
     elseif CSTParser.defines_macro(val)
@@ -171,8 +141,8 @@ function static_type(val::CSTParser.EXPR)
     end
 end
 
-static_icon(bind::CSTParser.Binding) = static_icon(bind.val)
-function static_icon(val::CSTParser.EXPR)
+static_icon(bind::Binding) = static_icon(bind.val)
+function static_icon(val::EXPR)
     if CSTParser.defines_function(val)
         "λ"
     elseif CSTParser.defines_macro(val)
