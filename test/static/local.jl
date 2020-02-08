@@ -148,6 +148,23 @@ let str = """
     @test "push!′" in binds
 end
 
+# finds function arguments when the function is type-declared
+# ref: https://github.com/JunoLab/Atom.jl/issues/223
+let str = """
+    function func(ary::Vector{T}, i::Int)::T where {T<:Number}
+        # here
+        s = sum(ary[1:i])
+        return s
+    end
+    """
+
+    binds = map(l -> l[:name], Atom.locals(str, 2, 4))
+    @test "ary" in binds
+    @test "i" in binds
+    @test "T" in binds
+    @test "func" in binds
+end
+
 let str = """
     function foo(x)
         @macrocall begin

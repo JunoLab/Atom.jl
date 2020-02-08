@@ -11,18 +11,21 @@ NOTE:
 function hasscope(x::EXPR)
     t = typof(x)
 
-    # added conditions below when adapted
-    if t === CSTParser.Call && (p = parentof(x)) !== nothing && !hasscope(p)
+    # NOTE: added conditions below when adapted
+    if t === CSTParser.TupleH && (p = parentof(x)) !== nothing && !hasscope(p)
         return true
-    elseif t === CSTParser.TupleH && (p = parentof(x)) !== nothing && !hasscope(p)
-        return true
+    # # XXX:
+    # # introduced in https://github.com/JunoLab/Atom.jl/commit/7de5299001395b83bab0cb9d102e3f36d5c202d1
+    # # but now this seems to include bad cases for function arguments
+    # elseif t === CSTParser.Call && (p = parentof(x)) !== nothing && !hasscope(p)
+    #     return true
     elseif iswhereclause(x)
         return true
     elseif t === CSTParser.MacroCall
         return true
     elseif t === CSTParser.Quote
         return true
-    # adaption ended
+    # NOTE: end
 
     elseif t === CSTParser.BinaryOpCall
         k = kindof(x.args[2])
