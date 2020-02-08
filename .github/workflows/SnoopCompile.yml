@@ -1,7 +1,10 @@
 name: SnoopCompile
 
 on:
-  - push
+  push:
+    # TODO: remove this once we enable precompilations
+    branches:
+      - master
 
 jobs:
   build:
