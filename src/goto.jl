@@ -323,7 +323,7 @@ function regeneratesymbols()
   for (i, pkg) in enumerate(unloaded)
     try
       @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
-      path = Base.find_package(pkg)
+      (path = Base.find_package(pkg)) === nothing && continue
       SYMBOLSCACHE[pkg] = _collecttoplevelitems_static(pkg, path)
     catch err
       @error err
