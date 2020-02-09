@@ -12,7 +12,7 @@
               map(l -> localdatatip(l, word, startRow), ls)             # L8
             end                                                         # L9
             """,
-            localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)[1]
+            localdatatip(word, line) = Atom.localdatatip(word, typemax(Int), line + 1, 0, str)[1]
 
             @test localdatatip("row", 1) == 0 # line
             @test localdatatip("position", 2) == Dict(:type => :snippet, :value => "position = row - startRow") # binding string
@@ -27,7 +27,7 @@
                 return val
             end
             """,
-            localdatatip(word, line) = Atom.localdatatip(word, Inf, line + 1, 0, str)[1]
+            localdatatip(word, line) = Atom.localdatatip(word, typemax(Int), line + 1, 0, str)[1]
 
             @test localdatatip("expr.args", 1)[:value] == "expr::CSTParser.EXPR"
             @test localdatatip("bind.val", 2)[:value] == "bind = CSTParser.bindingof(expr.args[1])"

@@ -8,30 +8,31 @@ Find toplevel items (bind / call)
 abstract type ToplevelItem end
 
 struct ToplevelBinding <: ToplevelItem
-    expr::CSTParser.EXPR
-    bind::CSTParser.Binding
+    expr::EXPR
+    bind::Binding
     lines::UnitRange{Int}
 end
 
 struct ToplevelCall <: ToplevelItem
-    expr::CSTParser.EXPR
+    expr::EXPR
     lines::UnitRange{Int}
     str::String
 end
 
 struct ToplevelMacroCall <: ToplevelItem
-    expr::CSTParser.EXPR
+    expr::EXPR
     lines::UnitRange{Int}
     str::String
 end
 
 struct ToplevelModuleUsage <: ToplevelItem
-    expr::CSTParser.EXPR
+    expr::EXPR
     lines::UnitRange{Int}
 end
 
 """
-    toplevelitems(text; kwargs...)::Vector{ToplevelItem}
+    toplevelitems(text::String; kwargs...)::Vector{ToplevelItem}
+    toplevelitems(text::String, expr::EXPR; kwargs...)::Vector{ToplevelItem}
 
 Finds and returns toplevel "item"s (call and binding) in `text`.
 
@@ -40,16 +41,17 @@ keyword arguments:
     other than `mod`, otherwise enter into every module.
 - `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
 """
-function toplevelitems(text; kwargs...)
-    parsed = CSTParser.parse(text, true)
-    _toplevelitems(text, parsed; kwargs...)
+toplevelitems(text::String; kwargs...) = toplevelitems(text, CSTParser.parse(text, true); kwargs...)
+function toplevelitems(text::String, expr::EXPR; kwargs...)
+    traverse_expr!(expr)
+    return _toplevelitems(text, expr; kwargs...)
 end
+toplevelitems(text::String, expr::Nothing; kwargs...) = ToplevelItem[]
 
 function _toplevelitems(
-    text, expr,
-    items::Vector{ToplevelItem} = Vector{ToplevelItem}(), line = 1, pos = 1;
-    mod::Union{Nothing, String} = nothing,
-    inmod::Bool = false,
+    text::String, expr::EXPR,
+    items::Vector{ToplevelItem} = ToplevelItem[], line::Int = 1, pos::Int = 1;
+    mod::Union{Nothing, String} = nothing, inmod::Bool = false,
 )
     # add items if `mod` isn't specified or in a target modle
     if mod === nothing || inmod
@@ -65,7 +67,8 @@ function _toplevelitems(
         # destructure multiple returns
         if ismultiplereturn(expr)
             for arg in expr
-                (bind = bindingof(arg)) !== nothing && push!(items, ToplevelBinding(arg, bind, lines))
+                (bind = bindingof(arg)) === nothing && continue
+                push!(items, ToplevelBinding(arg, bind, lines))
             end
         end
 
@@ -90,16 +93,17 @@ function _toplevelitems(
             pos += arg.fullspan
         end
     end
-    items
+    return items
 end
 
-function shouldenter(expr::CSTParser.EXPR, mod::Union{Nothing, String})
-    !(scopeof(expr) !== nothing && !(
+function shouldenter(expr::EXPR, mod::Union{Nothing, String})
+    !(hasscope(expr) && !(
         expr.typ === CSTParser.FileH ||
         (CSTParser.defines_module(expr) && shouldentermodule(expr, mod)) ||
         isdoc(expr)
     ))
 end
 
-shouldentermodule(expr::CSTParser.EXPR, mod::Nothing) = true
-shouldentermodule(expr::CSTParser.EXPR, mod::String) = expr.binding.name == mod
+shouldentermodule(expr::EXPR, mod::Nothing) = true
+shouldentermodule(expr::EXPR, mod::String) =
+    (bind = bindingof(expr)) === nothing ? false : bind.name == mod

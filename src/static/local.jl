@@ -13,7 +13,7 @@ struct LocalBinding
     bindstr::String
     span::UnitRange{Int64}
     line::Int
-    expr::CSTParser.EXPR
+    expr::EXPR
 end
 
 struct LocalScope
@@ -22,27 +22,33 @@ struct LocalScope
     span::UnitRange{Int64}
     line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
-    expr::CSTParser.EXPR
+    expr::EXPR
 end
 
-function locals(text, line, col)
-    parsed = CSTParser.parse(text, true)
-    bindings = localbindings(parsed, text)
+"""
+    locals(text::String, line::Int, col::Int)::Vector{Dict}
+
+Returns local bindings in `text`, while computing localities based on `line` and `col`.
+"""
+function locals(text::String, line::Int, col::Int)
+    expr = CSTParser.parse(text, true)
+    traverse_expr!(expr)
+    bindings = localbindings(expr, text)
     actual_localbindings(bindings, line, byteoffset(text, line, col))
 end
 
 function localbindings(expr, text, bindings = [], pos = 1, line = 1)
     # binding
     bind = bindingof(expr)
-    scope = scopeof(expr)
-    if bind !== nothing && scope === nothing
+    hs = hasscope(expr)
+    if bind !== nothing && !hs
         bindstr = str_value_as_is(bind, text, pos)
         range = pos:pos+expr.span
         push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
     end
 
-    if scope !== nothing
-        expr.typ == CSTParser.Kw && return bindings
+    if hs
+        typof(expr) == CSTParser.Kw && return bindings
 
         # destructure multiple returns
         if ismultiplereturn(expr)
@@ -108,7 +114,8 @@ function actual_localbindings(bindings, line, byteoffset)
 
     filter!(b -> !isempty(b[:name]), actual_bindings)
     sort!(actual_bindings, lt = (b1, b2) -> b1[:locality] < b2[:locality])
-    unique(b -> b[:name], actual_bindings)
+    f = @static VERSION ≥ v"1.1" ? unique! : unique
+    return f(b -> b[:name], actual_bindings)
 end
 function _actual_localbindings(bindings, line, byteoffset, root = "", actual_bindings = [])
     for bind in bindings
