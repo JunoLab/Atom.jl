@@ -243,10 +243,23 @@
         @testset "regenerating toplevel symbols" begin
             regeneratesymbols()
 
+            # cache symbols in loaded modules
             @test haskey(SYMBOLSCACHE, "Base")
             @test length(keys(SYMBOLSCACHE["Base"])) > 100
-            @test haskey(SYMBOLSCACHE, "Example") # cache symbols even if not loaded
-            @test toplevelgotoitems("hello", Example, "", nothing) |> !isempty
+            @test haskey(SYMBOLSCACHE, "Atom")
+            @test length(keys(SYMBOLSCACHE["Atom"])) === length(atommodfiles)
+
+            # cache symbols even if not loaded
+            # FIXME:
+            # `Pkg.dependencies()` doesn't include dependencies in `extra` section.
+            # Let's skip this case until we find a way to make `Pkg.dependencies()` aware of them.
+            @test_skip haskey(SYMBOLSCACHE, "Example")
+
+            @testset "goto for unloaded packages" begin
+                using Atom: globalgotoitems_unloaded
+
+                @test !isempty(globalgotoitems_unloaded("hello", "Example"))
+            end
         end
 
         @testset "clear toplevel symbols" begin

@@ -1,4 +1,4 @@
-using Atom, Test, JSON, Logging, CSTParser, Example
+using Atom, Test, JSON, Logging, CSTParser
 
 
 joinpath′(files...) = Atom.fullpath(joinpath(files...))
