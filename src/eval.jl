@@ -31,11 +31,7 @@ function evalshow(text, line, path, mod)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          res = @errs if isdebugging() && (_res = JunoDebugger.interpret_string(text, path, line)) !== undefined
-            _res
-          else
-            include_string(mod, text, path, line)
-          end
+          res = @errs include_string(mod, text, path, line)
 
           if res isa EvalError
               Base.showerror(IOContext(stderr, :limit => true), res)
@@ -75,11 +71,7 @@ function eval(text, line, path, mod, errorinrepl = false)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          res = @errs if isdebugging() && (_res = JunoDebugger.interpret_string(text, path, line)) !== undefined
-            _res
-          else
-            include_string(mod, text, path, line)
-          end
+          res = @errs include_string(mod, text, path, line)
           if errorinrepl && res isa EvalError
             try
               Base.showerror(IOContext(stderr, :limit => true), res)
