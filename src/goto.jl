@@ -74,10 +74,7 @@ function localgotoitem(word, path, column, row, startrow, context)
   word = first(split(word, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
-  filter!(ls) do l
-    l.name == word &&
-    l.line < position
-  end
+  filter!(l -> l.name == word && l.line < position, ls)
   return map(ls) do l # there should be zero or one element in `ls`
     name = l.name
     line = startrow + l.line - 1
