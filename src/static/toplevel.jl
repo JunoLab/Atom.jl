@@ -70,16 +70,16 @@ function _toplevelitems(
                 (bind = bindingof(arg)) === nothing && continue
                 push!(items, ToplevelBinding(arg, bind, lines))
             end
-        end
-
         # toplevel call
-        iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
-
+        elseif iscallexpr(expr)
+            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
         # toplevel macro call
-        ismacrocall(expr) && push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
-
+        elseif ismacrocall(expr)
+            push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
         # module usages
-        ismoduleusage(expr) && push!(items, ToplevelModuleUsage(expr, lines))
+        elseif ismoduleusage(expr)
+            push!(items, ToplevelModuleUsage(expr, lines))
+        end
     end
 
     # look for more toplevel items in expr:
