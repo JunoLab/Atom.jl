@@ -10,7 +10,7 @@ Find local bindings
 
 struct LocalBinding
     name::String
-    bindstr::String
+    verbatim::String
     span::UnitRange{Int64}
     line::Int
     expr::EXPR
@@ -18,33 +18,48 @@ end
 
 struct LocalScope
     name::String
-    bindstr::String
+    verbatim::String
     span::UnitRange{Int64}
     line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
     expr::EXPR
 end
 
+const LocalBS = Union{LocalBinding,LocalScope}
+
+struct ActualLocalBinding
+    name::String
+    verbatim::String
+    root::String
+    line::Int
+    locality::Float64
+    expr::EXPR
+end
+function ActualLocalBinding(bs::LocalBS, root::String, line::Int, byteoffset::Int)
+    locality = distance(line, byteoffset, bs.line, bs.span)
+    return ActualLocalBinding(bs.name, bs.verbatim, root, bs.line, locality, bs.expr)
+end
+
 """
-    locals(text::String, line::Int, col::Int)::Vector{Dict}
+    locals(text::String, line::Int, col::Int)::Vector{ActualLocalBinding}
 
 Returns local bindings in `text`, while computing localities based on `line` and `col`.
 """
-function locals(text::String, line::Int, col::Int)
+function locals(text::String, line::Int, col::Int)::Vector{ActualLocalBinding}
     expr = CSTParser.parse(text, true)
     traverse_expr!(expr)
     bindings = localbindings(expr, text)
     actual_localbindings(bindings, line, byteoffset(text, line, col))
 end
 
-function localbindings(expr, text, bindings = [], pos = 1, line = 1)
+function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
     # binding
     bind = bindingof(expr)
     hs = hasscope(expr)
     if bind !== nothing && !hs
-        bindstr = str_value_as_is(bind, text, pos)
+        verbatim = str_value_verbatim(bind, text, pos)
         range = pos:pos+expr.span
-        push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
+        push!(bindings, LocalBinding(bind.name, verbatim, range, line, expr))
     end
 
     if hs
@@ -66,7 +81,7 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
         else
             # find local binds in a scope
             # calculate fields for `LocalScope` first
-            bindstr = str_value_as_is(expr, text, pos)
+            verbatim = str_value_verbatim(expr, text, pos)
             range = pos:pos+expr.span
             name = bind === nothing ? "" : bind.name
 
@@ -77,7 +92,7 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
                 pos += arg.fullspan
             end
 
-            push!(bindings, LocalScope(name, bindstr, range, line, children, expr))
+            push!(bindings, LocalScope(name, verbatim, range, line, children, expr))
         end
 
         return bindings
@@ -112,22 +127,17 @@ end
 function actual_localbindings(bindings, line, byteoffset)
     actual_bindings = _actual_localbindings(bindings, line, byteoffset)
 
-    filter!(b -> !isempty(b[:name]), actual_bindings)
-    sort!(actual_bindings, lt = (b1, b2) -> b1[:locality] < b2[:locality])
-    f = @static VERSION ≥ v"1.1" ? unique! : unique
-    return f(b -> b[:name], actual_bindings)
+    filter!(b -> !isempty(b.name), actual_bindings)
+    sort!(actual_bindings, lt = (b1, b2) -> b1.locality < b2.locality)
+    return @static if VERSION ≥ v"1.1"
+        unique!(b->b.name, actual_bindings)
+    else
+        unique(b->b.name, actual_bindings)
+    end
 end
-function _actual_localbindings(bindings, line, byteoffset, root = "", actual_bindings = [])
+function _actual_localbindings(bindings, line, byteoffset, root = "", actual_bindings = ActualLocalBinding[])
     for bind in bindings
-        push!(actual_bindings, Dict(
-            :name     => bind.name,
-            :bindstr  => bind.bindstr,
-            :root     => root,
-            :line     => bind.line,
-            :locality => distance(line, byteoffset, bind.line, bind.span),
-            :icon     => static_icon(bind.expr),
-            :type     => static_type(bind.expr),
-        ))
+        push!(actual_bindings, ActualLocalBinding(bind, root, line, byteoffset))
         if bind isa LocalScope && byteoffset in bind.span
             _actual_localbindings(bind.children, line, byteoffset, bind.name, actual_bindings)
         end

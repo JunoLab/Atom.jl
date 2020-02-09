@@ -8,6 +8,12 @@ using CSTParser: EXPR, typof, kindof, valof, parentof
 include("bindings.jl")
 include("scope.jl")
 
+# toplevel / local
+# ----------------
+
+include("toplevel.jl")
+include("local.jl")
+
 # is utilities
 # ------------
 
@@ -21,6 +27,12 @@ function isinclude(expr::EXPR)
         valof(expr.args[1]) == "include" &&
         (filename = valof(expr.args[3])) isa String &&
         endswith(filename, ".jl")
+end
+
+function isprecompile(expr::EXPR)
+    iscallexpr(expr) &&
+        length(expr) >= 1 &&
+        valof(expr.args[1]) == "__precompile__"
 end
 
 function isdoc(expr::EXPR)
@@ -105,25 +117,26 @@ function str_value(x::EXPR)::String
 end
 
 """
-    str_value_as_is(expr::EXPR, text::String, pos::Int)
+    str_value_verbatim(expr::EXPR, text::String, pos::Int)
 
-_Extract_ a source code from `text` that corresponds to `expr`.
+_Extract_ a source code from `text` that corresponds to `expr` starting from `pos`.
 """
-function str_value_as_is(expr::EXPR, text::String, pos::Int)
+function str_value_verbatim(expr::EXPR, text::String, pos::Int)
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
     strip(text[s:e])
 end
-str_value_as_is(bind::Binding, text::String, pos::Int) = str_value_as_is(bind.val, text, pos)
-str_value_as_is(bind, text::String, pos::Int) = ""
+str_value_verbatim(bind::Binding, text::String, pos::Int) = str_value_verbatim(bind.val, text, pos)
+str_value_verbatim(bind, text::String, pos::Int) = ""
 
 # atom icon & types
 # -----------------
 # NOTE: need to keep this consistent with wstype/wsicon
 
 static_type(bind::Binding) = static_type(bind.val)
+static_type(bind::ActualLocalBinding) = static_type(bind.expr)
 function static_type(val::EXPR)
     if CSTParser.defines_function(val)
         "function"
@@ -142,6 +155,7 @@ function static_type(val::EXPR)
 end
 
 static_icon(bind::Binding) = static_icon(bind.val)
+static_icon(bind::ActualLocalBinding) = static_icon(bind.expr)
 function static_icon(val::EXPR)
     if CSTParser.defines_function(val)
         "λ"
@@ -158,7 +172,3 @@ function static_icon(val::EXPR)
         isconstexpr(val) ? "c" : "v"
     end
 end
-
-
-include("toplevel.jl")
-include("local.jl")

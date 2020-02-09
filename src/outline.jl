@@ -6,8 +6,8 @@ handle("updateeditor") do data
         updateSymbols || true
     ] = data
 
-    try
-        updateeditor(text, mod, path, updateSymbols)
+    return try
+        todict.(updateeditor(text, mod, path, updateSymbols))
     catch err
         []
     end
@@ -23,48 +23,52 @@ function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
     outline(toplevelitems(text))
 end
 
-outline(items) = filter!(item -> item !== nothing, outlineitem.(items))
+struct OutlineItem
+    name::String
+    type::String
+    icon::String
+    start::Int
+    stop::Int
+end
+OutlineItem(name, type, icon, item::ToplevelItem) =
+    OutlineItem(name, type, icon, first(item.lines), last(item.lines))
+
+# for messaging over julia ⟷ Atom
+todict(item::OutlineItem) = Dict(
+    :name  => item.name,
+    :type  => item.type,
+    :icon  => item.icon,
+    :start => item.start,
+    :stop  => item.stop
+)
+
+outline(items)::Vector{OutlineItem} = filter!(item -> item !== nothing, outlineitem.(items))
 
 outlineitem(item::ToplevelItem) = nothing # fallback case
 outlineitem(binding::ToplevelBinding) = begin
     expr = binding.expr
     bind = binding.bind
     name = CSTParser.has_sig(expr) ? str_value(CSTParser.get_sig(expr)) : bind.name
-    Dict(
-        :name  => name,
-        :type  => static_type(bind),
-        :icon  => static_icon(bind),
-        :lines => [first(binding.lines), last(binding.lines)]
-    )
+    OutlineItem(name, static_type(bind), static_icon(bind), binding)
 end
 outlineitem(call::ToplevelCall) = begin
     # show includes
-    isinclude(call.expr) && return Dict(
-        :name  => call.str,
-        :type  => "module",
-        :icon  => "icon-file-code",
-        :lines => [first(call.lines), last(call.lines)]
-    )
-
-    nothing
+    return if isinclude(call.expr)
+        OutlineItem(call.verbatim, "module", "icon-file-code", call)
+    elseif isprecompile(call.expr)
+        OutlineItem(call.verbatim, "module", "icon-file-binary", call)
+    else
+        nothing
+    end
 end
 outlineitem(macrocall::ToplevelMacroCall) = begin
     # don't show doc strings
     isdoc(macrocall.expr) && return nothing
-
     # show first line verbatim of macro calls
-    Dict(
-        :name  => strlimit(first(split(macrocall.str, '\n')), 100),
-        :type  => "snippet",
-        :icon  => "icon-mention",
-        :lines => [first(macrocall.lines), last(macrocall.lines)]
-    )
+    firstline = strlimit(first(split(macrocall.verbatim, '\n')), 100)
+    OutlineItem(firstline, "snippet", "icon-mention", macrocall)
 end
 outlineitem(usage::ToplevelModuleUsage) = begin
-    Dict(
-        :name  => replace(str_value(usage.expr), ":" => ": "),
-        :type  => "mixin",
-        :icon  => "icon-package",
-        :lines => [first(usage.lines), last(usage.lines)]
-    )
+    useline = replace(str_value(usage.expr), ":" => ": ")
+    OutlineItem(useline, "mixin", "icon-package", usage)
 end

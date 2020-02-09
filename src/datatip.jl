@@ -38,20 +38,17 @@ function localdatatip(word, column, row, startrow, context)
   word = first(split(word, '.')) # always ignore dot accessors
   position = row - startrow
   ls = locals(context, position, column)
-  filter!(ls) do l
-    l[:name] == word &&
-    l[:line] < position
-  end
+  filter!(l -> l.name == word && l.line < position, ls)
   # there should be zero or one element in `ls`
-  map(l -> localdatatip(l, word, startrow), ls)
+  return localdatatip.(ls, word, startrow)
 end
 
 function localdatatip(l, word, startrow)
-  bindstr = l[:bindstr]
-  return if bindstr == word # when `word` is an argument or such
-    startrow + l[:line] - 1
+  verbatim = l.verbatim
+  return if verbatim == word # when `word` is an argument or such
+    startrow + l.line - 1
   else
-    Dict(:type => :snippet, :value => bindstr)
+    Dict(:type => :snippet, :value => verbatim)
   end
 end
 

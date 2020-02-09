@@ -176,10 +176,10 @@ localcompletions(text, row, col, prefix) = localcompletion.(locals(text, row, co
 localcompletion(l, prefix) = CompletionSuggetion(
   :replacementPrefix  => prefix,
   # suggestion body
-  :text               => l[:name],
-  :type               => l[:type] == "variable" ? "attribute" : l[:type],
-  :icon               => l[:icon] == "v" ? "icon-chevron-right" : l[:icon],
-  :rightLabel         => l[:root],
+  :text               => l.name,
+  :type               => (type = static_type(l)) == "variable" ? "attribute" : type,
+  :icon               => (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon,
+  :rightLabel         => l.root,
   # for `getSuggestionDetailsOnSelect` API
   :detailtype         => "", # shouldn't complete
 )

@@ -16,13 +16,13 @@ end
 struct ToplevelCall <: ToplevelItem
     expr::EXPR
     lines::UnitRange{Int}
-    str::String
+    verbatim::String
 end
 
 struct ToplevelMacroCall <: ToplevelItem
     expr::EXPR
     lines::UnitRange{Int}
-    str::String
+    verbatim::String
 end
 
 struct ToplevelModuleUsage <: ToplevelItem
@@ -41,12 +41,13 @@ keyword arguments:
     other than `mod`, otherwise enter into every module.
 - `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
 """
-toplevelitems(text::String; kwargs...) = toplevelitems(text, CSTParser.parse(text, true); kwargs...)
-function toplevelitems(text::String, expr::EXPR; kwargs...)
+toplevelitems(text::String; kwargs...)::Vector{ToplevelItem} =
+    toplevelitems(text, CSTParser.parse(text, true); kwargs...)
+function toplevelitems(text::String, expr::EXPR; kwargs...)::Vector{ToplevelItem}
     traverse_expr!(expr)
     return _toplevelitems(text, expr; kwargs...)
 end
-toplevelitems(text::String, expr::Nothing; kwargs...) = ToplevelItem[]
+toplevelitems(text::String, expr::Nothing; kwargs...)::Vector{ToplevelItem} = ToplevelItem[]
 
 function _toplevelitems(
     text::String, expr::EXPR,
@@ -70,16 +71,16 @@ function _toplevelitems(
                 (bind = bindingof(arg)) === nothing && continue
                 push!(items, ToplevelBinding(arg, bind, lines))
             end
-        end
-
         # toplevel call
-        iscallexpr(expr) && push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
-
+        elseif iscallexpr(expr)
+            push!(items, ToplevelCall(expr, lines, str_value_verbatim(expr, text, pos)))
         # toplevel macro call
-        ismacrocall(expr) && push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
-
+        elseif ismacrocall(expr)
+            push!(items, ToplevelMacroCall(expr, lines, str_value_verbatim(expr, text, pos)))
         # module usages
-        ismoduleusage(expr) && push!(items, ToplevelModuleUsage(expr, lines))
+        elseif ismoduleusage(expr)
+            push!(items, ToplevelModuleUsage(expr, lines))
+        end
     end
 
     # look for more toplevel items in expr:
