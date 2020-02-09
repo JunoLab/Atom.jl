@@ -10,7 +10,7 @@ Find local bindings
 
 struct LocalBinding
     name::String
-    bindstr::String
+    verbatim::String
     span::UnitRange{Int64}
     line::Int
     expr::EXPR
@@ -18,7 +18,7 @@ end
 
 struct LocalScope
     name::String
-    bindstr::String
+    verbatim::String
     span::UnitRange{Int64}
     line::Int
     children::Vector{Union{LocalBinding, LocalScope}}
@@ -42,9 +42,9 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
     bind = bindingof(expr)
     hs = hasscope(expr)
     if bind !== nothing && !hs
-        bindstr = str_value_as_is(bind, text, pos)
+        verbatim = str_value_verbatim(bind, text, pos)
         range = pos:pos+expr.span
-        push!(bindings, LocalBinding(bind.name, bindstr, range, line, expr))
+        push!(bindings, LocalBinding(bind.name, verbatim, range, line, expr))
     end
 
     if hs
@@ -66,7 +66,7 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
         else
             # find local binds in a scope
             # calculate fields for `LocalScope` first
-            bindstr = str_value_as_is(expr, text, pos)
+            verbatim = str_value_verbatim(expr, text, pos)
             range = pos:pos+expr.span
             name = bind === nothing ? "" : bind.name
 
@@ -77,7 +77,7 @@ function localbindings(expr, text, bindings = [], pos = 1, line = 1)
                 pos += arg.fullspan
             end
 
-            push!(bindings, LocalScope(name, bindstr, range, line, children, expr))
+            push!(bindings, LocalScope(name, verbatim, range, line, children, expr))
         end
 
         return bindings
@@ -121,7 +121,7 @@ function _actual_localbindings(bindings, line, byteoffset, root = "", actual_bin
     for bind in bindings
         push!(actual_bindings, Dict(
             :name     => bind.name,
-            :bindstr  => bind.bindstr,
+            :verbatim => bind.verbatim,
             :root     => root,
             :line     => bind.line,
             :locality => distance(line, byteoffset, bind.line, bind.span),

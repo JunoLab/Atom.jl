@@ -54,9 +54,9 @@ end
 outlineitem(call::ToplevelCall) = begin
     # show includes
     return if isinclude(call.expr)
-        OutlineItem(call.str, "module", "icon-file-code", call)
+        OutlineItem(call.verbatim, "module", "icon-file-code", call)
     elseif isprecompile(call.expr)
-        OutlineItem(call.str, "module", "icon-file-binary", call)
+        OutlineItem(call.verbatim, "module", "icon-file-binary", call)
     else
         nothing
     end
@@ -65,8 +65,8 @@ outlineitem(macrocall::ToplevelMacroCall) = begin
     # don't show doc strings
     isdoc(macrocall.expr) && return nothing
     # show first line verbatim of macro calls
-    verbatim = strlimit(first(split(macrocall.str, '\n')), 100)
-    OutlineItem(verbatim, "snippet", "icon-mention", macrocall)
+    firstline = strlimit(first(split(macrocall.verbatim, '\n')), 100)
+    OutlineItem(firstline, "snippet", "icon-mention", macrocall)
 end
 outlineitem(usage::ToplevelModuleUsage) = begin
     useline = replace(str_value(usage.expr), ":" => ": ")

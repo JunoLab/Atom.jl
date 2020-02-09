@@ -111,19 +111,19 @@ function str_value(x::EXPR)::String
 end
 
 """
-    str_value_as_is(expr::EXPR, text::String, pos::Int)
+    str_value_verbatim(expr::EXPR, text::String, pos::Int)
 
-_Extract_ a source code from `text` that corresponds to `expr`.
+_Extract_ a source code from `text` that corresponds to `expr` starting from `pos`.
 """
-function str_value_as_is(expr::EXPR, text::String, pos::Int)
+function str_value_verbatim(expr::EXPR, text::String, pos::Int)
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
     strip(text[s:e])
 end
-str_value_as_is(bind::Binding, text::String, pos::Int) = str_value_as_is(bind.val, text, pos)
-str_value_as_is(bind, text::String, pos::Int) = ""
+str_value_verbatim(bind::Binding, text::String, pos::Int) = str_value_verbatim(bind.val, text, pos)
+str_value_verbatim(bind, text::String, pos::Int) = ""
 
 # atom icon & types
 # -----------------

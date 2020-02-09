@@ -47,11 +47,11 @@ function localdatatip(word, column, row, startrow, context)
 end
 
 function localdatatip(l, word, startrow)
-  bindstr = l[:bindstr]
-  return if bindstr == word # when `word` is an argument or such
+  verbatim = l[:verbatim]
+  return if verbatim == word # when `word` is an argument or such
     startrow + l[:line] - 1
   else
-    Dict(:type => :snippet, :value => bindstr)
+    Dict(:type => :snippet, :value => verbatim)
   end
 end
 

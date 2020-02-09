@@ -120,13 +120,13 @@ let str = """
     for l in filter(l -> l[:line] == 2, ls)
         @test l[:name] in ("tpl1", "tpl2")
         @test l[:root] == "foo"
-        @test l[:bindstr] == "tpl1, tpl2 = (1, 2)"
+        @test l[:verbatim] == "tpl1, tpl2 = (1, 2)"
     end
     # named tuple elements shouldn't show up in completions
     for l in filter(l -> l[:line] == 3, ls)
         @test l[:name] in ("shown1", "shown2")
         @test l[:root] == "foo"
-        @test l[:bindstr] == "shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)"
+        @test l[:verbatim] == "shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)"
     end
 end
 

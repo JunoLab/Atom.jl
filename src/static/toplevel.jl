@@ -16,13 +16,13 @@ end
 struct ToplevelCall <: ToplevelItem
     expr::EXPR
     lines::UnitRange{Int}
-    str::String
+    verbatim::String
 end
 
 struct ToplevelMacroCall <: ToplevelItem
     expr::EXPR
     lines::UnitRange{Int}
-    str::String
+    verbatim::String
 end
 
 struct ToplevelModuleUsage <: ToplevelItem
@@ -72,10 +72,10 @@ function _toplevelitems(
             end
         # toplevel call
         elseif iscallexpr(expr)
-            push!(items, ToplevelCall(expr, lines, str_value_as_is(expr, text, pos)))
+            push!(items, ToplevelCall(expr, lines, str_value_verbatim(expr, text, pos)))
         # toplevel macro call
         elseif ismacrocall(expr)
-            push!(items, ToplevelMacroCall(expr, lines, str_value_as_is(expr, text, pos)))
+            push!(items, ToplevelMacroCall(expr, lines, str_value_verbatim(expr, text, pos)))
         # module usages
         elseif ismoduleusage(expr)
             push!(items, ToplevelModuleUsage(expr, lines))
