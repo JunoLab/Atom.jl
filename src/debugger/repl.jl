@@ -87,9 +87,3 @@ function LineEdit.complete_line(c::JunoDebuggerRPELCompletionProvider, s, state:
 
   return ret, partial[range], should_complete
 end
-
-# Evaluation
-function interpret(code::AbstractString, state::DebuggerState = STATE)
-  state.frame === nothing && return
-  eval_code(active_frame(state), code)
-end
