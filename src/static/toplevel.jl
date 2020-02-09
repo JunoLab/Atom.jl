@@ -41,12 +41,13 @@ keyword arguments:
     other than `mod`, otherwise enter into every module.
 - `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
 """
-toplevelitems(text::String; kwargs...) = toplevelitems(text, CSTParser.parse(text, true); kwargs...)
-function toplevelitems(text::String, expr::EXPR; kwargs...)
+toplevelitems(text::String; kwargs...)::Vector{ToplevelItem} =
+    toplevelitems(text, CSTParser.parse(text, true); kwargs...)
+function toplevelitems(text::String, expr::EXPR; kwargs...)::Vector{ToplevelItem}
     traverse_expr!(expr)
     return _toplevelitems(text, expr; kwargs...)
 end
-toplevelitems(text::String, expr::Nothing; kwargs...) = ToplevelItem[]
+toplevelitems(text::String, expr::Nothing; kwargs...)::Vector{ToplevelItem} = ToplevelItem[]
 
 function _toplevelitems(
     text::String, expr::EXPR,

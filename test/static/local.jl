@@ -1,3 +1,6 @@
+name_and_root(b::Atom.ActualLocalBinding) = (b.name, b.root)
+name(b::Atom.ActualLocalBinding) = b.name
+
 let str = """
     function local_bindings(expr, bindings = [], pos = 1)
         bind = CSTParser.bindingof(expr)
@@ -37,7 +40,7 @@ let str = """
         return bindings
     end
     """
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 15, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 15, 1)))
         for l in [
                 ("i", "")
                 ("arg", "")
@@ -54,7 +57,7 @@ let str = """
         end
     end
 
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 21, 100)))
+    let ls = Set(name_and_root.(Atom.locals(str, 21, 100)))
         for l in [
                 ("localbindings", "local_bindings")
                 ("pos", "local_bindings")
@@ -85,22 +88,22 @@ let str = """
     end
     """
     outers = (("bar", ""), ("f", ""), ("foo", ""))
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 1, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 1, 1)))
         for o in outers; @test o in ls; end
     end
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 2, 1)))
         for o in outers; @test o in ls; end
         @test ("x", "f") in ls
         @test ("ff", "f") in ls
     end
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 4, 100)))
+    let ls = Set(name_and_root.(Atom.locals(str, 4, 100)))
         for o in outers; @test o in ls; end
         @test ("ff", "f") in ls
         @test ("x", "") in ls
         @test ("xxx", "") in ls
         @test ("z", "") in ls
     end
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 10, 100)))
+    let ls = Set(name_and_root.(Atom.locals(str, 10, 100)))
         for o in outers; @test o in ls; end
         @test ("x", "foo") in ls
         @test ("asd", "foo") in ls
@@ -117,16 +120,16 @@ let str = """
 
     ls = Atom.locals(str, 1, 1)
     # basic
-    for l in filter(l -> l[:line] == 2, ls)
-        @test l[:name] in ("tpl1", "tpl2")
-        @test l[:root] == "foo"
-        @test l[:verbatim] == "tpl1, tpl2 = (1, 2)"
+    for l in filter(l -> l.line == 2, ls)
+        @test l.name in ("tpl1", "tpl2")
+        @test l.root == "foo"
+        @test l.verbatim == "tpl1, tpl2 = (1, 2)"
     end
     # named tuple elements shouldn't show up in completions
-    for l in filter(l -> l[:line] == 3, ls)
-        @test l[:name] in ("shown1", "shown2")
-        @test l[:root] == "foo"
-        @test l[:verbatim] == "shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)"
+    for l in filter(l -> l.line == 3, ls)
+        @test l.name in ("shown1", "shown2")
+        @test l.root == "foo"
+        @test l.verbatim == "shown1, shown2 = (ntpl1 = 1, ntpl2 = 2)"
     end
 end
 
@@ -138,7 +141,7 @@ let str = """
     end
     """
 
-    binds = map(l -> l[:name], Atom.locals(str, 1, 0))
+    binds = name.(Atom.locals(str, 1, 0))
     @test "ary" in binds
     @test "item" in binds
     @test "T" in binds
@@ -158,7 +161,7 @@ let str = """
     end
     """
 
-    binds = map(l -> l[:name], Atom.locals(str, 2, 4))
+    binds = name.(Atom.locals(str, 2, 4))
     @test "ary" in binds
     @test "i" in binds
     @test "T" in binds
@@ -174,7 +177,7 @@ let str = """
         return 12
     end
     """
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 2, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 2, 1)))
         for l in [
                 ("foo", "")
                 ("xxx", "foo")
@@ -183,7 +186,7 @@ let str = """
             @test l in ls
         end
     end
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 3, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 3, 1)))
         for l in [
                 ("foo", "")
                 ("xxx", "foo")
@@ -193,7 +196,7 @@ let str = """
             @test l in ls
         end
     end
-    let ls = Set(map(x -> (x[:name], x[:root]), Atom.locals(str, 5, 1)))
+    let ls = Set(name_and_root.(Atom.locals(str, 5, 1)))
         for l in [
                 ("foo", "")
                 ("xxx", "foo")

@@ -75,16 +75,16 @@ function localgotoitem(word, path, column, row, startrow, context)
   position = row - startrow
   ls = locals(context, position, column)
   filter!(ls) do l
-    l[:name] == word &&
-    l[:line] < position
+    l.name == word &&
+    l.line < position
   end
-  map(ls) do l # there should be zero or one element in `ls`
-    name = l[:name]
-    line = startrow + l[:line] - 1
+  return map(ls) do l # there should be zero or one element in `ls`
+    name = l.name
+    line = startrow + l.line - 1
     GotoItem(name, path, line)
   end
 end
-localgotoitem(word, ::Nothing, column, row, startrow, context) = [] # when called from docpane/workspace
+localgotoitem(word, ::Nothing, column, row, startrow, context) = GotoItem[] # when called from docpane/workspace
 
 ### global goto - bundles toplevel gotos & method gotos
 

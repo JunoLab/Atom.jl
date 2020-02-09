@@ -8,6 +8,12 @@ using CSTParser: EXPR, typof, kindof, valof, parentof
 include("bindings.jl")
 include("scope.jl")
 
+# toplevel / local
+# ----------------
+
+include("toplevel.jl")
+include("local.jl")
+
 # is utilities
 # ------------
 
@@ -130,6 +136,7 @@ str_value_verbatim(bind, text::String, pos::Int) = ""
 # NOTE: need to keep this consistent with wstype/wsicon
 
 static_type(bind::Binding) = static_type(bind.val)
+static_type(bind::ActualLocalBinding) = static_type(bind.expr)
 function static_type(val::EXPR)
     if CSTParser.defines_function(val)
         "function"
@@ -148,6 +155,7 @@ function static_type(val::EXPR)
 end
 
 static_icon(bind::Binding) = static_icon(bind.val)
+static_icon(bind::ActualLocalBinding) = static_icon(bind.expr)
 function static_icon(val::EXPR)
     if CSTParser.defines_function(val)
         "λ"
@@ -164,7 +172,3 @@ function static_icon(val::EXPR)
         isconstexpr(val) ? "c" : "v"
     end
 end
-
-
-include("toplevel.jl")
-include("local.jl")
