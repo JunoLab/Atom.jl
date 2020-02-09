@@ -201,14 +201,14 @@ end
 # ------------------------
 
 """
-    included_files = modulefiles(mod::String, entrypath::String, files = Vector{String}(); inmod = false)::Set{String}
+    included_files = modulefiles(mod::String, entrypath::String; inmod::Bool = false)::Set{String}
 
 Returns all the files in `mod` module that can be reached via [`include`](@ref)
   calls from `entrypath`.
 Note this function currently only looks for static toplevel calls (i.e. miss the
   calls in non-toplevel scope).
 """
-function modulefiles(mod::String, entrypath::String, files = Set{String}(); inmod = false)
+function modulefiles(mod::String, entrypath::String, files = Set{String}(); inmod::Bool = false)::Set{String}
   isfile′(entrypath) || return files
   # escape recursive `include` loops
   # NOTE: report this appropriately (e.g. within linter)

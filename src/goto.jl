@@ -37,7 +37,12 @@ function gotosymbol(
     end
 
     # global goto
-    globalitems = globalgotoitems(word, getmodule(mod), path, text)
+    m = getmodule(mod)
+    globalitems = if m == Main && mod ≠ "Main" # unloaded module
+      globalgotoitems_unloaded(word, mod)
+    else
+      globalgotoitems(word, m, path, text)
+    end
     isempty(globalitems) || return Dict(
       :error => false,
       :items => todict.(globalitems),
@@ -85,6 +90,7 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = GotoItem[] # wh
 
 ### global goto - bundles toplevel gotos & method gotos
 
+# goto for loaded module -- using runtime information in need
 function globalgotoitems(word, mod, path, text)
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
@@ -105,6 +111,24 @@ function globalgotoitems(word, mod, path, text)
   files = map(item -> item.file, items)
   methoditems = filter!(item -> item.file ∉ files, methodgotoitems(ml))
   append!(items, methoditems)
+  return items
+end
+# goto for unloaded package
+function globalgotoitems_unloaded(word, pkg::String)
+  pathitemsmap = if haskey(SYMBOLSCACHE, pkg)
+    SYMBOLSCACHE[pkg]
+  else
+    (path = Base.find_package(pkg)) === nothing && return GotoItem[]
+    SYMBOLSCACHE[pkg] = _collecttoplevelitems_static(pkg, path)
+  end
+
+  ret = GotoItem[]
+  for (_, items) in pathitemsmap
+    @>> filter(let name = word
+      item -> name == item.name
+    end, items) append!(ret)
+  end
+  return ret
 end
 
 ## module goto
@@ -148,13 +172,13 @@ function toplevelgotoitems(word, mod, path, text)
     SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
   end
 
-  ret = []
+  ret = GotoItem[]
   for (_, items) in pathitemsmap
     @>> filter(let name = word
       item -> name == item.name
     end, items) append!(ret)
   end
-  ret
+  return ret
 end
 
 # entry methods
@@ -162,7 +186,7 @@ function collecttoplevelitems(mod::Module, path::String, text::String)
   return if mod == Main || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
     # with a given buffer text, and don't check module validity
-    __collecttoplevelitems(nothing, path, text)
+    _collecttoplevelitems_static(nothing, path, text)
   else
     _collecttoplevelitems(mod)
   end
@@ -173,15 +197,16 @@ collecttoplevelitems(mod::Module, path::Nothing, text::String) = _collecttopleve
 function _collecttoplevelitems(mod::Module)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
-    __collecttoplevelitems(stripdotprefixes(string(mod)), [entrypath; paths])
+    _collecttoplevelitems_loaded(stripdotprefixes(string(mod)), [entrypath; paths])
   else # if Revise-like approach fails, fallback to CSTParser-based approach
     entrypath, line = moduledefinition(mod)
-    __collecttoplevelitems(stripdotprefixes(string(mod)), entrypath)
+    _collecttoplevelitems_static(stripdotprefixes(string(mod)), entrypath)
   end
 end
 
-# module-walk via Revise-like approach
-function __collecttoplevelitems(mod::Union{Nothing, String}, paths::Vector{String})
+# module-traverse for given files, which are collected by Revise-like approach:
+# NOTE: only works for loaded precompiled modules
+function _collecttoplevelitems_loaded(mod::Union{Nothing, String}, paths::Vector{String})
   pathitemsmap = PathItemsMap()
 
   entrypath, paths = paths[1], paths[2:end]
@@ -199,15 +224,15 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, paths::Vector{Strin
   return pathitemsmap
 end
 
-# module-walk based on CSTParser, looking for toplevel `included` calls
-function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
+# module-traverse based on CSTParser, looking for toplevel `included` calls
+function _collecttoplevelitems_static(mod::Union{Nothing, String}, entrypath::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
   isfile′(entrypath) || return pathitemsmap
   # escape recursive `include` loops
   entrypath in keys(pathitemsmap) && return pathitemsmap
   text = read(entrypath, String)
-  __collecttoplevelitems(mod, entrypath, text, pathitemsmap; inmod = inmod)
+  _collecttoplevelitems_static(mod, entrypath, text, pathitemsmap; inmod = inmod)
 end
-function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
+function _collecttoplevelitems_static(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
   items = toplevelitems(text; mod = mod, inmod = inmod)
   pathitemsmap[entrypath] = GotoItem.(entrypath, items)
 
@@ -220,7 +245,7 @@ function __collecttoplevelitems(mod::Union{Nothing, String}, entrypath::String, 
         nextentrypath = joinpath(dirname(entrypath), nextfile)
         isfile′(nextentrypath) || continue
         # `nextentrypath` is always in `mod`
-        __collecttoplevelitems(mod, nextentrypath, pathitemsmap; inmod = true)
+        _collecttoplevelitems_static(mod, nextentrypath, pathitemsmap; inmod = true)
       end
     end
   end
@@ -239,8 +264,10 @@ function GotoItem(path::String, binding::ToplevelBinding)
 end
 
 ## update toplevel symbols cache
+# NOTE:
+# - only updates toplevel symbols in the current text buffer
+# - handled by the `updateeditor` handler in outline.jl
 
-# NOTE: handled by the `updateeditor` handler in outline.jl
 function updatesymbols(mod, path::Nothing, text) end # fallback case
 function updatesymbols(mod, path::String, text)
   m = getmodule(mod)
@@ -252,7 +279,7 @@ function updatesymbols(mod, path::String, text)
 
   # ignore toplevel items outside of `mod` when `path` is an entry file
   entrypath, _ = moduledefinition(m)
-  inmod = path != entrypath
+  inmod = path ≠ entrypath
   items = toplevelitems(text; mod = stripdotprefixes(mod), inmod = inmod)
   push!(SYMBOLSCACHE[mod], path => GotoItem.(path, items))
 end
@@ -297,7 +324,7 @@ function regeneratesymbols()
     try
       @logmsg -1 "Symbols: $pkg ($(i + loadedlen) / $total)" progress=(i+loadedlen)/total _id=id
       path = Base.find_package(pkg)
-      SYMBOLSCACHE[pkg] = __collecttoplevelitems(pkg, path)
+      SYMBOLSCACHE[pkg] = _collecttoplevelitems_static(pkg, path)
     catch err
       @error err
     end
