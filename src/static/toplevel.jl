@@ -98,8 +98,10 @@ function _toplevelitems(
 end
 
 function shouldenter(expr::EXPR, mod::Union{Nothing, String})
-    !(hasscope(expr) && !(
-        expr.typ === CSTParser.FileH ||
+    typof(expr) !== CSTParser.Call &&
+    !(hasscope(expr) &&
+    !(
+        typof(expr) === CSTParser.FileH ||
         (CSTParser.defines_module(expr) && shouldentermodule(expr, mod)) ||
         isdoc(expr)
     ))

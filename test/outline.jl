@@ -164,6 +164,11 @@
         end |> !isempty
     end
 
+    # don't leak something in a call
+    for t in ["f(call())", "f(call(), @macro)", "f(@macro)", "f(@macro, arg; kwarg = kwarg)"]
+        @test length(outline(t)) === 0
+    end
+
     # toplevel macro calls
     let str = """
         @generate f(x) = x
