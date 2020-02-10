@@ -90,7 +90,7 @@ function insert_bps!(expr)
         end
       end
     end
-    if arg isa Expr
+    if arg isa Expr && !(arg.head in (:function, :struct))
       insert_bps!(arg)
     end
     i -= 1
@@ -110,6 +110,8 @@ function debug_file(text, path, should_step)
 
     frame = JuliaInterpreter.prepare_thunk(mod, ex)
 
+    # FIXME: should_step should also depend on the last command issued to the previous frame -- if
+    #        it's not :c, then should_step = false 
     startdebugging(frame, !should_step, istoplevel = true)
   end
 
