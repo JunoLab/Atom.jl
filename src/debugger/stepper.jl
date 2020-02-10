@@ -76,8 +76,48 @@ function add_breakpoint(bp)
   JuliaInterpreter.breakpoint(bp["file"], bp["line"], cond)
 end
 
+function insert_bps!(expr)
+  i = length(expr.args)
+  for arg in reverse(expr.args)
+    if arg isa LineNumberNode
+      lln = arg
+      for bp in JuliaInterpreter.breakpoints()
+        if bp isa JuliaInterpreter.BreakpointFileLocation
+          if string(lln.file) == bp.abspath && lln.line == bp.line
+            insert!(expr.args, i, JuliaInterpreter.BREAKPOINT_EXPR)
+            i -= 1
+          end
+        end
+      end
+    end
+    if arg isa Expr
+      insert_bps!(arg)
+    end
+    i -= 1
+  end
+end
+
+function debug_file(text, path, should_step)
+  expr = Base.parse_input_line(text, filename = path)
+  exprs, _ = JuliaInterpreter.split_expressions(Main, expr)
+
+  for (mod, ex) in exprs
+    temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
+
+    insert_bps!(ex)
+
+    JuliaInterpreter.remove.(temp_bps)
+
+    frame = JuliaInterpreter.prepare_thunk(mod, ex)
+
+    startdebugging(frame, !should_step, istoplevel = true)
+  end
+
+  nothing
+end
+
 # setup interpreter
-function startdebugging(frame, initial_continue = false)
+function startdebugging(frame, initial_continue = false; istoplevel = false)
   if frame === nothing
     error("failed to enter the function, perhaps it is set to run in compiled mode")
   end
@@ -92,7 +132,7 @@ function startdebugging(frame, initial_continue = false)
 
   try
     evalscope() do
-      if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
+      if initial_continue && ! JuliaInterpreter.shouldbreak(frame, frame.pc)
         ret = debug_command(_compiledMode[], frame, :c, true)
         if ret === nothing
           return res = JuliaInterpreter.get_return(root(frame))
@@ -105,7 +145,7 @@ function startdebugging(frame, initial_continue = false)
         end
       end
 
-      JuliaInterpreter.maybe_next_call!(frame)
+      JuliaInterpreter.maybe_next_call!(frame, istoplevel)
 
       debugmode(true)
       repltask = @async debugprompt()
@@ -188,6 +228,8 @@ for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
   handle(()->put!(chan[], cmd), string(cmd))
 end
 handle((line)->put!(chan[], (:toline, line)), "toline")
+
+handle(debug_file, "debugfile")
 
 # notify the frontend that we start debugging now
 function debugmode(on)
@@ -310,8 +352,13 @@ end
 
 function stepview(ex)
   out = if @capture(ex, f_(as__))
-    Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
-             text"(", interpose(as, text", ")..., text")")
+    fname = typeof(f).name.mt.name
+    if Base.isoperator(fname)
+      Row(interpose(as, span(".syntax--support.syntax--function", string(" ", fname, " ")))...)
+    else
+      Row(span(".syntax--support.syntax--function", string(fname)),
+        text"(", interpose(as, text", ")..., text")")
+    end
   elseif @capture(ex, x_ = y_)
     Row(Text(string(x)), text" = ", y)
   elseif @capture(ex, return x_)
@@ -323,12 +370,13 @@ function stepview(ex)
 end
 
 function evalscope(f)
+  locked = islocked(Atom.evallock)
   try
     @msg doneWorking()
-    unlock(Atom.evallock)
+    locked && unlock(Atom.evallock)
     f()
   finally
-    lock(Atom.evallock)
+    locked && lock(Atom.evallock)
     @msg working()
   end
 end
