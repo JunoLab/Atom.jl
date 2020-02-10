@@ -7,6 +7,7 @@ using Pkg
 blacklist = [
     "precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})"
     "precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})"
+    "precompile(Tuple{typeof(Atom.render′),Juno.Inline,Type})"
     "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
