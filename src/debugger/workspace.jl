@@ -9,7 +9,7 @@ function contexts(state::DebuggerState = STATE)
   active_callee = callee(active_frame(state))
   while frame ≠ nothing && frame ≠ active_callee
     trace = string(trace, "/", frame.framecode.scope isa Method ?
-                                frame.framecode.scope.name : "???")
+                                frame.framecode.scope.name : "top-level")
     c = Dict(:context => string("Debug: ", trace), :items => localvars(frame))
     pushfirst!(ctx, c)
 
