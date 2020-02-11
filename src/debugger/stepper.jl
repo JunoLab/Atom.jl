@@ -1,7 +1,7 @@
 using JuliaInterpreter: pc_expr, extract_args, debug_command, root, caller,
                         whereis, get_return, @lookup, Frame
 import JuliaInterpreter
-import ..Atom: fullpath, handle, @msg, Inline, display_error
+import ..Atom: fullpath, handle, @msg, Inline, display_error, hideprompt, getmodule
 import Juno: Row
 using MacroTools
 
@@ -81,11 +81,12 @@ function insert_bps!(expr)
   i = length(expr.args)
   for arg in reverse(expr.args)
     if arg isa LineNumberNode
-      lln = arg
+      lnn = arg
       for bp in JuliaInterpreter.breakpoints()
         if bp isa JuliaInterpreter.BreakpointFileLocation
-          if string(lln.file) == bp.abspath && lln.line == bp.line
+          if string(lnn.file) == bp.abspath && lnn.line == bp.line
             insert!(expr.args, i, JuliaInterpreter.BREAKPOINT_EXPR)
+            insert!(expr.args, i, lnn)
             i -= 1
           end
         end
@@ -98,36 +99,48 @@ function insert_bps!(expr)
   end
 end
 
-function debug_file(text, path, should_step)
-  expr = Base.parse_input_line(text, filename = path)
-  exprs, _ = JuliaInterpreter.split_expressions(Main, expr)
+function debug_file(mod, text, path, should_step)
+  mod = getmodule(mod)
 
-  lc = should_step ? :stepexpr : :continue
+  hideprompt() do
+    local expr, exprs
+    try
+      expr = Base.parse_input_line(text, filename = path)
+      exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
+    catch err
+      println(stderr)
+      Base.showerror(stderr, ErrorException("Error while parsing file or runtime error."), [])
+      println(stderr)
+      return
+    end
 
-  debugmode(true)
+    lc = should_step ? :stepexpr : :continue
 
-  for (i, (mod, ex)) in enumerate(exprs)
-    lc == :stop && break
+    debugmode(true)
 
-    temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
+    for (i, (mod, ex)) in enumerate(exprs)
+      lc == :stop && break
 
-    insert_bps!(ex)
+      temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
-    JuliaInterpreter.remove.(temp_bps)
+      insert_bps!(ex)
 
-    frame = JuliaInterpreter.prepare_thunk(mod, ex)
+      JuliaInterpreter.remove.(temp_bps)
 
-    _, lc = startdebugging(
-      frame,
-      lc == :continue || lc == nothing,
-      istoplevel = true,
-      toggle_ui = false
-    )
+      frame = JuliaInterpreter.prepare_thunk(mod, ex)
+
+      _, lc = startdebugging(
+        frame,
+        lc == :continue || lc == nothing,
+        istoplevel = true,
+        toggle_ui = false
+      )
+    end
+
+    debugmode(false)
+
+    nothing
   end
-
-  debugmode(false)
-
-  nothing
 end
 
 # setup interpreter
@@ -223,7 +236,7 @@ function startdebugging(
           pc = ret[2]
           if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
             STATE.broke_on_error = true
-            Base.display_error(stderr, pc.err, [])
+            display_error(stderr, pc.err, [])
           end
           JuliaInterpreter.maybe_next_call!(frame)
           is_toplevel_return(frame) && break
