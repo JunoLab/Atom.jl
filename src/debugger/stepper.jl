@@ -165,7 +165,7 @@ function startdebugging(
 
   try
     evalscope() do
-      if initial_continue && ! JuliaInterpreter.shouldbreak(frame, frame.pc)
+      if initial_continue && !JuliaInterpreter.shouldbreak(frame, frame.pc)
         ret = debug_command(_compiledMode[], frame, :c, true)
         if ret === nothing
           return res = JuliaInterpreter.get_return(root(frame))
@@ -343,17 +343,11 @@ function get_code_around(file, line, frame; around = 3)
   if isfile(file)
     lines = readlines(file)
   else
-    buf = IOBuffer()
+    src = JuliaInterpreter.copy_codeinfo(frame.framecode.src)
+    JuliaInterpreter.replace_coretypes!(src; rev = true)
+    lines = JuliaInterpreter.framecode_lines(src)
+
     line = convert(Int, frame.pc[])
-    src = frame.framecode.src
-    show(buf, src)
-    active_line = convert(Int, frame.pc[])
-
-    lines = filter!(split(String(take!(buf)), '\n')) do line
-        !(line == "CodeInfo(" || line == ")" || isempty(line))
-    end
-
-    lines .= replace.(lines, Ref(r"\$\(QuoteNode\((.+?)\)\)" => s"\1"))
   end
   firstline = max(1, line - around)
   lastline = min(length(lines), line + around)
