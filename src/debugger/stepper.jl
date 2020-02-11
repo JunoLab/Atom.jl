@@ -47,7 +47,8 @@ function enter(mod, arg; initial_continue = false)
   check_is_call(arg)
   quote
     let frame = $(_make_frame(mod, arg))
-      $(@__MODULE__).startdebugging(frame, $(initial_continue))
+      ret, _ = $(@__MODULE__).startdebugging(frame, $(initial_continue))
+      ret
     end
   end
 end
@@ -101,7 +102,13 @@ function debug_file(text, path, should_step)
   expr = Base.parse_input_line(text, filename = path)
   exprs, _ = JuliaInterpreter.split_expressions(Main, expr)
 
-  for (mod, ex) in exprs
+  lc = should_step ? :stepexpr : :continue
+
+  debugmode(true)
+
+  for (i, (mod, ex)) in enumerate(exprs)
+    lc == :stop && break
+
     temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
     insert_bps!(ex)
@@ -110,16 +117,26 @@ function debug_file(text, path, should_step)
 
     frame = JuliaInterpreter.prepare_thunk(mod, ex)
 
-    # FIXME: should_step should also depend on the last command issued to the previous frame -- if
-    #        it's not :c, then should_step = false 
-    startdebugging(frame, !should_step, istoplevel = true)
+    _, lc = startdebugging(
+      frame,
+      lc == :continue || lc == nothing,
+      istoplevel = true,
+      toggle_ui = false
+    )
   end
+
+  debugmode(false)
 
   nothing
 end
 
 # setup interpreter
-function startdebugging(frame, initial_continue = false; istoplevel = false)
+function startdebugging(
+    frame,
+    initial_continue = false;
+    istoplevel = false,
+    toggle_ui = true,
+  )
   if frame === nothing
     error("failed to enter the function, perhaps it is set to run in compiled mode")
   end
@@ -131,6 +148,7 @@ function startdebugging(frame, initial_continue = false; istoplevel = false)
 
   res = nothing
   repltask = nothing
+  lastcommand = nothing
 
   try
     evalscope() do
@@ -149,7 +167,7 @@ function startdebugging(frame, initial_continue = false; istoplevel = false)
 
       JuliaInterpreter.maybe_next_call!(frame, istoplevel)
 
-      debugmode(true)
+      toggle_ui && debugmode(true)
       repltask = @async debugprompt()
 
       stepto(frame)
@@ -158,6 +176,7 @@ function startdebugging(frame, initial_continue = false; istoplevel = false)
       STATE.level = stacklength(STATE) - 1
 
       for val in chan[]
+        lastcommand = val
         if val == :stop
           return nothing
         end
@@ -207,6 +226,8 @@ function startdebugging(frame, initial_continue = false; istoplevel = false)
             Base.display_error(stderr, pc.err, [])
           end
           JuliaInterpreter.maybe_next_call!(frame)
+          is_toplevel_return(frame) && break
+
           stepto(frame)
         end
       end
@@ -216,14 +237,16 @@ function startdebugging(frame, initial_continue = false; istoplevel = false)
   finally
     JuliaInterpreter.remove.(temp_bps)
     chan[] = nothing
-    debugmode(false)
+    toggle_ui && debugmode(false)
     if repltask ≠ nothing
       istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
+      print("\r                        \r")
     end
-    print("\r                        \r")
   end
-  res
+  res, lastcommand
 end
+
+is_toplevel_return(frame) = frame.framecode.scope isa Module && isexpr(pc_expr(frame), :return)
 
 # setup handlers for stepper commands
 for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
