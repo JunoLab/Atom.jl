@@ -22,3 +22,10 @@
         item.bind.name == "imwithdoc"
     end |> length === 1 # should only find the `imwithdoc` in SubJunk module
 end
+
+# don't leak something in a call
+for t in ["f(call())", "f(call(), @macro)", "f(@macro)", "f(@macro, arg; kwarg = kwarg)"]
+    items = toplevelitems(t)
+    @test length(items) === 1
+    @test items[1] isa Atom.ToplevelCall
+end
