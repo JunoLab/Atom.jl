@@ -271,6 +271,7 @@ end
 function updatesymbols(mod, path::Nothing, text) end # fallback case
 function updatesymbols(mod, path::String, text)
   m = getmodule(mod)
+  mod = string(m)
 
   # initialize the cache if there is no previous one
   if !haskey(SYMBOLSCACHE, mod)

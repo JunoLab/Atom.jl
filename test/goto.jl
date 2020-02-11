@@ -236,6 +236,14 @@
                 item.name == word
             end |> isempty
 
+            # don't differentiate between `Mod` and `Main.Mod`
+            @test !haskey(SYMBOLSCACHE, "Main.Atom")
+            prevstate = SYMBOLSCACHE["Atom"][atomjlfile]
+            updatesymbols("Main.Atom", atomjlfile, "")
+            @test !haskey(SYMBOLSCACHE, "Main.Atom")
+            @test isempty(SYMBOLSCACHE["Atom"][atomjlfile])
+            SYMBOLSCACHE["Atom"][atomjlfile] = prevstate
+
             # don't error on fallback case
             @test_nowarn @test updatesymbols(key, nothing, text) === nothing
         end
