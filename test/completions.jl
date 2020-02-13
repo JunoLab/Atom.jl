@@ -154,36 +154,49 @@ end
     type = "attribute"
     icon = "icon-chevron-right"
 
-    # local completions ordered by proximity
     let context = """
         function foo(x)
             aaa = 3
-            a
+            a # C3R6
 
-            foo = x
-            a
+            foo = x # C5R13
+            a # C6R6
             abc = 3
-            a
+            a # C8R6
         end
         """
+
+        # local completions ordered by proximity
         prefix = "a"
         let c = Atom.basecompletionadapter(prefix, "Main", context, 3, 6)[1]
             @test c[:text] == "aaa"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
             @test c[:icon] == icon
+            @test c[:description] == "aaa = 3"
         end
         let c = Atom.basecompletionadapter(prefix, "Main", context, 6, 6)[1]
             @test c[:text] == "aaa"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
             @test c[:icon] == icon
+            @test c[:description] == "aaa = 3"
         end
         let c = Atom.basecompletionadapter(prefix, "Main", context, 8, 6)[1]
             @test c[:text] == "abc"
             @test c[:rightLabel] == "foo"
             @test c[:type] == type
             @test c[:icon] == icon
+            @test c[:description] == "abc = 3"
+        end
+
+        # show a bound line as is if binding verbatim is not so useful
+        let c = Atom.basecompletionadapter("x", "Main", context, 5, 13)[1]
+            @test c[:text] == "x"
+            @test c[:rightLabel] == "foo"
+            @test c[:type] == type
+            @test c[:icon] == icon
+            @test c[:description] == "function foo(x)"
         end
 
         # show all the local bindings in order when forcibly invoked
