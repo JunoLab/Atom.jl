@@ -121,6 +121,36 @@ completionreturntype(c::REPLCompletions.DictCompletion) =
   shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 
+using JuliaInterpreter: sparam_syms
+
+function completionreturntype(c::REPLCompletions.MethodCompletion)
+  world = typemax(UInt) # world age
+
+  # first infer return type using input types
+  # NOTE:
+  # since input types are all concrete, the inference result is the best what we can get,
+  # so here we eagerly respect that if inference succeeded
+  f = c.func
+  tt = Base.tuple_type_tail(c.input_types)
+  inf = try
+    Core.Compiler.return_type(f, tt, world)
+  catch err
+    nothing
+  end
+  inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
+
+  # sometimes method signature can tell the return type by itself
+  m = c.method
+  sparams = Core.svec(sparam_syms(m)...)
+  inf = try
+    Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
+  catch err
+    nothing
+  end
+
+  return inf ∉ (nothing, Any, Union{}) ? shortstr(inf) : ""
+end
+
 completionurl(c) = ""
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
   mod, name = c.parent, c.mod
@@ -232,7 +262,6 @@ function completiondetail_keyword!(comp)
   comp[:description] = completiondescription(getdocs(Main, comp[:text]))
 end
 
-using JuliaInterpreter: sparam_syms
 using Base.Docs
 
 function completiondetail_method!(comp)
@@ -244,15 +273,6 @@ function completiondetail_method!(comp)
   ms = collect(methods(f))
   (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
   m = ms[i]
-
-  sparams = Core.svec(sparam_syms(m)...)
-  wa = Core.Compiler.Params(typemax(UInt))  # world age
-  inf = try
-    Core.Compiler.typeinf_type(m, m.sig, sparams, wa)
-  catch err
-    nothing
-  end
-  comp[:leftLabel] = inf in (nothing, Any, Union{}) ? "" : shortstr(inf)
 
   fsym = Symbol(f)
   cangetdocs(mod, fsym) || return
