@@ -132,12 +132,14 @@ function completionreturntype(c::REPLCompletions.MethodCompletion)
   # so here we eagerly respect that if inference succeeded
   f = c.func
   tt = Base.tuple_type_tail(c.input_types)
-  inf = try
-    Core.Compiler.return_type(f, tt, world)
-  catch err
-    nothing
+  if !isempty(tt.parameters)
+    inf = try
+      Core.Compiler.return_type(f, tt, world)
+    catch err
+      nothing
+    end
+    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
   end
-  inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
 
   # sometimes method signature can tell the return type by itself
   m = c.method
