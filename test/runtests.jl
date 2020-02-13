@@ -37,12 +37,6 @@ atommodfiles = let
         end
     end
 
-    # precompilation file
-    pl = "../deps/SnoopCompile/precompile/precompile_Atom.jl"
-    ls = filter!(l -> occursin("include(\"$pl\")", l), readlines(atomjlfile))
-    @assert length(ls) === 1
-    startswith(ls[1], '#') || push!(files, joinpath′(atomsrcdir, splitpath(pl)...))
-
     files
 end
 
