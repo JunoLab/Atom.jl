@@ -39,6 +39,8 @@ const SUPPRESS_COMPLETION_THRESHOLD = 500
 # ref: https://github.com/atom/autocomplete-plus/blob/master/lib/suggestion-list-element.js#L49
 const MAX_COMPLETIONS = 200
 
+const DESCRIPTION_LIMIT = 200
+
 function basecompletionadapter(
   # general
   line, m = "Main",
@@ -172,17 +174,30 @@ completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
 completiondetailtype(c::REPLCompletions.MethodCompletion) =
   string(c.method.name) * "," * repr(hash(c.method)) # hash string to identify this method
 
-localcompletions(text, row, col, prefix) = localcompletion.(locals(text, row, col), prefix)
-localcompletion(l, prefix) = CompletionSuggetion(
-  :replacementPrefix  => prefix,
-  # suggestion body
-  :text               => l.name,
-  :type               => (type = static_type(l)) == "variable" ? "attribute" : type,
-  :icon               => (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon,
-  :rightLabel         => l.root,
-  # for `getSuggestionDetailsOnSelect` API
-  :detailtype         => "", # shouldn't complete
-)
+function localcompletions(context, row, col, prefix)
+  ls = locals(context, row, col)
+  lines = split(context, '\n')
+  return localcompletion.(ls, prefix, Ref(lines))
+end
+function localcompletion(l, prefix, lines)
+  desc = if l.verbatim == l.name
+    # show a line as is if ActualLocalBinding.verbatim is not so informative
+    lines[l.line]
+  else
+    l.verbatim
+  end |> s -> strlimit(s, DESCRIPTION_LIMIT)
+  return CompletionSuggetion(
+    :replacementPrefix  => prefix,
+    # suggestion body
+    :text               => l.name,
+    :type               => (type = static_type(l)) == "variable" ? "attribute" : type,
+    :icon               => (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon,
+    :rightLabel         => l.root,
+    :description        => desc,
+    # for `getSuggestionDetailsOnSelect` API
+    :detailtype         => "", # shouldn't complete
+  )
+end
 
 ### completion details on selection ###
 
@@ -258,7 +273,7 @@ completiondescription(docs::Markdown.MD) = begin
     if part isa Markdown.Paragraph
       desc = Markdown.plain(part)
       occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, 200)
+      return strlimit(desc, DESCRIPTION_LIMIT)
     end
   end
   return ""
