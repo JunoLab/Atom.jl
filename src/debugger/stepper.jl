@@ -77,28 +77,6 @@ function add_breakpoint(bp)
   JuliaInterpreter.breakpoint(bp["file"], bp["line"], cond)
 end
 
-function insert_bps!(expr)
-  i = length(expr.args)
-  for arg in reverse(expr.args)
-    if arg isa LineNumberNode
-      lnn = arg
-      for bp in JuliaInterpreter.breakpoints()
-        if bp isa JuliaInterpreter.BreakpointFileLocation
-          if string(lnn.file) == bp.abspath && lnn.line == bp.line
-            insert!(expr.args, i, JuliaInterpreter.BREAKPOINT_EXPR)
-            insert!(expr.args, i, lnn)
-            i -= 1
-          end
-        end
-      end
-    end
-    if arg isa Expr && !(arg.head in (:function, :struct))
-      insert_bps!(arg)
-    end
-    i -= 1
-  end
-end
-
 function debug_file(mod, text, path, should_step)
   mod = getmodule(mod)
 
@@ -123,10 +101,6 @@ function debug_file(mod, text, path, should_step)
 
       temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
-      insert_bps!(ex)
-
-      JuliaInterpreter.remove.(temp_bps)
-
       frame = JuliaInterpreter.prepare_thunk(mod, ex)
 
       _, lc = startdebugging(
@@ -135,6 +109,8 @@ function debug_file(mod, text, path, should_step)
         istoplevel = true,
         toggle_ui = false
       )
+
+      JuliaInterpreter.remove.(temp_bps)
     end
 
     debugmode(false)
@@ -172,6 +148,7 @@ function startdebugging(
         end
         STATE.frame = frame = ret[1]
         pc = ret[2]
+
         if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
           STATE.broke_on_error = true
           Base.display_error(stderr, ret[2].err, [])
@@ -238,6 +215,7 @@ function startdebugging(
             STATE.broke_on_error = true
             display_error(stderr, pc.err, [])
           end
+
           JuliaInterpreter.maybe_next_call!(frame)
           is_toplevel_return(frame) && break
 
