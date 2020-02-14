@@ -124,33 +124,29 @@ completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 using JuliaInterpreter: sparam_syms
 
 function completionreturntype(c::REPLCompletions.MethodCompletion)
-  world = typemax(UInt) # world age
+  try
+    world = typemax(UInt) # world age
 
-  # first infer return type using input types
-  # NOTE:
-  # since input types are all concrete, the inference result is the best what we can get,
-  # so here we eagerly respect that if inference succeeded
-  f = c.func
-  tt = Base.tuple_type_tail(c.input_types)
-  if !isempty(tt.parameters)
-    inf = try
-      Core.Compiler.return_type(f, tt, world)
-    catch err
-      nothing
+    # first infer return type using input types
+    # NOTE:
+    # since input types are all concrete, the inference result is the best what we can get,
+    # so here we eagerly respect that if inference succeeded
+    f = c.func
+    tt = Base.tuple_type_tail(c.input_types)
+    if !isempty(tt.parameters)
+      inf = Core.Compiler.return_type(f, tt, world)
+      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
     end
+
+    # sometimes method signature can tell the return type by itself
+    m = c.method
+    sparams = Core.svec(sparam_syms(m)...)
+    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
     inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-  end
-
-  # sometimes method signature can tell the return type by itself
-  m = c.method
-  sparams = Core.svec(sparam_syms(m)...)
-  inf = try
-    Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
   catch err
-    nothing
+    # @error err
   end
-
-  return inf ∉ (nothing, Any, Union{}) ? shortstr(inf) : ""
+  return ""
 end
 
 completionurl(c) = ""
