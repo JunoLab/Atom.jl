@@ -68,6 +68,21 @@ end
 
 const current_prompt = Ref{String}(juliaprompt)
 
+waiter_in = Condition()
+waiter_out = Condition()
+
+function blockinput()
+  global waiter_in
+  global waiter_out
+
+  print(stdout, "\e[1A\r\e[0K\r\e[1A\r")
+
+  notify(waiter_out, nothing)
+  yield()
+  wait(waiter_in)
+  nothing
+end
+
 function hideprompt(f)
   isREPL() || return f()
 
@@ -82,13 +97,24 @@ function hideprompt(f)
   LineEdit.refresh_multi_line(mistate)
 
   print(stdout, "\e[1K\r")
+
+  global waiter_in = Condition()
+  global waiter_out = Condition()
+
+  Atom.@msg writeToTerminal("\b\u200B\n")
+
+  wait(waiter_out)
+
   r = f()
 
   flush(stdout)
   flush(stderr)
+
   sleep(0.05)
 
   pos = @rpc cursorpos()
+
+  notify(waiter_in, nothing)
   pos[1] != 0 && println()
 
   # restore prompt
@@ -151,6 +177,10 @@ end
 const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
+  if line == "\u200B"
+    return blockinput()
+  end
+
   global ans
   try
     lock(evallock)
