@@ -77,13 +77,19 @@ function add_breakpoint(bp)
   JuliaInterpreter.breakpoint(bp["file"], bp["line"], cond)
 end
 
-function debug_file(mod, text, path, should_step)
+function debug_file(mod, text, path, should_step, line_offset = 0)
   mod = getmodule(mod)
 
   hideprompt() do
     local expr, exprs
     try
-      expr = Base.parse_input_line(text, filename = path)
+      expr = MacroTools.postwalk(Base.parse_input_line(text, filename = path)) do x
+        # NOTE: correct line numbers using line offset for debugging a block or cell
+        if x isa LineNumberNode
+          return LineNumberNode(x.line + line_offset, x.file)
+        end
+        return x
+      end
       exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
     catch err
       println(stderr)
