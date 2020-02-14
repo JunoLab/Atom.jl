@@ -123,6 +123,7 @@ completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 
 using JuliaInterpreter: sparam_syms
 
+# TODO: lazy return type inference
 function completionreturntype(c::REPLCompletions.MethodCompletion)
   try
     world = typemax(UInt) # world age
