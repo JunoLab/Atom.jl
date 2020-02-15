@@ -8,6 +8,8 @@ using REPL.LineEdit
 using Logging: with_logger
 using .Progress: JunoProgressLogger
 
+const REPL_SENTINEL_CHAR = "\u200B"
+
 function get_main_mode()
   mode = Base.active_repl.interface.modes[1]
   mode isa LineEdit.Prompt || error("no julia repl mode found")
@@ -75,6 +77,7 @@ function blockinput()
   global waiter_in
   global waiter_out
 
+  # clear prompt and newline introduced by sending a command to the REPL
   print(stdout, "\e[1A\r\e[0K\r\e[1A\r")
 
   notify(waiter_out, nothing)
@@ -85,6 +88,7 @@ end
 
 function hideprompt(f)
   isREPL() || return f()
+  isdebugging() && return f()
 
   repl = Base.active_repl
   mistate = repl.mistate
@@ -101,7 +105,7 @@ function hideprompt(f)
   global waiter_in = Condition()
   global waiter_out = Condition()
 
-  Atom.@msg writeToTerminal("\b\u200B\n")
+  Atom.@msg writeToTerminal("\b$(REPL_SENTINEL_CHAR)\n")
 
   wait(waiter_out)
 
@@ -177,7 +181,7 @@ end
 const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
-  if line == "\u200B"
+  if line == REPL_SENTINEL_CHAR
     return blockinput()
   end
 

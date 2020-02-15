@@ -109,7 +109,7 @@ function debug_file(mod, text, path, should_step, line_offset = 0)
 
       frame = JuliaInterpreter.prepare_thunk(mod, ex)
 
-      _, lc = startdebugging(
+      _, lc = Base.invokelatest(startdebugging,
         frame,
         lc == :continue || lc == nothing,
         istoplevel = true,
