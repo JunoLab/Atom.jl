@@ -262,28 +262,25 @@ completiondetail_keyword!(comp, word) =
 using JuliaInterpreter: sparam_syms
 using Base.Docs
 
-# NOTE: this is really hacky, find another way to implement this ?
 function completiondetail_method!(comp, method_hash, mod)
-  mod = getmodule(mod)
-
   (info = get(METHODCOMP_DETAIL_INFO, method_hash, nothing)) === nothing && return
   f, m, tt = info.f, info.m, info.tt
 
   # return type inference
-  comp[:leftLabel] = lazy_rt_inf(f, m, Base.tuple_type_tail(tt))
+  comp[:leftLabel] = rt_inf(f, m, Base.tuple_type_tail(tt))
 
   # description for this method
+  mod = getmodule(mod)
   f_sym = m.name
   cangetdocs(mod, f_sym) || return
-  docs = try
-    Docs.doc(Docs.Binding(mod, f_sym), Base.tuple_type_tail(m.sig))
+  try
+    docs = Docs.doc(Docs.Binding(mod, f_sym), Base.tuple_type_tail(m.sig))
+    comp[:description] = completiondescription(docs)
   catch
-    ""
   end
-  comp[:description] = completiondescription(docs)
 end
 
-function lazy_rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
+function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
   try
     world = typemax(UInt) # world age
 
