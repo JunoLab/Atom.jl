@@ -237,7 +237,6 @@ function startdebugging(
     toggle_ui && debugmode(false)
     if repltask ≠ nothing
       istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
-      print("\r                        \r")
     end
   end
   res, lastcommand
