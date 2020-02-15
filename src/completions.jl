@@ -121,35 +121,6 @@ completionreturntype(c::REPLCompletions.DictCompletion) =
   shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
 
-using JuliaInterpreter: sparam_syms
-
-# TODO: lazy return type inference
-function completionreturntype(c::REPLCompletions.MethodCompletion)
-  try
-    world = typemax(UInt) # world age
-
-    # first infer return type using input types
-    # NOTE:
-    # since input types are all concrete, the inference result is the best what we can get,
-    # so here we eagerly respect that if inference succeeded
-    f = c.func
-    tt = Base.tuple_type_tail(c.input_types)
-    if !isempty(tt.parameters)
-      inf = Core.Compiler.return_type(f, tt, world)
-      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-    end
-
-    # sometimes method signature can tell the return type by itself
-    m = c.method
-    sparams = Core.svec(sparam_syms(m)...)
-    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
-    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-  catch err
-    # @error err
-  end
-  return ""
-end
-
 completionurl(c) = ""
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
   mod, name = c.parent, c.mod
@@ -200,8 +171,19 @@ completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 completiondetailtype(c) = ""
 completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
 completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
-completiondetailtype(c::REPLCompletions.MethodCompletion) =
-  string(c.method.name) * "," * repr(hash(c.method)) # hash string to identify this method
+
+const METHODCOMP_DETAIL_DELIM = ' '
+
+function completiondetailtype(c::REPLCompletions.MethodCompletion)
+  tt = Base.tuple_type_tail(c.input_types)
+
+  # pass string representations of this `MethodCompletion` so that we can reconstruct the necessary information lazily
+  return join([
+    repr(c.func),
+    repr(tt), # input tuple type
+    repr(hash(c.method)) # hash string to identify this method
+  ], METHODCOMP_DETAIL_DELIM)
+end
 
 function localcompletions(context, row, col, prefix)
   ls = locals(context, row, col)
@@ -261,26 +243,71 @@ function completiondetail_keyword!(comp)
   comp[:description] = completiondescription(getdocs(Main, comp[:text]))
 end
 
+const GENSYM_REGEX = r"var\"(.+)\""
+using JuliaInterpreter: sparam_syms
 using Base.Docs
 
+# NOTE: this is really hacky, find another way to implement this ?
 function completiondetail_method!(comp)
   mod = getmodule(comp[:rightLabel])
-  fstr, fhash = split(comp[:detailtype], ',')
-  f = getfield′(mod, Symbol(fstr))
-  isundefined(f) && return
-  # HACK: reconstruct a Method object from its hash string
+  f_str, tt_str, fhash_str = split(comp[:detailtype], METHODCOMP_DETAIL_DELIM)
+  f_str = split(f_str, '.')[end] # NOTE: strip module prefix (important since module itself can be gensymed)
+
+  # reconstruct function itself handling gensyms
+  if (m = match(GENSYM_REGEX, f_str)) !== nothing
+    # gensym pattern
+    f_sym = Symbol(m.captures[1])
+    f_typ = getfield′(mod, f_sym)
+    (isundefined(f_typ) || !isdefined(f_typ, :instance)) && return
+    f = f_typ.instance
+  else
+    # ordinary function
+    f_sym = Symbol(f_str)
+    f = getfield′(mod, f_sym)
+    isundefined(f) && return
+  end
+
+  # reconstruct a Method object from its hash string
   ms = collect(methods(f))
-  (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
+  (i = findfirst(m -> repr(hash(m)) == fhash_str, ms)) === nothing && return
   m = ms[i]
 
-  fsym = Symbol(f)
-  cangetdocs(mod, fsym) || return
+  comp[:leftLabel] = lazy_rt_inf(f, m, tt_str)
+
+  cangetdocs(mod, f_sym) || return
   docs = try
-    Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
+    Docs.doc(Docs.Binding(mod, f_sym), Base.tuple_type_tail(m.sig))
   catch err
     ""
   end
   comp[:description] = completiondescription(docs)
+end
+
+function lazy_rt_inf(@nospecialize(f), m, tt_str)
+  try
+    world = typemax(UInt) # world age
+
+    # first infer return type using input types
+    # NOTE: input types are all concrete
+    # - the inference result from them is the best what we can get, and so here we eagerly respect that if inference succeeded
+    # - when reconstruct tuple type from its string representation, we don't need to handle UnionAll or stuff, which would make parsing more difficult
+    tt_expr = Meta.parse(tt_str; raise = false)
+    if !Meta.isexpr(tt_expr, (:incomplete, :error))
+      tt = eval(tt_expr)::Type
+      if !isempty(tt.parameters)
+        inf = Core.Compiler.return_type(f, tt, world)
+        inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
+      end
+    end
+
+    # sometimes method signature can tell the return type by itself
+    sparams = Core.svec(sparam_syms(m)...)
+    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
+    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
+  catch err
+    # @error err
+  end
+  return ""
 end
 
 using Markdown
