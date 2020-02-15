@@ -1,16 +1,14 @@
 @testset "docs" begin
   @testset "searchdocs" begin
-    using Atom: searchdocs′, _searchdocs
+    using Atom: searchdocs′
 
+    # don't error on fallback case
     @test !searchdocs′("sin")[:error]
-        # module awareness
-    @test all(_searchdocs("getfield′"; mod = "Atom")) do (score, docobj)
-      docobj.mod == "Atom"
-    end
-        # strip module accessor
-    @test all(_searchdocs("Atom.getfield′"; mod = "Main")) do (score, docobj)
-      docobj.mod == "Atom"
-    end
+
+    # don't erase module input when it's used
+    @test !searchdocs′("getfield′", true, "Atom")[:shoulderase]
+    # erase module input when it's replaced by module prefix in search text
+    @test searchdocs′("Atom.getfield′", true, "Main")[:shoulderase]
   end
 
   @testset "moduleinfo" begin
