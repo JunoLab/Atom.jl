@@ -234,43 +234,45 @@ handle("completiondetail") do _comp
 end
 
 function completiondetail!(comp)
-  isempty(comp[:detailtype]) && return comp
+  dt = comp[:detailtype]::String
+  isempty(dt) && return comp
+  mod = comp[:rightLabel]::String
+  word = comp[:text]::String
 
-  if comp[:detailtype] == "module"
-    completiondetail_module!(comp)
-  elseif comp[:detailtype] == "keyword"
-    completiondetail_keyword!(comp)
+  if dt == "module"
+    completiondetail_module!(comp, mod, word)
+  elseif dt == "keyword"
+    completiondetail_keyword!(comp, word)
   else # detail for method completion
-    completiondetail_method!(comp)
+    completiondetail_method!(comp, dt, mod)
   end
 
-  comp[:detailtype] = ""
+  comp[:detailtype] = "" # may not be needed, but empty this to make sure any further detail completion doesn't happen
 end
 
-function completiondetail_module!(comp)
-  mod = getmodule(comp[:rightLabel])
-  word = comp[:text]
+function completiondetail_module!(comp, mod, word)
+  mod = getmodule(mod)
   cangetdocs(mod, word) || return
   comp[:description] = completiondescription(getdocs(mod, word))
 end
 
-function completiondetail_keyword!(comp)
-  comp[:description] = completiondescription(getdocs(Main, comp[:text]))
-end
+completiondetail_keyword!(comp, word) =
+  comp[:description] = completiondescription(getdocs(Main, word))
 
 using JuliaInterpreter: sparam_syms
 using Base.Docs
 
 # NOTE: this is really hacky, find another way to implement this ?
-function completiondetail_method!(comp)
-  mod = getmodule(comp[:rightLabel])
-  method_hash = comp[:detailtype]
+function completiondetail_method!(comp, method_hash, mod)
+  mod = getmodule(mod)
 
   (info = get(METHODCOMP_DETAIL_INFO, method_hash, nothing)) === nothing && return
   f, m, tt = info.f, info.m, info.tt
 
+  # return type inference
   comp[:leftLabel] = lazy_rt_inf(f, m, Base.tuple_type_tail(tt))
 
+  # description for this method
   f_sym = m.name
   cangetdocs(mod, f_sym) || return
   docs = try
