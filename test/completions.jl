@@ -52,29 +52,52 @@
         ## advances
         # HACK: this allows testing this in a same julia runtime
         let mod = Main.eval(:(module $(gensym("tempmod")) end))
+            # initial state check
+            let cs = comps(line)
+                filter!(c -> c[:text] == "push!(::$(mod).Singleton)", cs)
+                @test isempty(cs)
+            end
+
             # advanced features
             # - dynamic method addition
             # - shows module where the method defined in right label
-            # - shows the infered return type in left label
-            @test filter(comps(line)) do c
-                add_details!(c)
-                c[:type] == "method" &&
-                c[:rightLabel] == string(mod) &&
-                c[:leftLabel] == "String" &&
-                c[:text] == "push!(::$(mod).Singleton)"
-            end |> isempty
+            # - shows the infered return type in left label from method signature
             @eval mod begin
                 struct Singleton end
                 import Base: push!
                 push!(::Singleton) = ""
             end
-            @test filter(comps(line)) do c
-                add_details!(c)
-                c[:type] == "method" &&
-                c[:rightLabel] == string(mod) &&
-                c[:leftLabel] == "String" &&
-                c[:text] == "push!(::$(mod).Singleton)"
-            end |> !isempty
+            let cs = comps(line)
+                filter!(c -> c[:text] == "push!(::$(mod).Singleton)", cs)
+                # dynamic method addition
+                @test length(cs) === 1
+                @test cs[1][:type] == "method"
+                # shows module where the method defined in right label
+                @test cs[1][:rightLabel] == string(mod)
+                # shows the infered return type in left label from method signature
+                @test cs[1][:leftLabel] == "String"
+            end
+
+            # shows the infered return type in left label from input types
+            @eval mod f(a) = a
+            let cs = comps("f("; mod = string(mod))
+                filter!(c -> c[:text] == "f(a)", cs)
+                @test length(cs) === 1
+                c = cs[1]
+                @test c[:text] == "f(a)"
+                @test c[:type] == "method"
+                @test c[:rightLabel] == string(mod)
+                @test c[:leftLabel] == "" # don't show a return type when it can't be inferred
+            end
+            let cs = comps("f(1, "; mod = string(mod))
+                filter!(c -> c[:text] == "f(a)", cs)
+                @test length(cs) === 1
+                c = cs[1]
+                @test c[:text] == "f(a)"
+                @test c[:type] == "method"
+                @test c[:rightLabel] == string(mod)
+                @test c[:leftLabel] == "$(Int)" # infer return type with input types
+            end
 
             # don't segfault on generate function
             @eval mod begin
