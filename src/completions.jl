@@ -77,6 +77,8 @@ function basecompletionadapter(
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  # initialize MethodCompletion information
+  any(c -> c isa REPLCompletions.MethodCompletion, cs) && empty!(METHODCOMP_DETAIL_INFO)
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
     if afterusing
@@ -172,17 +174,30 @@ completiondetailtype(c) = ""
 completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
 completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
 
-const METHODCOMP_DETAIL_DELIM = ' '
+"""
+    METHODCOMP_DETAIL_INFO::Dict{String,NamedTuple{(:f, :m, :tt),Tuple{Any,Method,Type}}}
+
+`Dict` that keeps information about `REPLCompletions.MethodCompletion`,
+  which will be used lazily by [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
+  (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider).
+
+Keys are hash string of `Method` instance, and values are `NamedTuple`s with the following entries:
+- `f`: function object of this `Method`
+- `m`: `Method` instance
+- `tt`: `Tuple` type of the input arguments of this `MethodCompletion`
+"""
+const METHODCOMP_DETAIL_INFO =
+  Dict{String,NamedTuple{(:f, :m, :tt),Tuple{Any,Method,Type}}}()
 
 function completiondetailtype(c::REPLCompletions.MethodCompletion)
-  tt = Base.tuple_type_tail(c.input_types)
-
-  # pass string representations of this `MethodCompletion` so that we can reconstruct the necessary information lazily
-  return join([
-    repr(c.func),
-    repr(tt), # input tuple type
-    repr(hash(c.method)) # hash string to identify this method
-  ], METHODCOMP_DETAIL_DELIM)
+  method_hash = repr(hash(c.method))
+  info = (
+    f = c.func,
+    m = c.method,
+    tt = c.input_types
+  )
+  push!(METHODCOMP_DETAIL_INFO, method_hash => info)
+  return method_hash
 end
 
 function localcompletions(context, row, col, prefix)
@@ -243,61 +258,40 @@ function completiondetail_keyword!(comp)
   comp[:description] = completiondescription(getdocs(Main, comp[:text]))
 end
 
-const GENSYM_REGEX = r"var\"(.+)\""
 using JuliaInterpreter: sparam_syms
 using Base.Docs
 
 # NOTE: this is really hacky, find another way to implement this ?
 function completiondetail_method!(comp)
   mod = getmodule(comp[:rightLabel])
-  f_str, tt_str, fhash_str = split(comp[:detailtype], METHODCOMP_DETAIL_DELIM)
-  f_str = split(f_str, '.')[end] # NOTE: strip module prefix (important since module itself can be gensymed)
+  method_hash = comp[:detailtype]
 
-  # reconstruct function itself handling gensyms
-  if (m = match(GENSYM_REGEX, f_str)) !== nothing
-    # gensym pattern
-    f_sym = Symbol(m.captures[1])
-    f_typ = getfield′(mod, f_sym)
-    (isundefined(f_typ) || !isdefined(f_typ, :instance)) && return
-    f = f_typ.instance
-  else
-    # ordinary function
-    f_sym = Symbol(f_str)
-    f = getfield′(mod, f_sym)
-    isundefined(f) && return
-  end
+  (info = get(METHODCOMP_DETAIL_INFO, method_hash, nothing)) === nothing && return
+  f, m, tt = info.f, info.m, info.tt
 
-  # reconstruct a Method object from its hash string
-  ms = collect(methods(f))
-  (i = findfirst(m -> repr(hash(m)) == fhash_str, ms)) === nothing && return
-  m = ms[i]
+  comp[:leftLabel] = lazy_rt_inf(f, m, Base.tuple_type_tail(tt))
 
-  comp[:leftLabel] = lazy_rt_inf(f, m, tt_str)
-
+  f_sym = m.name
   cangetdocs(mod, f_sym) || return
   docs = try
     Docs.doc(Docs.Binding(mod, f_sym), Base.tuple_type_tail(m.sig))
-  catch err
+  catch
     ""
   end
   comp[:description] = completiondescription(docs)
 end
 
-function lazy_rt_inf(@nospecialize(f), m, tt_str)
+function lazy_rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
   try
     world = typemax(UInt) # world age
 
     # first infer return type using input types
-    # NOTE: input types are all concrete
-    # - the inference result from them is the best what we can get, and so here we eagerly respect that if inference succeeded
-    # - when reconstruct tuple type from its string representation, we don't need to handle UnionAll or stuff, which would make parsing more difficult
-    tt_expr = Meta.parse(tt_str; raise = false)
-    if !Meta.isexpr(tt_expr, (:incomplete, :error))
-      tt = eval(tt_expr)::Type
-      if !isempty(tt.parameters)
-        inf = Core.Compiler.return_type(f, tt, world)
-        inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-      end
+    # NOTE:
+    # since input types are all concrete, the inference result from them is the best what we can get
+    # so here we eagerly respect that if inference succeeded
+    if !isempty(tt.parameters)
+      inf = Core.Compiler.return_type(f, tt, world)
+      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
     end
 
     # sometimes method signature can tell the return type by itself
