@@ -9,31 +9,39 @@ handle("searchdocs") do data
     exportedonly = exportedOnly || false,
     allPackages || false
   ] = data
-  searchdocs′(
-    needle;
+  return searchdocs′(
+    needle,
     # kwargs to be passed to `DocSeeker.searchdocs`:
     # TODO: configuration for `maxreturns`
-    loaded = !allPackages, mod = getmodule(mod), exportedonly = exportedonly, name_only = name_only
+    !allPackages, mod, exportedonly, name_only
   )
 end
 
-function searchdocs′(needle; kwargs...)
-  items = _searchdocs(needle; kwargs...)
-  return processdocs(items)
+function searchdocs′(needle, loaded = true, mod = "Main", exportedonly = false, name_only = false)
+  searchmod = getmodule(mod)
+
+  items, actualmod = _searchdocs(needle, loaded, searchmod, exportedonly, name_only)
+  results = processdocs(items)
+
+  # erase module input if the actual searched module has been changed
+  push!(results, :shoulderase => searchmod ≠ actualmod)
+
+  return results
 end
 
-function _searchdocs(needle; kwargs...)
+function _searchdocs(needle, loaded = true, mod = Main, exportedonly = false, name_only = false)
   identifiers = split(needle, '.')
   head = string(identifiers[1])
-  mod = get(kwargs, :mod, Main)
-  if head ≠ needle && (nextmod = getfield′(mod, head)) isa Module
+  if loaded && head ≠ needle && (nextmod = getfield′(mod, head)) isa Module
     # if `head` is a module, update `needle` and `mod`
     nextneedle = join(identifiers[2:end], '.')
-    nextkwargs = Dict(k => (k === :mod ? nextmod : v) for (k, v) in kwargs)
-    return _searchdocs(nextneedle; nextkwargs...)
+    return _searchdocs(nextneedle, loaded, nextmod, exportedonly, name_only)
   end
 
-  return @errs searchdocs(needle; kwargs...)
+  return @errs searchdocs(
+    needle;
+    loaded = loaded, mod = mod, exportedonly = exportedonly, name_only = name_only
+  ), mod
 end
 
 function processdocs(items)
