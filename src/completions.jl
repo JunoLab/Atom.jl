@@ -110,7 +110,7 @@ completion(mod, c, prefix) = CompletionSuggetion(
 const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
 const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 """
-    METHOD_COMPLETION_CACHE::Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}
+    METHOD_COMPLETION_CACHE::Dict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}
     MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
     MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 
@@ -123,8 +123,7 @@ Keys are hash `String` of a `REPLCompletions.MethodCompletion` object,
   which can be used for cache detection or refered lazily by
   [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
   (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider)
-Values are `Pair` whose first element is a primary world age of this `Method`,
-  and the second element is either of:
+Values can be either of:
 - `MethodCompletionInfo`: keeps (temporary) information of this `REPLCompletions.MethodCompletion`
   + `f`: a function object
   + `m`: a `Method` object
@@ -135,36 +134,41 @@ Values are `Pair` whose first element is a primary world age of this `Method`,
 
 If the second element is still a `MethodCompletionInfo` instance, that means its details
   aren't lazily computed yet.
-If the second element is already a `MethodCompletionDetail` then we can reuse this cache
-  as far as `Method`'s primiary world age is same as the stored world age.
+If the second element is already a `MethodCompletionDetail` then we can reuse this cache.
+
+!!! note
+    If a method gets updated (i.e. redefined etc), key hash for the `REPLCompletions.MethodCompletion`
+      will be different from the previous one, so it's okay if we just rely on the hash key.
+
+!!! warning
+    Within the current implementation, we can't reflect changes that happens in backedges.
 """
-const METHOD_COMPLETION_CACHE = Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}()
+const METHOD_COMPLETION_CACHE = Dict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}()
 
 function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
   k = repr(hash(c))
 
   m = c.method
-  world = m.primary_world
   v = get(METHOD_COMPLETION_CACHE, k, nothing)
-  if v !== nothing && world === first(v)
-    lst = last(v)
-    if lst isa MethodCompletionDetail
+  if v !== nothing
+    if v isa MethodCompletionDetail
       # cache found
-      rt, desc = lst
+      rt, desc = v
       dt = ""
     else
-      # lazy return type inference and description completement with a previously computed world
+      # MethodCompletion information has already been stored, but lazy return type inference and
+      # description completement has not been done yet
       rt, desc = "", ""
       dt = k
     end
   else
-    # lazy return type inference and description completement with a new world
+    # store MethodCompletion information for lazy return type inference and description completement
     info = MethodCompletionInfo((
       f = c.func,
       m = m,
       tt = c.input_types
     ))
-    push!(METHOD_COMPLETION_CACHE, k => world => info)
+    push!(METHOD_COMPLETION_CACHE, k => info)
     rt, desc = "", ""
     dt = k
   end
@@ -320,17 +324,16 @@ using Base.Docs
 function completiondetail_method!(comp, k)
   v = get(METHOD_COMPLETION_CACHE, k, nothing)
   v === nothing && return # shouldn't happen but just to make sure and help type inference
-  world, info = v
-  if info isa MethodCompletionDetail
+  if v isa MethodCompletionDetail
     # NOTE
     # This path sometimes happens maybe because of some lags between Juno and getSuggestionDetailsOnSelect API,
     # especially just after we booted Julia, and there are not so much inference caches in the Julia internal.
     # But since details are computed, we can just use here as well
-    comp[:leftLabel] = info.rt
-    comp[:description] = info.desc
+    comp[:leftLabel] = v.rt
+    comp[:description] = v.desc
     return
   end
-  f, m, tt = info.f, info.m, info.tt
+  f, m, tt = v.f, v.m, v.tt
 
   # return type inference
   rt = rt_inf(f, m, Base.tuple_type_tail(tt))
@@ -352,7 +355,7 @@ function completiondetail_method!(comp, k)
   comp[:description] = desc
 
   # update method completion cache with the results
-  push!(METHOD_COMPLETION_CACHE, k => world => MethodCompletionDetail((
+  push!(METHOD_COMPLETION_CACHE, k => MethodCompletionDetail((
     rt = rt,
     desc = desc
   )))
