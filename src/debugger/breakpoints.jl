@@ -158,16 +158,6 @@ handle("clearbps") do
   end
 end
 
-handle("getbps") do
-  with_error_message() do
-    ret = []
-    for (k, bp) in bps
-      push!(ret, Dict(:view => render(Juno.Inline(), bp)))
-    end
-    ret
-  end
-end
-
 handle("addArgs") do arg
   with_error_message() do
     bp = add_breakpoint_args(arg)

@@ -1,7 +1,7 @@
 using JuliaInterpreter: pc_expr, extract_args, debug_command, root, caller,
                         whereis, get_return, @lookup, Frame
 import JuliaInterpreter
-import ..Atom: fullpath, handle, @msg, Inline, display_error
+import ..Atom: fullpath, handle, @msg, Inline, display_error, hideprompt, getmodule
 import Juno: Row
 using MacroTools
 
@@ -47,7 +47,8 @@ function enter(mod, arg; initial_continue = false)
   check_is_call(arg)
   quote
     let frame = $(_make_frame(mod, arg))
-      $(@__MODULE__).startdebugging(frame, $(initial_continue))
+      ret, _ = $(@__MODULE__).startdebugging(frame, $(initial_continue))
+      ret
     end
   end
 end
@@ -76,8 +77,61 @@ function add_breakpoint(bp)
   JuliaInterpreter.breakpoint(bp["file"], bp["line"], cond)
 end
 
+function debug_file(mod, text, path, should_step, line_offset = 0)
+  mod = getmodule(mod)
+
+  hideprompt() do
+    local expr, exprs
+    try
+      expr = MacroTools.postwalk(Base.parse_input_line(text, filename = path)) do x
+        # NOTE: correct line numbers using line offset for debugging a block or cell
+        if x isa LineNumberNode
+          return LineNumberNode(x.line + line_offset, x.file)
+        end
+        return x
+      end
+      exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
+    catch err
+      println(stderr)
+      Base.showerror(stderr, ErrorException("Error while parsing file or runtime error."), [])
+      println(stderr)
+      return
+    end
+
+    lc = should_step ? :stepexpr : :continue
+
+    debugmode(true)
+
+    for (i, (mod, ex)) in enumerate(exprs)
+      lc == :stop && break
+
+      temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
+
+      frame = JuliaInterpreter.prepare_thunk(mod, ex)
+
+      _, lc = Base.invokelatest(startdebugging,
+        frame,
+        lc == :continue || lc == nothing,
+        istoplevel = true,
+        toggle_ui = false
+      )
+
+      JuliaInterpreter.remove.(temp_bps)
+    end
+
+    debugmode(false)
+
+    nothing
+  end
+end
+
 # setup interpreter
-function startdebugging(frame, initial_continue = false)
+function startdebugging(
+    frame,
+    initial_continue = false;
+    istoplevel = false,
+    toggle_ui = true,
+  )
   if frame === nothing
     error("failed to enter the function, perhaps it is set to run in compiled mode")
   end
@@ -89,6 +143,7 @@ function startdebugging(frame, initial_continue = false)
 
   res = nothing
   repltask = nothing
+  lastcommand = nothing
 
   try
     evalscope() do
@@ -99,15 +154,16 @@ function startdebugging(frame, initial_continue = false)
         end
         STATE.frame = frame = ret[1]
         pc = ret[2]
+
         if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
           STATE.broke_on_error = true
           Base.display_error(stderr, ret[2].err, [])
         end
       end
 
-      JuliaInterpreter.maybe_next_call!(frame)
+      JuliaInterpreter.maybe_next_call!(frame, istoplevel)
 
-      debugmode(true)
+      toggle_ui && debugmode(true)
       repltask = @async debugprompt()
 
       stepto(frame)
@@ -116,6 +172,7 @@ function startdebugging(frame, initial_continue = false)
       STATE.level = stacklength(STATE) - 1
 
       for val in chan[]
+        lastcommand = val
         if val == :stop
           return nothing
         end
@@ -162,9 +219,12 @@ function startdebugging(frame, initial_continue = false)
           pc = ret[2]
           if pc isa JuliaInterpreter.BreakpointRef && pc.err !== nothing
             STATE.broke_on_error = true
-            Base.display_error(stderr, pc.err, [])
+            display_error(stderr, pc.err, [])
           end
+
           JuliaInterpreter.maybe_next_call!(frame)
+          is_toplevel_return(frame) && break
+
           stepto(frame)
         end
       end
@@ -174,20 +234,23 @@ function startdebugging(frame, initial_continue = false)
   finally
     JuliaInterpreter.remove.(temp_bps)
     chan[] = nothing
-    debugmode(false)
+    toggle_ui && debugmode(false)
     if repltask ≠ nothing
       istaskdone(repltask) || schedule(repltask, InterruptException(); error=true)
     end
-    print("\r                        \r")
   end
-  res
+  res, lastcommand
 end
+
+is_toplevel_return(frame) = frame.framecode.scope isa Module && isexpr(pc_expr(frame), :return)
 
 # setup handlers for stepper commands
 for cmd in [:nextline, :stepin, :stepexpr, :finish, :stop, :continue]
   handle(()->put!(chan[], cmd), string(cmd))
 end
 handle((line)->put!(chan[], (:toline, line)), "toline")
+
+handle(debug_file, "debugfile")
 
 # notify the frontend that we start debugging now
 function debugmode(on)
@@ -263,17 +326,11 @@ function get_code_around(file, line, frame; around = 3)
   if isfile(file)
     lines = readlines(file)
   else
-    buf = IOBuffer()
+    src = JuliaInterpreter.copy_codeinfo(frame.framecode.src)
+    JuliaInterpreter.replace_coretypes!(src; rev = true)
+    lines = JuliaInterpreter.framecode_lines(src)
+
     line = convert(Int, frame.pc[])
-    src = frame.framecode.src
-    show(buf, src)
-    active_line = convert(Int, frame.pc[])
-
-    lines = filter!(split(String(take!(buf)), '\n')) do line
-        !(line == "CodeInfo(" || line == ")" || isempty(line))
-    end
-
-    lines .= replace.(lines, Ref(r"\$\(QuoteNode\((.+?)\)\)" => s"\1"))
   end
   firstline = max(1, line - around)
   lastline = min(length(lines), line + around)
@@ -310,8 +367,13 @@ end
 
 function stepview(ex)
   out = if @capture(ex, f_(as__))
-    Row(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
-             text"(", interpose(as, text", ")..., text")")
+    fname = typeof(f).name.mt.name
+    if Base.isoperator(fname)
+      Row(interpose(as, span(".syntax--support.syntax--function", string(" ", fname, " ")))...)
+    else
+      Row(span(".syntax--support.syntax--function", string(fname)),
+        text"(", interpose(as, text", ")..., text")")
+    end
   elseif @capture(ex, x_ = y_)
     Row(Text(string(x)), text" = ", y)
   elseif @capture(ex, return x_)
@@ -323,12 +385,13 @@ function stepview(ex)
 end
 
 function evalscope(f)
+  locked = islocked(Atom.evallock)
   try
     @msg doneWorking()
-    unlock(Atom.evallock)
+    locked && unlock(Atom.evallock)
     f()
   finally
-    lock(Atom.evallock)
+    locked && lock(Atom.evallock)
     @msg working()
   end
 end
