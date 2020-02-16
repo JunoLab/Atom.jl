@@ -41,6 +41,10 @@ const MAX_COMPLETIONS = 200
 
 const DESCRIPTION_LIMIT = 200
 
+# threshold up to which METHOD_COMPLETION_CACHE can get fat, to make sure it won't eat up memory
+# NOTE: with 2000 elements it used ~10MiB on my machine.
+const MAX_METHOD_COMPLETION_CACHE = 3000
+
 function basecompletionadapter(
   # general
   line, m = "Main",
@@ -76,6 +80,13 @@ function basecompletionadapter(
     CompletionSuggetion[]
   end
 
+  # FIFO cache refreshing
+  if length(METHOD_COMPLETION_CACHE) ≥ MAX_METHOD_COMPLETION_CACHE
+    for k in collect(keys(METHOD_COMPLETION_CACHE))[1:MAX_METHOD_COMPLETION_CACHE÷2]
+      delete!(METHOD_COMPLETION_CACHE, k)
+    end
+  end
+
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
@@ -101,6 +112,87 @@ completion(mod, c, prefix) = CompletionSuggetion(
   :detailtype         => completiondetailtype(c)
 )
 
+const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
+const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
+"""
+    METHOD_COMPLETION_CACHE::OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}
+    MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
+    MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
+
+[`OrderedCollections.OrderedDict`](@ref) that caches details of `REPLCompletions.MethodCompletion`s:
+- result of a return type inference
+- documentation description
+
+This cache object has the following structure:
+Keys are hash `String` of a `REPLCompletions.MethodCompletion` object,
+  which can be used for cache detection or refered lazily by
+  [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
+  (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider)
+Values can be either of:
+- `MethodCompletionInfo`: keeps (temporary) information of this `REPLCompletions.MethodCompletion`
+  + `f`: a function object
+  + `m`: a `Method` object
+  + `tt`: an input `Tuple` type
+- `MethodCompletionDetail`: stores the lazily computed detail of this `REPLCompletions.MethodCompletion`
+  + `rt`: `String` representing a return type of this method call
+  + `desc`: `String` representing documentation of this method
+
+If the second element is still a `MethodCompletionInfo` instance, that means its details
+  aren't lazily computed yet.
+If the second element is already a `MethodCompletionDetail` then we can reuse this cache.
+
+!!! note
+    If a method gets updated (i.e. redefined etc), key hash for the `REPLCompletions.MethodCompletion`
+      will be different from the previous one, so it's okay if we just rely on the hash key.
+
+!!! warning
+    Within the current implementation, we can't reflect changes that happens in backedges.
+"""
+const METHOD_COMPLETION_CACHE = OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}()
+
+function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
+  k = repr(hash(c))
+
+  m = c.method
+  v = get(METHOD_COMPLETION_CACHE, k, nothing)
+  if v !== nothing
+    if v isa MethodCompletionDetail
+      # cache found
+      rt, desc = v
+      dt = ""
+    else
+      # MethodCompletion information has already been stored, but lazy return type inference and
+      # description completement has not been done yet
+      rt, desc = "", ""
+      dt = k
+    end
+  else
+    # store MethodCompletion information for lazy return type inference and description completement
+    info = MethodCompletionInfo((
+      f = c.func,
+      m = m,
+      tt = c.input_types
+    ))
+    push!(METHOD_COMPLETION_CACHE, k => info)
+    rt, desc = "", ""
+    dt = k
+  end
+
+  return CompletionSuggetion(
+    :replacementPrefix  => prefix,
+    # suggestion body
+    :text               => completiontext(c),
+    :type               => completiontype(c),
+    :icon               => completionicon(c),
+    :rightLabel         => completionmodule(mod, c),
+    :leftLabel          => rt,
+    :description        => desc,
+    :descriptionMoreURL => completionurl(c),
+    # for `getSuggestionDetailsOnSelect` API
+    :detailtype         => dt
+  )
+end
+
 completiontext(c) = completion_text(c)
 completiontext(c::REPLCompletions.MethodCompletion) = begin
   ct = completion_text(c)
@@ -120,35 +212,6 @@ completionreturntype(c::REPLCompletions.FieldCompletion) =
 completionreturntype(c::REPLCompletions.DictCompletion) =
   shortstr(valtype(c.dict))
 completionreturntype(::REPLCompletions.PathCompletion) = "Path"
-
-using JuliaInterpreter: sparam_syms
-
-# TODO: lazy return type inference
-function completionreturntype(c::REPLCompletions.MethodCompletion)
-  try
-    world = typemax(UInt) # world age
-
-    # first infer return type using input types
-    # NOTE:
-    # since input types are all concrete, the inference result is the best what we can get,
-    # so here we eagerly respect that if inference succeeded
-    f = c.func
-    tt = Base.tuple_type_tail(c.input_types)
-    if !isempty(tt.parameters)
-      inf = Core.Compiler.return_type(f, tt, world)
-      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-    end
-
-    # sometimes method signature can tell the return type by itself
-    m = c.method
-    sparams = Core.svec(sparam_syms(m)...)
-    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
-    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-  catch err
-    # @error err
-  end
-  return ""
-end
 
 completionurl(c) = ""
 completionurl(c::REPLCompletions.ModuleCompletion) = begin
@@ -200,8 +263,6 @@ completionicon(::REPLCompletions.PathCompletion) = "icon-file"
 completiondetailtype(c) = ""
 completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
 completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
-completiondetailtype(c::REPLCompletions.MethodCompletion) =
-  string(c.method.name) * "," * repr(hash(c.method)) # hash string to identify this method
 
 function localcompletions(context, row, col, prefix)
   ls = locals(context, row, col)
@@ -237,50 +298,95 @@ handle("completiondetail") do _comp
 end
 
 function completiondetail!(comp)
-  isempty(comp[:detailtype]) && return comp
+  dt = comp[:detailtype]::String
+  isempty(dt) && return comp
+  word = comp[:text]::String
 
-  if comp[:detailtype] == "module"
-    completiondetail_module!(comp)
-  elseif comp[:detailtype] == "keyword"
-    completiondetail_keyword!(comp)
+  if dt == "module"
+    mod = comp[:rightLabel]::String
+    completiondetail_module!(comp, mod, word)
+  elseif dt == "keyword"
+    completiondetail_keyword!(comp, word)
   else # detail for method completion
-    completiondetail_method!(comp)
+    completiondetail_method!(comp, dt)
   end
 
-  comp[:detailtype] = ""
+  comp[:detailtype] = "" # may not be needed, but empty this to make sure any further detail completion doesn't happen
 end
 
-function completiondetail_module!(comp)
-  mod = getmodule(comp[:rightLabel])
-  word = comp[:text]
+function completiondetail_module!(comp, mod, word)
+  mod = getmodule(mod)
   cangetdocs(mod, word) || return
   comp[:description] = completiondescription(getdocs(mod, word))
 end
 
-function completiondetail_keyword!(comp)
-  comp[:description] = completiondescription(getdocs(Main, comp[:text]))
-end
+completiondetail_keyword!(comp, word) =
+  comp[:description] = completiondescription(getdocs(Main, word))
 
+using JuliaInterpreter: sparam_syms
 using Base.Docs
 
-function completiondetail_method!(comp)
-  mod = getmodule(comp[:rightLabel])
-  fstr, fhash = split(comp[:detailtype], ',')
-  f = getfield′(mod, Symbol(fstr))
-  isundefined(f) && return
-  # HACK: reconstruct a Method object from its hash string
-  ms = collect(methods(f))
-  (i = findfirst(m -> repr(hash(m)) == fhash, ms)) === nothing && return
-  m = ms[i]
+function completiondetail_method!(comp, k)
+  v = get(METHOD_COMPLETION_CACHE, k, nothing)
+  v === nothing && return # shouldn't happen but just to make sure and help type inference
+  if v isa MethodCompletionDetail
+    # NOTE
+    # This path sometimes happens maybe because of some lags between Juno and getSuggestionDetailsOnSelect API,
+    # especially just after we booted Julia, and there are not so much inference caches in the Julia internal.
+    # But since details are computed, we can just use here as well
+    comp[:leftLabel] = v.rt
+    comp[:description] = v.desc
+    return
+  end
+  f, m, tt = v.f, v.m, v.tt
 
-  fsym = Symbol(f)
-  cangetdocs(mod, fsym) || return
-  docs = try
-    Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
-  catch err
+  # return type inference
+  rt = rt_inf(f, m, Base.tuple_type_tail(tt))
+  comp[:leftLabel] = rt
+
+  # description for this method
+  mod = m.module
+  fsym = m.name
+  desc = if cangetdocs(mod, fsym)
+    try
+      docs = Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
+      completiondescription(docs)
+    catch
+      ""
+    end
+  else
     ""
   end
-  comp[:description] = completiondescription(docs)
+  comp[:description] = desc
+
+  # update method completion cache with the results
+  push!(METHOD_COMPLETION_CACHE, k => MethodCompletionDetail((
+    rt = rt,
+    desc = desc
+  )))
+end
+
+function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
+  try
+    world = typemax(UInt) # world age
+
+    # first infer return type using input types
+    # NOTE:
+    # since input types are all concrete, the inference result from them is the best what we can get
+    # so here we eagerly respect that if inference succeeded
+    if !isempty(tt.parameters)
+      inf = Core.Compiler.return_type(f, tt, world)
+      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
+    end
+
+    # sometimes method signature can tell the return type by itself
+    sparams = Core.svec(sparam_syms(m)...)
+    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
+    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
+  catch err
+    # @error err
+  end
+  return ""
 end
 
 using Markdown

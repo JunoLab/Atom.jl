@@ -3,7 +3,7 @@
 
     comps(line; mod = "Main", context = "", row = 1, column = 1, force = false) =
         Atom.basecompletionadapter(line, mod, context, row, column, force)
-    # emurate `getSuggestionDetailsOnSelect`
+    # emurate `getSuggestionDetailsOnSelect` API
     add_details!(c) = Atom.completiondetail!(c)
 
     @testset "module completion" begin
@@ -71,11 +71,13 @@
                 filter!(c -> c[:text] == "push!(::$(mod).Singleton)", cs)
                 # dynamic method addition
                 @test length(cs) === 1
-                @test cs[1][:type] == "method"
+                c = cs[1]
+                @test c[:type] == "method"
                 # shows module where the method defined in right label
-                @test cs[1][:rightLabel] == string(mod)
-                # shows the infered return type in left label from method signature
-                @test cs[1][:leftLabel] == "String"
+                @test c[:rightLabel] == string(mod)
+
+                add_details!(c)
+                @test c[:leftLabel] == "String" # shows the infered return type in left label from method signature
             end
 
             # shows the infered return type in left label from input types
@@ -87,6 +89,8 @@
                 @test c[:text] == "f(a)"
                 @test c[:type] == "method"
                 @test c[:rightLabel] == string(mod)
+
+                add_details!(c)
                 @test c[:leftLabel] == "" # don't show a return type when it can't be inferred
             end
             let cs = comps("f(1, "; mod = string(mod))
@@ -96,6 +100,8 @@
                 @test c[:text] == "f(a)"
                 @test c[:type] == "method"
                 @test c[:rightLabel] == string(mod)
+
+                add_details!(c)
                 @test c[:leftLabel] == "$(Int)" # infer return type with input types
             end
 
