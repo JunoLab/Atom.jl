@@ -41,6 +41,10 @@ const MAX_COMPLETIONS = 200
 
 const DESCRIPTION_LIMIT = 200
 
+# threshold up to which METHOD_COMPLETION_CACHE can get fat, to make sure it won't eat up memory
+# NOTE: with 2000 elements it used ~10MiB on my machine.
+const MAX_METHOD_COMPLETION_CACHE = 2000
+
 function basecompletionadapter(
   # general
   line, m = "Main",
@@ -76,6 +80,8 @@ function basecompletionadapter(
     CompletionSuggetion[]
   end
 
+  length(METHOD_COMPLETION_CACHE) ≥ MAX_METHOD_COMPLETION_CACHE && empty!(METHOD_COMPLETION_CACHE)
+
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
@@ -104,7 +110,7 @@ completion(mod, c, prefix) = CompletionSuggetion(
 const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
 const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 """
-    METHODCOMPLETIONCACHE::Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}
+    METHOD_COMPLETION_CACHE::Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}
     MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
     MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 
@@ -132,14 +138,14 @@ If the second element is still a `MethodCompletionInfo` instance, that means its
 If the second element is already a `MethodCompletionDetail` then we can reuse this cache
   as far as `Method`'s primiary world age is same as the stored world age.
 """
-const METHODCOMPLETIONCACHE = Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}()
+const METHOD_COMPLETION_CACHE = Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}()
 
 function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
   k = repr(hash(c))
 
   m = c.method
   world = m.primary_world
-  v = get(METHODCOMPLETIONCACHE, k, nothing)
+  v = get(METHOD_COMPLETION_CACHE, k, nothing)
   if v !== nothing && world === first(v)
     lst = last(v)
     if lst isa MethodCompletionDetail
@@ -158,7 +164,7 @@ function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
       m = m,
       tt = c.input_types
     ))
-    push!(METHODCOMPLETIONCACHE, k => world => info)
+    push!(METHOD_COMPLETION_CACHE, k => world => info)
     rt, desc = "", ""
     dt = k
   end
@@ -312,7 +318,7 @@ using JuliaInterpreter: sparam_syms
 using Base.Docs
 
 function completiondetail_method!(comp, k)
-  v = get(METHODCOMPLETIONCACHE, k, nothing)
+  v = get(METHOD_COMPLETION_CACHE, k, nothing)
   v === nothing && return # shouldn't happen but just to make sure and help type inference
   world, info = v
   if info isa MethodCompletionDetail
@@ -346,7 +352,7 @@ function completiondetail_method!(comp, k)
   comp[:description] = desc
 
   # update method completion cache with the results
-  push!(METHODCOMPLETIONCACHE, k => world => MethodCompletionDetail((
+  push!(METHOD_COMPLETION_CACHE, k => world => MethodCompletionDetail((
     rt = rt,
     desc = desc
   )))
