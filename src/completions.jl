@@ -77,8 +77,6 @@ function basecompletionadapter(
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  # initialize MethodCompletion information
-  any(c -> c isa REPLCompletions.MethodCompletion, cs) && empty!(METHODCOMP_DETAIL_INFO)
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
     if afterusing
@@ -102,6 +100,83 @@ completion(mod, c, prefix) = CompletionSuggetion(
   # for `getSuggestionDetailsOnSelect` API
   :detailtype         => completiondetailtype(c)
 )
+
+const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
+const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
+"""
+    METHODCOMPLETIONCACHE::Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}
+    MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
+    MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
+
+`Dict` that caches details of `REPLCompletions.MethodCompletion`s:
+- result of a return type inference
+- documentation description
+
+This cache object has the following structure:
+Keys are hash `String` of a `REPLCompletions.MethodCompletion` object,
+  which can be used for cache detection or refered lazily by
+  [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
+  (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider)
+Values are `Pair` whose first element is a primary world age of this `Method`,
+  and the second element is either of:
+- `MethodCompletionInfo`: keeps (temporary) information of this `REPLCompletions.MethodCompletion`
+  + `f`: a function object
+  + `m`: a `Method` object
+  + `tt`: an input `Tuple` type
+- `MethodCompletionDetail`: stores the lazily computed detail of this `REPLCompletions.MethodCompletion`
+  + `rt`: `String` representing a return type of this method call
+  + `desc`: `String` representing documentation of this method
+
+If the second element is still a `MethodCompletionInfo` instance, that means its details
+  aren't lazily computed yet.
+If the second element is already a `MethodCompletionDetail` then we can reuse this cache
+  as far as `Method`'s primiary world age is same as the stored world age.
+"""
+const METHODCOMPLETIONCACHE = Dict{String,Pair{UInt64,Union{MethodCompletionInfo,MethodCompletionDetail}}}()
+
+function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
+  k = repr(hash(c))
+
+  m = c.method
+  world = m.primary_world
+  v = get(METHODCOMPLETIONCACHE, k, nothing)
+  if v !== nothing && world === first(v)
+    lst = last(v)
+    if lst isa MethodCompletionDetail
+      # cache found
+      rt, desc = lst
+      dt = ""
+    else
+      # lazy return type inference and description completement with a previously computed world
+      rt, desc = "", ""
+      dt = k
+    end
+  else
+    # lazy return type inference and description completement with a new world
+    info = MethodCompletionInfo((
+      f = c.func,
+      m = m,
+      tt = c.input_types
+    ))
+    push!(METHODCOMPLETIONCACHE, k => world => info)
+    rt, desc = "", ""
+    dt = k
+  end
+
+  return CompletionSuggetion(
+    :replacementPrefix  => prefix,
+    # suggestion body
+    :text               => completiontext(c),
+    :type               => completiontype(c),
+    :icon               => completionicon(c),
+    :rightLabel         => completionmodule(mod, c),
+    :leftLabel          => rt,
+    :description        => desc,
+    :descriptionMoreURL => completionurl(c),
+    # for `getSuggestionDetailsOnSelect` API
+    :detailtype         => dt
+  )
+end
 
 completiontext(c) = completion_text(c)
 completiontext(c::REPLCompletions.MethodCompletion) = begin
@@ -174,32 +249,6 @@ completiondetailtype(c) = ""
 completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
 completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
 
-"""
-    METHODCOMP_DETAIL_INFO::Dict{String,NamedTuple{(:f, :m, :tt),Tuple{Any,Method,Type}}}
-
-`Dict` that keeps information about `REPLCompletions.MethodCompletion`,
-  which will be used lazily by [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
-  (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider).
-
-Keys are hash string of `Method` instance, and values are `NamedTuple`s with the following entries:
-- `f`: function object of this `Method`
-- `m`: `Method` instance
-- `tt`: `Tuple` type of the input arguments of this `MethodCompletion`
-"""
-const METHODCOMP_DETAIL_INFO =
-  Dict{String,NamedTuple{(:f, :m, :tt),Tuple{Any,Method,Type}}}()
-
-function completiondetailtype(c::REPLCompletions.MethodCompletion)
-  method_hash = repr(hash(c.method))
-  info = (
-    f = c.func,
-    m = c.method,
-    tt = c.input_types
-  )
-  push!(METHODCOMP_DETAIL_INFO, method_hash => info)
-  return method_hash
-end
-
 function localcompletions(context, row, col, prefix)
   ls = locals(context, row, col)
   lines = split(context, '\n')
@@ -236,15 +285,15 @@ end
 function completiondetail!(comp)
   dt = comp[:detailtype]::String
   isempty(dt) && return comp
-  mod = comp[:rightLabel]::String
   word = comp[:text]::String
 
   if dt == "module"
+    mod = comp[:rightLabel]::String
     completiondetail_module!(comp, mod, word)
   elseif dt == "keyword"
     completiondetail_keyword!(comp, word)
   else # detail for method completion
-    completiondetail_method!(comp, dt, mod)
+    completiondetail_method!(comp, dt)
   end
 
   comp[:detailtype] = "" # may not be needed, but empty this to make sure any further detail completion doesn't happen
@@ -262,22 +311,45 @@ completiondetail_keyword!(comp, word) =
 using JuliaInterpreter: sparam_syms
 using Base.Docs
 
-function completiondetail_method!(comp, method_hash, mod)
-  (info = get(METHODCOMP_DETAIL_INFO, method_hash, nothing)) === nothing && return
+function completiondetail_method!(comp, k)
+  v = get(METHODCOMPLETIONCACHE, k, nothing)
+  v === nothing && return # shouldn't happen but just to make sure and help type inference
+  world, info = v
+  if info isa MethodCompletionDetail
+    # NOTE
+    # This path sometimes happens maybe because of some lags between Juno and getSuggestionDetailsOnSelect API,
+    # especially just after we booted Julia, and there are not so much inference caches in the Julia internal.
+    # But since details are computed, we can just use here as well
+    comp[:leftLabel] = info.rt
+    comp[:description] = info.desc
+    return
+  end
   f, m, tt = info.f, info.m, info.tt
 
   # return type inference
-  comp[:leftLabel] = rt_inf(f, m, Base.tuple_type_tail(tt))
+  rt = rt_inf(f, m, Base.tuple_type_tail(tt))
+  comp[:leftLabel] = rt
 
   # description for this method
-  mod = getmodule(mod)
-  f_sym = m.name
-  cangetdocs(mod, f_sym) || return
-  try
-    docs = Docs.doc(Docs.Binding(mod, f_sym), Base.tuple_type_tail(m.sig))
-    comp[:description] = completiondescription(docs)
-  catch
+  mod = m.module
+  fsym = m.name
+  desc = if cangetdocs(mod, fsym)
+    try
+      docs = Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
+      completiondescription(docs)
+    catch
+      ""
+    end
+  else
+    ""
   end
+  comp[:description] = desc
+
+  # update method completion cache with the results
+  push!(METHODCOMPLETIONCACHE, k => world => MethodCompletionDetail((
+    rt = rt,
+    desc = desc
+  )))
 end
 
 function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
