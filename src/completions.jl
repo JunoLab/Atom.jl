@@ -43,7 +43,7 @@ const DESCRIPTION_LIMIT = 200
 
 # threshold up to which METHOD_COMPLETION_CACHE can get fat, to make sure it won't eat up memory
 # NOTE: with 2000 elements it used ~10MiB on my machine.
-const MAX_METHOD_COMPLETION_CACHE = 2000
+const MAX_METHOD_COMPLETION_CACHE = 3000
 
 function basecompletionadapter(
   # general
@@ -80,7 +80,12 @@ function basecompletionadapter(
     CompletionSuggetion[]
   end
 
-  length(METHOD_COMPLETION_CACHE) ≥ MAX_METHOD_COMPLETION_CACHE && empty!(METHOD_COMPLETION_CACHE)
+  # FIFO cache refreshing
+  if length(METHOD_COMPLETION_CACHE) ≥ MAX_METHOD_COMPLETION_CACHE
+    for k in collect(keys(METHOD_COMPLETION_CACHE))[1:MAX_METHOD_COMPLETION_CACHE÷2]
+      delete!(METHOD_COMPLETION_CACHE, k)
+    end
+  end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
@@ -110,11 +115,11 @@ completion(mod, c, prefix) = CompletionSuggetion(
 const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
 const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 """
-    METHOD_COMPLETION_CACHE::Dict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}
+    METHOD_COMPLETION_CACHE::OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}
     MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
     MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 
-`Dict` that caches details of `REPLCompletions.MethodCompletion`s:
+[`OrderedCollections.OrderedDict`](@ref) that caches details of `REPLCompletions.MethodCompletion`s:
 - result of a return type inference
 - documentation description
 
@@ -143,7 +148,7 @@ If the second element is already a `MethodCompletionDetail` then we can reuse th
 !!! warning
     Within the current implementation, we can't reflect changes that happens in backedges.
 """
-const METHOD_COMPLETION_CACHE = Dict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}()
+const METHOD_COMPLETION_CACHE = OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}()
 
 function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
   k = repr(hash(c))
