@@ -1,6 +1,6 @@
 name = "Atom"
 uuid = "c52e3926-4ff0-5f6e-af25-54175e0327b1"
-version = "0.12.0"
+version = "0.12.1"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -44,7 +44,7 @@ Hiccup = "^0.2.2"
 JSON = "^0.20, ^0.21"
 JuliaFormatter = "^0.3"
 JuliaInterpreter = "^0.7.10"
-Juno = "^0.7.0"
+Juno = "^0.7, ^0.8"
 LNR = "^0.2.0"
 Lazy = "^0.13.2, ^0.14, ^0.15"
 MacroTools = "^0.5"
