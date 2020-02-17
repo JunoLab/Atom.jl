@@ -11,6 +11,7 @@ blacklist = [
     "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
+    "precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})"
     "precompile(Tuple{typeof(Media.render),Juno.Inline,Type})"
     "precompile(Tuple{typeof(getfield′),Any,String,Atom.Undefined})"
     "precompile(Tuple{typeof(getfield′),Any,String})"
