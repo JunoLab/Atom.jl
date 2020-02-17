@@ -34,6 +34,7 @@ toml = Pkg.TOML.parsefile(project_file)
 test_deps = get(toml, "extras", nothing)
 
 @info "Adding temporary dependencies ..."
+Pkg.activate(@__DIR__)
 test_deps !== nothing && Pkg.add([PackageSpec(; name = name, uuid = uuid) for (name, uuid) in test_deps])
 Pkg.add("SnoopCompile")
 
@@ -69,11 +70,11 @@ try
                 println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing")
                 for stmt in sort(stmts)
                     if startswith(stmt, "isdefined")
-                        println(io, "    ", stmt) # don't asset on this
+                        println(io, "    try ", stmt, "; catch err; @warn err; end") # don't asset on this
                     elseif stmt in blacklist
-                        println(io, "    # @assert ", stmt) # comment out blacklist
+                        println(io, "    # ", stmt) # comment out blacklist
                     else
-                        println(io, "    @assert ", stmt)
+                        println(io, "    try ", stmt, "; catch err; @warn err; end")
                     end
                 end
                 println(io, "end")
@@ -122,14 +123,14 @@ try
         )
         @error e
     finally
-        let lines = readlines(precompile_file; keep = true)
-            open(precompile_file, "w") do io
-                for line in lines
-                    write(io, replace(line, "@assert " => ""))
-                end
-            end
-        end
-        @info "Removed `@assert`s in $precompile_file"
+        # let lines = readlines(precompile_file; keep = true)
+        #     open(precompile_file, "w") do io
+        #         for line in lines
+        #             write(io, replace(line, "@assert " => ""))
+        #         end
+        #     end
+        # end
+        # @info "Removed `@assert`s in $precompile_file"
     end
 catch e
     printstyled(

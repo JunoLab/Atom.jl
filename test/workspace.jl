@@ -11,12 +11,12 @@
         @test items[1][:nativetype] == "Function"
     end
 
-    let items = filter(i -> i[:name] == Symbol("@immacro"), items)
-        @test !isempty(items)
-        @test items[1][:type] == "snippet"
-        @test items[1][:icon] == "icon-mention"
-        @test items[1][:nativetype] == "Function"
-    end
+    # let items = filter(i -> i[:name] == Symbol("@immacro"), items)
+    #     @test !isempty(items)
+    #     @test items[1][:type] == "snippet"
+    #     @test items[1][:icon] == "icon-mention"
+    #     @test items[1][:nativetype] == "Function"
+    # end
 
     # recoginise submodule
     let items = filter(i -> i[:name] == :SubJunk, items)
