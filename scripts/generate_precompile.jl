@@ -121,6 +121,15 @@ try
             bold = true, color = :lightred
         )
         @error e
+    finally
+        let lines = readlines(precompile_file; keep = true)
+            open(precompile_file, "w") do io
+                for line in lines
+                    write(io, replace(line, "@assert " => ""))
+                end
+            end
+        end
+        @info "Removed `@assert`s in $precompile_file"
     end
 catch e
     printstyled(
