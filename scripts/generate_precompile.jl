@@ -70,11 +70,11 @@ try
                 println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing")
                 for stmt in sort(stmts)
                     if startswith(stmt, "isdefined")
-                        println(io, "    try ", stmt, "; catch err; @warn err; end") # don't asset on this
+                        println(io, "    try ", stmt, "; catch err; @debug err; end") # don't asset on this
                     elseif stmt in blacklist
                         println(io, "    # ", stmt) # comment out blacklist
                     else
-                        println(io, "    try ", stmt, "; catch err; @warn err; end")
+                        println(io, "    try ", stmt, "; catch err; @debug err; end")
                     end
                 end
                 println(io, "end")
