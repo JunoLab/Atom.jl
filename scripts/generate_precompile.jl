@@ -11,6 +11,7 @@ blacklist = [
     "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
     "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
+    "precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})"
     "precompile(Tuple{typeof(Media.render),Juno.Inline,Type})"
     "precompile(Tuple{typeof(getfield′),Any,String,Atom.Undefined})"
     "precompile(Tuple{typeof(getfield′),Any,String})"
@@ -120,6 +121,15 @@ try
             bold = true, color = :lightred
         )
         @error e
+    finally
+        let lines = readlines(precompile_file; keep = true)
+            open(precompile_file, "w") do io
+                for line in lines
+                    write(io, replace(line, "@assert " => ""))
+                end
+            end
+        end
+        @info "Removed `@assert`s in $precompile_file"
     end
 catch e
     printstyled(
