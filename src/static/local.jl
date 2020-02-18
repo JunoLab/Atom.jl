@@ -1,10 +1,7 @@
 #=
 Find local bindings
 
-- downstreams: completions.jl, goto.jl, datatip.jl, refactor.jl
-- TODO?
-    create more structs to represent function/macro calls, and make each structs keeps
-    minimum fields, and then each downstream construct information in need
+Downstreams: completions.jl, goto.jl, datatip.jl, refactor.jl
 =#
 
 
@@ -85,7 +82,7 @@ function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
             range = pos:pos+expr.span
             name = bind === nothing ? "" : bind.name
 
-            children = []
+            children = LocalBS[]
             for arg in expr
                 localbindings(arg, text, children, pos, line)
                 line += countlines(arg, text, pos)

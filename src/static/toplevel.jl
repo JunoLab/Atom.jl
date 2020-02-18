@@ -1,7 +1,7 @@
 #=
 Find toplevel items (bind / call)
 
-- downstreams: modules.jl, outline.jl, goto.jl
+Downstreams: modules.jl, outline.jl, goto.jl
 =#
 
 
