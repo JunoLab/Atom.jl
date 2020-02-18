@@ -5,18 +5,18 @@ using Pkg
 
 # update when an assertion fails
 blacklist = [
-    "precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})"
-    "precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})"
-    "precompile(Tuple{typeof(Atom.render′),Juno.Inline,Type})"
-    "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
-    "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
-    "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
-    "precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})"
-    "precompile(Tuple{typeof(Media.render),Juno.Inline,Type})"
-    "precompile(Tuple{typeof(getfield′),Any,String,Atom.Undefined})"
-    "precompile(Tuple{typeof(getfield′),Any,String})"
-    "precompile(Tuple{typeof(getfield′),Any,Symbol,Atom.Undefined})"
-    "precompile(Tuple{typeof(getfield′),Any,Symbol})"
+    # "precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})"
+    # "precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})"
+    # "precompile(Tuple{typeof(Atom.render′),Juno.Inline,Type})"
+    # "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
+    # "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
+    # "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
+    # "precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})"
+    # "precompile(Tuple{typeof(Media.render),Juno.Inline,Type})"
+    # "precompile(Tuple{typeof(getfield′),Any,String,Atom.Undefined})"
+    # "precompile(Tuple{typeof(getfield′),Any,String})"
+    # "precompile(Tuple{typeof(getfield′),Any,Symbol,Atom.Undefined})"
+    # "precompile(Tuple{typeof(getfield′),Any,Symbol})"
 ]
 
 # add dependencies
@@ -34,7 +34,6 @@ toml = Pkg.TOML.parsefile(project_file)
 test_deps = get(toml, "extras", nothing)
 
 @info "Adding temporary dependencies ..."
-Pkg.activate(@__DIR__)
 test_deps !== nothing && Pkg.add([PackageSpec(; name = name, uuid = uuid) for (name, uuid) in test_deps])
 Pkg.add("SnoopCompile")
 
@@ -70,11 +69,23 @@ try
                 println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing")
                 for stmt in sort(stmts)
                     if startswith(stmt, "isdefined")
-                        println(io, "    try ", stmt, "; catch err; @debug err; end") # don't asset on this
+                        println(io, """
+                                        try
+                                            $(stmt)
+                                        catch err
+                                            @debug err
+                                        end
+                                    """) # don't asset on this
                     elseif stmt in blacklist
                         println(io, "    # ", stmt) # comment out blacklist
                     else
-                        println(io, "    try ", stmt, "; catch err; @debug err; end")
+                        println(io, """
+                                        try
+                                            @assert($(stmt))
+                                        catch err
+                                            @debug err
+                                        end
+                                    """)
                     end
                 end
                 println(io, "end")
