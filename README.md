@@ -11,16 +11,12 @@ For documentation on how the communication between client and server is handled,
 
 ## Note for developers
 
-If any method signature has been changed after you modify the code base,
-it may lead to cause an error in [the precompilation file](./src/precompile.jl)
-when you precompile this package again.
+If any method signature has been added/changed after you modify the code base,
+it's better to add test cases against it and then update [the precompilation file](./src/precompile.jl)
+using [SnoopCompile.jl](https://github.com/timholy/SnoopCompile.jl) against the test script,
+so that we can obtain better first time invocation of those methods.
 
-It's okay to temporarily comment out the `_precompile_()` call in
-[Atom.jl](./src/Atom.jl) until you satisfy with your changes,
-and then error because of precompilation failure won't happen while editing.
-(NOTE: don't comment `include("precompile.jl")`, otherwise it would break some testcase).
-
-Finally you may need to run the following command and update the precompilation statements.
+To update the precompilation file, you just need to run the following command:
 
 > at the root of this package directory
 
