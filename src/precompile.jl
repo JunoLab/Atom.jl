@@ -2,6 +2,7 @@
 
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
+
     try
         isdefined(Atom, Symbol("##fixpath#156")) && precompile(Tuple{getfield(Atom, Symbol("##fixpath#156")),String,String,typeof(Atom.fixpath),String})
     catch err

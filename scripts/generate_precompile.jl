@@ -1,24 +1,5 @@
 using Pkg
 
-# blacklist
-# ---------
-
-# update when an assertion fails
-blacklist = [
-    # "precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})"
-    # "precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})"
-    # "precompile(Tuple{typeof(Atom.render′),Juno.Inline,Type})"
-    # "precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Any})"
-    # "precompile(Tuple{typeof(Atom.wstype),Module,Symbol,Any})"
-    # "precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.GotoItem,1},Function})"
-    # "precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})"
-    # "precompile(Tuple{typeof(Media.render),Juno.Inline,Type})"
-    # "precompile(Tuple{typeof(getfield′),Any,String,Atom.Undefined})"
-    # "precompile(Tuple{typeof(getfield′),Any,String})"
-    # "precompile(Tuple{typeof(getfield′),Any,Symbol,Atom.Undefined})"
-    # "precompile(Tuple{typeof(getfield′),Any,Symbol})"
-]
-
 # add dependencies
 # ----------------
 
@@ -66,7 +47,7 @@ try
                     println(io, SnoopCompile.lookup_kwbody_str)
                 end
                 println(io, "function _precompile_()")
-                println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing")
+                println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing\n")
                 for stmt in sort(stmts)
                     if startswith(stmt, "isdefined")
                         println(io, """
@@ -75,9 +56,7 @@ try
                                         catch err
                                             @debug err
                                         end
-                                    """) # don't asset on this
-                    elseif stmt in blacklist
-                        println(io, "    # ", stmt) # comment out blacklist
+                                    """) # don't assert on this
                     else
                         println(io, """
                                         try
@@ -112,21 +91,10 @@ try
         end
         @debug "Commented in `_precompile_` call in $atomjl_file for `precompile` statement assertion"
 
-        err_io = IOBuffer()
-        run(pipeline(`julia --project=. --color=yes -e 'using Pkg; Pkg.precompile()'`; stderr = err_io))
-        err = String(take!(err_io))
-        if occursin("ERROR", err)
-            printstyled(
-                "An invalid `precompile` statement has been generated:\n";
-                bold = true, color = :lightred
-            )
-            @error err
-        else
-            printstyled(
-                "Asserted all the `precompile` statements. You're good to call `_precompile_` for now.\n";
-                bold = true, color = :lightgreen
-            )
-        end
+        run(pipeline(`julia --project=. --color=yes -e '
+            ENV["JULIA_DEBUG"] = "Atom"
+            using Atom # should invoke precompile
+        '`))
     catch e
         printstyled(
             "`precompile` statement assertion failed with the following error:\n";
