@@ -9,6 +9,8 @@ using Logging: with_logger
 using .Progress: JunoProgressLogger
 
 const REPL_SENTINEL_CHAR = "\u200B"
+const REPL_TRIGGER_CHAR = "\e[29~"
+const INIT_COMPLETE = Ref(false)
 
 function get_main_mode()
   mode = Base.active_repl.interface.modes[1]
@@ -73,12 +75,22 @@ const current_prompt = Ref{String}(juliaprompt)
 waiter_in = Condition()
 waiter_out = Condition()
 
+function instantiate_repl_keybindings(repl)
+  mykeys = Dict{Any,Any}(
+      REPL_TRIGGER_CHAR => blockinput_frontend
+  )
+  repl.interface = REPL.setup_interface(repl; extra_repl_keymap = mykeys)
+end
+
+function blockinput_frontend(s,o...)
+  print(LineEdit.terminal(s), "\r\e[0K\r\e[1A\r")
+
+  return :done
+end
+
 function blockinput()
   global waiter_in
   global waiter_out
-
-  # clear prompt and newline introduced by sending a command to the REPL
-  print(stdout, "\e[1A\r\e[0K\r\e[1A\r")
 
   notify(waiter_out, nothing)
   yield()
@@ -100,14 +112,14 @@ function hideprompt(f)
   truncate(LineEdit.buffer(mistate), 0)
   LineEdit.refresh_multi_line(mistate)
 
-  print(stdout, "\e[1K\r")
+  if INIT_COMPLETE[]
+    global waiter_in = Condition()
+    global waiter_out = Condition()
 
-  global waiter_in = Condition()
-  global waiter_out = Condition()
+    Atom.@msg writeToTerminal("\b$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")
 
-  Atom.@msg writeToTerminal("\b$(REPL_SENTINEL_CHAR)\n")
-
-  wait(waiter_out)
+    wait(waiter_out)
+  end
 
   r = f()
 
@@ -118,7 +130,7 @@ function hideprompt(f)
 
   pos = @rpc cursorpos()
 
-  notify(waiter_in, nothing)
+  INIT_COMPLETE[] && notify(waiter_in, nothing)
   pos[1] != 0 && println()
 
   # restore prompt
@@ -181,7 +193,7 @@ end
 const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
-  if line == REPL_SENTINEL_CHAR
+  if line == REPL_SENTINEL_CHAR && INIT_COMPLETE[]
     return blockinput()
   end
 
@@ -243,6 +255,8 @@ function changeREPLmodule(mod)
     end
   end
   main_mode.complete = JunoREPLCompletionProvider(mod)
+
+  INIT_COMPLETE[] = true
 end
 
 function reset_repl_history()
@@ -255,8 +269,8 @@ function reset_repl_history()
       hist_path = REPL.find_hist_file()
       mkpath(dirname(hist_path))
       f = open(hist_path, read=true, write=true, create=true)
-      atexit(() -> close(f))
       REPL.hist_from_file(hp, f, hist_path)
+      atexit(() -> close(f))
       REPL.history_reset_state(hp)
     catch e
     end

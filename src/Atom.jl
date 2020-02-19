@@ -15,6 +15,8 @@ function __init__()
     fixdisplayorder()
   end
 
+  atreplinit(instantiate_repl_keybindings)
+
   Atom.handle("connected") do
     if isREPL(before_run_repl = true)
       reset_repl_history()
