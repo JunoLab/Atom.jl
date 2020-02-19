@@ -49,8 +49,8 @@ function displayinplotpane(x)
     try
       io = IOBuffer()
       show(plotpane_io_ctx(io), legacy_plotpane ? "application/juno+plotpane" : plotpane_mime, x)
-      str = HTTP.URIs.escapeuri(String(take!(io)))
-      startswith(str, "data:") || (str = string("data:text/html,", str))
+      str = base64encode(String(take!(io)))
+      startswith(str, "data:") || (str = string("data:text/html;base64,", str))
       @msg ploturl(str)
       return true
     catch err
