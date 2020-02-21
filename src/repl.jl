@@ -9,7 +9,7 @@ using Logging: with_logger
 using .Progress: JunoProgressLogger
 
 const REPL_SENTINEL_CHAR = "\u200B"
-const REPL_TRIGGER_CHAR = "\e[29~"
+const REPL_TRIGGER_CHAR = "\e[24~"
 const INIT_COMPLETE = Ref(false)
 
 function get_main_mode()
