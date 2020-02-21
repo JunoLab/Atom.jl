@@ -41,10 +41,10 @@ end
 
 # Fix paths to files that define Julia (base and stdlibs)
 function fixpath(
-  filename::AbstractString;
-  badpath = basebuilddir,
-  goodpath = basepath("..")
-)
+    filename::AbstractString;
+    badpath = basebuilddir,
+    goodpath = basepath("..")
+  )
   startswith(filename, badpath) || return fullpath(normpath(filename)) # NOTE: `fullpath` added when adapted
   filec = filename
   relfilename = relpath(filename, badpath)
@@ -294,10 +294,25 @@ handle("module") do data
     MAIN_MODULE_LOCATION[] = get!(data, "path", ""), data["row"]
   end
 
-  return d(:main => main,
+  loaded_mods = copy(Base.loaded_modules_array())
+  if main == "Main"
+    filter!(m -> string(m) == sub, loaded_mods)
+    if !isempty(loaded_mods)
+      return Dict(
+               :main => string(loaded_mods[1]),
+               :sub  => "",
+               :inactive => false,
+               :subInactive => false
+             )
+    end
+  end
+
+  return Dict(
+           :main => main,
            :sub  => sub,
            :inactive => (mod==nothing),
-           :subInactive => smod==nothing)
+           :subInactive => smod==nothing
+         )
 end
 
 
@@ -307,4 +322,8 @@ find all modules
 
 handle("allmodules") do
   sort!([string(m) for m in CodeTools.allchildren(Main)])
+end
+
+handle("ismodule") do mod
+  return CodeTools.getthing(mod) isa Module || mod in string.(Base.loaded_modules_array())
 end
