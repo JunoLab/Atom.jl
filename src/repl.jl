@@ -112,13 +112,18 @@ function hideprompt(f)
   truncate(LineEdit.buffer(mistate), 0)
   LineEdit.refresh_multi_line(mistate)
 
+  can_write_to_terminal = false
+
+  # clear prompt and restore later
+  get_main_mode().prompt = ""
+
   if INIT_COMPLETE[]
     global waiter_in = Condition()
     global waiter_out = Condition()
 
-    Atom.@msg writeToTerminal("\b$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")
+    can_write_to_terminal = Atom.@rpc writeToTerminal("\b$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")
 
-    wait(waiter_out)
+    can_write_to_terminal && wait(waiter_out)
   end
 
   r = f()
@@ -130,10 +135,12 @@ function hideprompt(f)
 
   pos = @rpc cursorpos()
 
-  INIT_COMPLETE[] && notify(waiter_in, nothing)
+  INIT_COMPLETE[] && can_write_to_terminal && notify(waiter_in, nothing)
   pos[1] != 0 && println()
 
   # restore prompt
+  get_main_mode().prompt = current_prompt[]
+
   if applicable(LineEdit.write_prompt, stdout, mode)
     LineEdit.write_prompt(stdout, mode)
   elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
