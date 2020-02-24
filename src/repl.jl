@@ -72,8 +72,8 @@ end
 
 const current_prompt = Ref{String}(juliaprompt)
 
-waiter_in = Condition()
-waiter_out = Condition()
+waiter_in = Channel()
+waiter_out = Channel()
 
 function instantiate_repl_keybindings(repl)
   mykeys = Dict{Any,Any}(
@@ -89,12 +89,9 @@ function blockinput_frontend(s,o...)
 end
 
 function blockinput()
-  global waiter_in
-  global waiter_out
-
-  notify(waiter_out, nothing)
+  put!(waiter_out, nothing)
   yield()
-  wait(waiter_in)
+  take!(waiter_in)
   nothing
 end
 
@@ -118,12 +115,8 @@ function hideprompt(f)
   get_main_mode().prompt = ""
 
   if INIT_COMPLETE[]
-    global waiter_in = Condition()
-    global waiter_out = Condition()
-
-    can_write_to_terminal = Atom.@rpc writeToTerminal("\b$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")
-
-    can_write_to_terminal && wait(waiter_out)
+    can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\b$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
+    can_write_to_terminal && take!(waiter_out)
   end
 
   r = f()
@@ -134,8 +127,7 @@ function hideprompt(f)
   sleep(0.05)
 
   pos = @rpc cursorpos()
-
-  INIT_COMPLETE[] && can_write_to_terminal && notify(waiter_in, nothing)
+  INIT_COMPLETE[] && can_write_to_terminal && put!(waiter_in, nothing)
   pos[1] != 0 && println()
 
   # restore prompt
