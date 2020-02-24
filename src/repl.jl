@@ -72,8 +72,8 @@ end
 
 const current_prompt = Ref{String}(juliaprompt)
 
-waiter_in = Channel()
-waiter_out = Channel()
+const waiter_in = Channel(0)
+const waiter_out = Channel(0)
 
 function instantiate_repl_keybindings(repl)
   mykeys = Dict{Any,Any}(
