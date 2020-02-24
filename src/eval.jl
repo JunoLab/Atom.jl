@@ -10,6 +10,7 @@ withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 const evallock = ReentrantLock()
+const ASYNC_EVAL_TASK = Ref{Any}(nothing)
 
 handle("evalshow") do data
   @destruct [
@@ -23,6 +24,7 @@ handle("evalshow") do data
 end
 
 function evalshow(text, line, path, mod)
+  ASYNC_EVAL_TASK[] = current_task()
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
@@ -64,6 +66,7 @@ end
 
 function eval(text, line, path, mod, errorinrepl = false)
   fixjunodisplays()
+  ASYNC_EVAL_TASK[] = current_task()
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
@@ -98,6 +101,7 @@ handle("evalrepl") do data
 end
 
 handle("evalall") do data
+  ASYNC_EVAL_TASK[] = current_task()
   @destruct [
     code,
     mod = :module || nothing,
@@ -108,6 +112,7 @@ handle("evalall") do data
 end
 
 function evalall(code, mod = nothing, path = "untitled")
+  ASYNC_EVAL_TASK[] = current_task()
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     mod = if mod !== nothing

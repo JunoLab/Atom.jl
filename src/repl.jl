@@ -89,9 +89,19 @@ function blockinput_frontend(s,o...)
 end
 
 function blockinput()
-  put!(waiter_out, nothing)
-  yield()
-  take!(waiter_in)
+  try
+    put!(waiter_out, nothing)
+    yield()
+    take!(waiter_in)
+  catch err
+    if err isa InterruptException
+      if ASYNC_EVAL_TASK[] !== nothing && !istaskdone(ASYNC_EVAL_TASK[])
+        schedule(ASYNC_EVAL_TASK[], err; error = true)
+      else
+        println(err)
+      end
+    end
+  end
   nothing
 end
 
