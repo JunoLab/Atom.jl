@@ -192,7 +192,7 @@ end
 const inREPL = Ref{Bool}(false)
 
 function evalrepl(mod, line)
-  if line == REPL_SENTINEL_CHAR && INIT_COMPLETE[]
+  if occursin(REPL_SENTINEL_CHAR, line) && INIT_COMPLETE[]
     return blockinput()
   end
 
