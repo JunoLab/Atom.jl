@@ -10,7 +10,6 @@ withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 const evallock = ReentrantLock()
-const ASYNC_EVAL_TASK = Ref{Any}(nothing)
 
 handle("evalshow") do data
   @destruct [
@@ -19,12 +18,12 @@ handle("evalshow") do data
     path,
     mod
   ] = data
+
   evalshow(text, line, path, mod)
   nothing
 end
 
 function evalshow(text, line, path, mod)
-  ASYNC_EVAL_TASK[] = current_task()
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
@@ -61,12 +60,35 @@ handle("eval") do data
     mod,
     errorinrepl = :errorInRepl || false
   ] = data
-  eval(text, line, path, mod, errorinrepl)
+  put!(eval_channel_in, (eval, (text, line, path, mod, errorinrepl)))
+  take!(eval_channel_out)
+end
+
+eval_channel_in = Channel(1)
+eval_channel_out = Channel(1)
+eval_backend_task = Ref{Any}(nothing)
+
+function start_eval_backend()
+  global eval_backend_task[] = @async begin
+    Base.sigatomic_begin()
+    while true
+      try
+        f, args = take!(eval_channel_in)
+        Base.sigatomic_end()
+        res = f(args...)
+        Base.sigatomic_begin()
+        put!(eval_channel_out, res)
+      catch err
+        @error err
+        put!(eval_channel_out, nothing)
+      end
+    end
+    Base.sigatomic_end()
+  end
 end
 
 function eval(text, line, path, mod, errorinrepl = false)
   fixjunodisplays()
-  ASYNC_EVAL_TASK[] = current_task()
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
@@ -97,11 +119,12 @@ end
 
 # dummy handler for Revise compat
 handle("evalrepl") do data
-  @warn "Juno's evalrepl handler is deprecated."
+  @warn("""
+    Juno's evalrepl handler is deprecated.
+    """, _id="evalrepl", maxlog=1)
 end
 
 handle("evalall") do data
-  ASYNC_EVAL_TASK[] = current_task()
   @destruct [
     code,
     mod = :module || nothing,
@@ -112,7 +135,6 @@ handle("evalall") do data
 end
 
 function evalall(code, mod = nothing, path = "untitled")
-  ASYNC_EVAL_TASK[] = current_task()
   fixjunodisplays()
   @dynamic let Media.input = Editor()
     mod = if mod !== nothing

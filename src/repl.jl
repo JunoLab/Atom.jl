@@ -95,11 +95,13 @@ function blockinput()
     take!(waiter_in)
   catch err
     if err isa InterruptException
-      if ASYNC_EVAL_TASK[] !== nothing && !istaskdone(ASYNC_EVAL_TASK[])
-        schedule(ASYNC_EVAL_TASK[], err; error = true)
+      if eval_backend_task[] !== nothing && !istaskdone(eval_backend_task[])
+        schedule(eval_backend_task[], err; error = true)
       else
         println(err)
       end
+    else
+      rethrow(err)
     end
   end
   nothing

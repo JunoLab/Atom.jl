@@ -17,6 +17,8 @@ function __init__()
 
   atreplinit(instantiate_repl_keybindings)
 
+  start_eval_backend()
+
   Atom.handle("connected") do
     if isREPL(before_run_repl = true)
       reset_repl_history()

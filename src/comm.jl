@@ -81,7 +81,7 @@ a welcome message to Atom if `welcome == true`.
 function initialise(; welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
-  exit_on_sigint(false)
+  # exit_on_sigint(false)
   welcome && @msg welcome()
 end
 
