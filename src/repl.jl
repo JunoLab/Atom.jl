@@ -88,21 +88,26 @@ function blockinput_frontend(s,o...)
   return :done
 end
 
+const is_blocking_repl_input = Ref{Bool}(false)
+
 function blockinput()
+  is_blocking_repl_input[] = true
   try
-    put!(waiter_out, nothing)
-    yield()
+    Base.disable_sigint() do
+      put!(waiter_out, nothing)
+      yield()
+    end
     take!(waiter_in)
   catch err
     if err isa InterruptException
-      if eval_backend_task[] !== nothing && !istaskdone(eval_backend_task[])
+      if eval_backend_task[] !== nothing && !istaskdone(eval_backend_task[]) && is_backend_working[]
         schedule(eval_backend_task[], err; error = true)
-      else
-        println(err)
       end
     else
       rethrow(err)
     end
+  finally
+    is_blocking_repl_input[] = false
   end
   nothing
 end
@@ -139,7 +144,7 @@ function hideprompt(f)
   sleep(0.05)
 
   pos = @rpc cursorpos()
-  INIT_COMPLETE[] && can_write_to_terminal && put!(waiter_in, nothing)
+  INIT_COMPLETE[] && can_write_to_terminal && is_blocking_repl_input[] && put!(waiter_in, nothing)
   pos[1] != 0 && println()
 
   # restore prompt
