@@ -212,11 +212,14 @@ function _collecttoplevelitems_loaded(mod::Union{Nothing, String}, paths::Vector
   entrypath, paths = paths[1], paths[2:end]
 
   # ignore toplevel items outside of `mod`
-  items = toplevelitems(read(entrypath, String); mod = mod)
-  pathitemsmap[entrypath] = GotoItem.(entrypath, items)
+  if isfile′(entrypath)
+    items = toplevelitems(read(entrypath, String); mod = mod)
+    pathitemsmap[entrypath] = GotoItem.(entrypath, items)
+  end
 
   # collect symbols in included files (always in `mod`)
   for path in paths
+    isfile′(path) || continue
     items = toplevelitems(read(path, String); mod = mod, inmod = true)
     pathitemsmap[path] = GotoItem.(path, items)
   end
