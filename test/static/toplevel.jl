@@ -29,3 +29,6 @@ for t in ["f(call())", "f(call(), @macro)", "f(@macro)", "f(@macro, arg; kwarg =
     @test length(items) === 1
     @test items[1] isa Atom.ToplevelCall
 end
+
+# https://github.com/JunoLab/Juno.jl/issues/502
+@test isempty(toplevelitems("ary[ind] = some"))
