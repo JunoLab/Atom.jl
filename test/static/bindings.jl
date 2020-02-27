@@ -5,6 +5,7 @@ Adapted from https://github.com/julia-vscode/CSTParser.jl/blob/e4e32477a1e7b4d57
 =#
 
 using Atom: traverse_expr!, bindingof
+using CSTParser
 using CSTParser: typof
 
 function collect_bindings(ex)
@@ -90,3 +91,6 @@ let cst = CSTParser.parse("function a::T * b::T end")
 end
 
 @test collect_bindings(CSTParser.parse("-(x::T) = x")) == ["-", "x"]
+
+# https://github.com/JunoLab/Juno.jl/issues/502
+@test isempty(collect_bindings(CSTParser.parse("ary[ind] = rand(Int)")))

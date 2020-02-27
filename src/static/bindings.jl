@@ -172,8 +172,11 @@ function mark_binding!(x::EXPR, val = x)
         mark_binding!(x.args[1], x)
     elseif typof(x) === CSTParser.InvisBrackets
         mark_binding!(CSTParser.rem_invis(x), val)
-    elseif typof(x) == CSTParser.UnaryOpCall &&
+    elseif typof(x) === CSTParser.UnaryOpCall &&
            kindof(x.args[1]) === CSTParser.Tokens.DECLARATION
+        return x
+    elseif typof(x) === CSTParser.Ref
+        # https://github.com/JunoLab/Juno.jl/issues/502
         return x
     else# if typof(x) === IDENTIFIER || (typof(x) === BinaryOpCall && kindof(x.args[2]) === CSTParser.Tokens.DECLARATION)
         x.meta = Binding(CSTParser.get_name(x), val)
