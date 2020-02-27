@@ -62,10 +62,12 @@ macro ierrs(ex)
   :(try
       $(esc(ex))
     catch e
-      ee = EvalError(e, stacktrace(catch_backtrace()))
-      Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
-                             :detail      => string(ee),
-                             :dismissable => true))
+      if !(e isa InterruptException)
+        ee = EvalError(e, stacktrace(catch_backtrace()))
+        Atom.msg("error", Dict(:msg         => "Julia Client – Internal Error",
+                               :detail      => string(ee),
+                               :dismissable => true))
+      end
       nothing
     end)
 end
@@ -79,7 +81,7 @@ a welcome message to Atom if `welcome == true`.
 function initialise(; welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
-  exit_on_sigint(false)
+  # exit_on_sigint(false)
   welcome && @msg welcome()
 end
 

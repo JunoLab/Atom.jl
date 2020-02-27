@@ -10,6 +10,37 @@ withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
 const evallock = ReentrantLock()
+const eval_channel_in = Channel(1)
+const eval_channel_out = Channel(1)
+const eval_backend_task = Ref{Any}(nothing)
+const is_backend_working = Ref{Bool}(false)
+
+function run_with_backend(f, args...)
+  put!(eval_channel_in, (f, args))
+  take!(eval_channel_out)
+end
+
+function start_eval_backend()
+  global eval_backend_task[] = @async begin
+    Base.sigatomic_begin()
+    while true
+      try
+        f, args = take!(eval_channel_in)
+        Base.sigatomic_end()
+        is_backend_working[] = true
+        res = f(args...)
+        is_backend_working[] = false
+        Base.sigatomic_begin()
+        put!(eval_channel_out, res)
+      catch err
+        put!(eval_channel_out, nothing)
+      finally
+        is_backend_working[] = false
+      end
+    end
+    Base.sigatomic_end()
+  end
+end
 
 handle("evalshow") do data
   @destruct [
@@ -18,7 +49,8 @@ handle("evalshow") do data
     path,
     mod
   ] = data
-  evalshow(text, line, path, mod)
+
+  run_with_backend(evalshow, text, line, path, mod)
   nothing
 end
 
@@ -59,7 +91,7 @@ handle("eval") do data
     mod,
     errorinrepl = :errorInRepl || false
   ] = data
-  eval(text, line, path, mod, errorinrepl)
+  run_with_backend(eval, text, line, path, mod, errorinrepl)
 end
 
 function eval(text, line, path, mod, errorinrepl = false)
@@ -94,7 +126,9 @@ end
 
 # dummy handler for Revise compat
 handle("evalrepl") do data
-  @warn "Juno's evalrepl handler is deprecated."
+  @warn("""
+    Juno's evalrepl handler is deprecated.
+    """, _id="evalrepl", maxlog=1)
 end
 
 handle("evalall") do data
@@ -103,7 +137,7 @@ handle("evalall") do data
     mod = :module || nothing,
     path || "untitled"
   ] = data
-  evalall(code, mod, path)
+  run_with_backend(evalall, code, mod, path)
   nothing
 end
 
