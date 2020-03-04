@@ -51,7 +51,7 @@ function cliptrace(trace::StackTrace)
 end
 
 highlights(trace::StackTrace) =
-  @>> trace filter(x->x.line > 0) map(x->d(:file=>fullpath(string(x.file)),:line=>x.line)) unique
+  @>> trace filter!(x->x.line > 0) map(x->d(:file=>fullpath(string(x.file)),:line=>x.line)) unique!
 
 highlights(e::EvalError) = highlights(e.trace)
 

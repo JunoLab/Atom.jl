@@ -22,7 +22,7 @@ iscallexpr(expr::EXPR) = typof(expr) === CSTParser.Call
 ismacrocall(expr::EXPR) = typof(expr) === CSTParser.MacroCall
 
 function isinclude(expr::EXPR)
-    iscallexpr(expr) &&
+    @inbounds iscallexpr(expr) &&
         length(expr) === 4 &&
         valof(expr.args[1]) == "include" &&
         (filename = valof(expr.args[3])) isa String &&
@@ -30,13 +30,13 @@ function isinclude(expr::EXPR)
 end
 
 function isprecompile(expr::EXPR)
-    iscallexpr(expr) &&
+    @inbounds iscallexpr(expr) &&
         length(expr) >= 1 &&
         valof(expr.args[1]) == "__precompile__"
 end
 
 function isdoc(expr::EXPR)
-    ismacrocall(expr) &&
+    @inbounds ismacrocall(expr) &&
         length(expr) >= 1 &&
         (typof(expr.args[1]) === CSTParser.GlobalRefDoc || str_value(expr.args[1]) == "@doc")
 end
@@ -74,7 +74,7 @@ end
 
 # adapted from https://github.com/julia-vscode/DocumentFormat.jl/blob/90c35540f48330fe1453c5ac1a62d8bc5df017b7/src/passes.jl#L112-L134
 """
-    str_value(x::EXPR)
+    str_value(x::EXPR)::String
 
 _Reconstruct_ a source code from `x`.
 """
@@ -117,16 +117,16 @@ function str_value(x::EXPR)::String
 end
 
 """
-    str_value_verbatim(expr::EXPR, text::String, pos::Int)
+    str_value_verbatim(expr::EXPR, text::String, pos::Int)::String
 
 _Extract_ a source code from `text` that corresponds to `expr` starting from `pos`.
 """
-function str_value_verbatim(expr::EXPR, text::String, pos::Int)
+function str_value_verbatim(expr::EXPR, text::String, pos::Int)::String
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
-    strip(text[s:e])
+    return string(strip(text[s:e]))
 end
 str_value_verbatim(bind::Binding, text::String, pos::Int) = str_value_verbatim(bind.val, text, pos)
 str_value_verbatim(bind, text::String, pos::Int) = ""

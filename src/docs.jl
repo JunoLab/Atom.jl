@@ -50,8 +50,8 @@ function processdocs(items)
     err = startswith(errstr, "Please regenerate the") ?
             """
             Please regenerate the documentation cache with the button above.
-            Note that this might take a few minutes. You can track the progress with the progress bar
-            in the lower left corner, and should be able to use Juno during normally during that time.
+            Note that this might take minutes. You can track the progress with the progress bar
+            in the lower left corner, and should be able to use Juno normally during that time.
             """ : errstr
     Dict(
       :error => true,
@@ -60,7 +60,8 @@ function processdocs(items)
   else
     Dict(
       :error => false,
-      :items => [renderitem(i[2]) for i in items], :scores => [i[1] for i in items]
+      :items => [renderitem(i[2]) for i in items],
+      :scores => [i[1] for i in items]
     )
   end
 end
@@ -127,15 +128,15 @@ end
 
 function modulesymbols(mod)
   syms = filter(x -> x.mod == mod, DocSeeker.alldocs())
-  sort(syms, by = x -> x.name)[1:min(100, length(syms))]
+  @inbounds sort!(syms, by = x -> x.name)[1:min(100,length(syms))]
 end
 
 using Logging: with_logger
 using .Progress: JunoProgressLogger
 
-handle(() -> regeneratedocs(), "regeneratedocs")
 function regeneratedocs()
   with_logger(JunoProgressLogger()) do
     @errs DocSeeker.createdocsdb()
   end
 end
+handle(regeneratedocs, "regeneratedocs")
