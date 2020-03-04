@@ -23,12 +23,24 @@
     end |> length === 1 # should only find the `imwithdoc` in SubJunk module
 end
 
-# don't leak something in a call
-for t in ["f(call())", "f(call(), @macro)", "f(@macro)", "f(@macro, arg; kwarg = kwarg)"]
-    items = toplevelitems(t)
-    @test length(items) === 1
-    @test items[1] isa Atom.ToplevelCall
-end
+@testset "outline edge cases" begin
+    # don't leak something in a call
+    for t in ["f(call())", "f(call(), @macro)", "f(@macro)", "f(@macro, arg; kwarg = kwarg)"]
+        items = toplevelitems(t)
+        @test length(items) === 1
+        @test items[1] isa Atom.ToplevelCall
+    end
 
-# https://github.com/JunoLab/Juno.jl/issues/502
-@test isempty(toplevelitems("ary[ind] = some"))
+    # https://github.com/JunoLab/Juno.jl/issues/502
+    @test isempty(toplevelitems("ary[ind] = some"))
+
+    # don't leak rhs of the assignemt
+    let items = toplevelitems("lhs = rhs(some)")
+        @test length(items) === 1
+        @test items[1].bind.name == "lhs"
+    end
+    let items = toplevelitems("lhs = @rhs some")
+        @test length(items) === 1
+        @test items[1].bind.name == "lhs"
+    end
+end

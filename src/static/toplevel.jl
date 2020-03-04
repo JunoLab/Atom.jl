@@ -83,8 +83,14 @@ function _toplevelitems(
         end
     end
 
-    # look for more toplevel items in expr:
-    if shouldenter(expr, mod)
+    if CSTParser.is_assignment(expr) && hasbinding(@inbounds expr.args[1])
+        # don't leak rhs of the assignemnt (except short form func def)
+        @inbounds ex = expr.args[1]
+        bind = bindingof(ex)
+        lines = line:line+countlines(expr, text, pos, false)
+        push!(items, ToplevelBinding(ex, bind, lines))
+    elseif shouldenter(expr, mod)
+        # look for more toplevel items in expr:
         if CSTParser.defines_module(expr) && shouldentermodule(expr, mod)
             inmod = true
         end
