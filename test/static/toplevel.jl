@@ -35,11 +35,11 @@ end
     @test isempty(toplevelitems("ary[ind] = some"))
 
     # don't leak rhs of the assignemt
-    let items = toplevelitems("lhs = rhs(some)")
+    let items = toplevelitems("lhs = rhscall(somearg)")
         @test length(items) === 1
         @test items[1].bind.name == "lhs"
     end
-    let items = toplevelitems("lhs = @rhs some")
+    let items = toplevelitems("lhs = @rhsmacrocall somearg")
         @test length(items) === 1
         @test items[1].bind.name == "lhs"
     end
