@@ -100,8 +100,7 @@ ispackage(mod) = Base.find_package(mod) ≠ nothing
 function packageinfo(mod)
   path = DocSeeker.readmepath(mod)
   readme = ispath(path) ? String(read(path)) : ""
-  stdlibs = @static isdefined(Pkg.Types, :stdlibs) ? Pkg.Types.stdlibs() : Pkg.Types.stdlib()
-  description = Markdown.parse(mod ∈ values(stdlibs) ? "## Standard library package `$(mod)`" : readme)
+  description = Markdown.parse(Symbol(mod) ∈ stdlib_names ? "## Standard library package `$(mod)`" : readme)
 
   return  Hiccup.div(
             renderMD(description),
