@@ -358,7 +358,7 @@ methodgotoitems(ml) = GotoItem.(aggregatemethods(ml))
 function aggregatemethods(ml)
   ms = collect(ml)
   sort!(ms, by = m -> m.nargs, rev = true)
-  unique(m -> (m.file, m.line), ms)
+  return @static VERSION ≥ v"1.1" ? unique!(m -> (m.file, m.line), ms) : unique(m -> (m.file, m.line), ms)
 end
 
 function GotoItem(m::Method)

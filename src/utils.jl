@@ -66,7 +66,7 @@ function finddevpackages()
     end
   end
 
-  sort(devpkgs)
+  sort!(devpkgs)
 end
 
 const SRC_DIR = joinpath(Sys.BINDIR,"..","..","base")

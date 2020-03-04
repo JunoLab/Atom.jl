@@ -18,7 +18,7 @@ struct LocalScope
     verbatim::String
     span::UnitRange{Int64}
     line::Int
-    children::Vector{Union{LocalBinding, LocalScope}}
+    children::Vector{Union{LocalBinding,LocalScope}}
     expr::EXPR
 end
 
@@ -60,7 +60,7 @@ function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
     end
 
     if hs
-        typof(expr) == CSTParser.Kw && return bindings
+        typof(expr) === CSTParser.Kw && return bindings
 
         # destructure multiple returns
         if ismultiplereturn(expr)
@@ -126,11 +126,7 @@ function actual_localbindings(bindings, line, byteoffset)
 
     filter!(b -> !isempty(b.name), actual_bindings)
     sort!(actual_bindings, lt = (b1, b2) -> b1.locality < b2.locality)
-    return @static if VERSION ≥ v"1.1"
-        unique!(b->b.name, actual_bindings)
-    else
-        unique(b->b.name, actual_bindings)
-    end
+    return @static VERSION ≥ v"1.1" ? unique!(b->b.name, actual_bindings) : unique(b->b.name, actual_bindings)
 end
 function _actual_localbindings(bindings, line, byteoffset, root = "", actual_bindings = ActualLocalBinding[])
     for bind in bindings
