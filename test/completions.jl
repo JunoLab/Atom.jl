@@ -102,7 +102,12 @@
                 @test c[:rightLabel] == string(mod)
 
                 add_details!(c)
-                @test c[:leftLabel] == "$(Int)" # infer return type with input types
+                # infer return type with input types
+                @static if VERSION ≥ v"1.1"
+                    @test c[:leftLabel] == "$(Int)"
+                else
+                    @test_broken c[:leftLabel] == "$(Int)"
+                end
             end
 
             # don't segfault on generate function
