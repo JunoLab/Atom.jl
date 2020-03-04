@@ -71,20 +71,22 @@ function _toplevelitems(
                 (bind = bindingof(arg)) === nothing && continue
                 push!(items, ToplevelBinding(arg, bind, lines))
             end
-        # toplevel call
-        elseif iscallexpr(expr)
-            push!(items, ToplevelCall(expr, lines, str_value_verbatim(expr, text, pos)))
-        # toplevel macro call
-        elseif ismacrocall(expr)
-            push!(items, ToplevelMacroCall(expr, lines, str_value_verbatim(expr, text, pos)))
-        # module usages
-        elseif ismoduleusage(expr)
-            push!(items, ToplevelModuleUsage(expr, lines))
+        elseif expr.parent === nothing || !CSTParser.is_assignment(expr.parent)
+            # toplevel call
+            if iscallexpr(expr)
+                push!(items, ToplevelCall(expr, lines, str_value_verbatim(expr, text, pos)))
+            # toplevel macro call
+            elseif ismacrocall(expr)
+                push!(items, ToplevelMacroCall(expr, lines, str_value_verbatim(expr, text, pos)))
+            # module usages
+            elseif ismoduleusage(expr)
+                push!(items, ToplevelModuleUsage(expr, lines))
+            end
         end
     end
 
-    # look for more toplevel items in expr:
     if shouldenter(expr, mod)
+        # look for more toplevel items in expr:
         if CSTParser.defines_module(expr) && shouldentermodule(expr, mod)
             inmod = true
         end
