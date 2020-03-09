@@ -59,20 +59,23 @@ function Logging.handle_message(j::JunoProgressLogger, level, message, _module,
     end
   else
     previous_logger = Logging.global_logger()
-    if (Logging.min_enabled_level(previous_logger) <= Logging.LogLevel(level) ||
+    if (Base.invokelatest(Logging.min_enabled_level, previous_logger) <= Logging.LogLevel(level) ||
         Base.CoreLogging.env_override_minlevel(group, _module)) &&
-        Logging.shouldlog(previous_logger, level, _module, group, id)
+        Base.invokelatest(Logging.shouldlog, previous_logger, level, _module, group, id)
       Logging.handle_message(previous_logger, level, message, _module,
                              group, id, file, line; kwargs...)
     end
   end
+  return nothing
 end
 
 Logging.shouldlog(::JunoProgressLogger, level, _module, group, id) = true
 
 Logging.catch_exceptions(::JunoProgressLogger) = true
 
-Logging.min_enabled_level(j::JunoProgressLogger) =
-  min(Logging.min_enabled_level(Logging.global_logger()), Logging.LogLevel(-1))
+function Logging.min_enabled_level(j::JunoProgressLogger)
+  min(Base.invokelatest(Logging.min_enabled_level, Logging.global_logger()), Logging.LogLevel(-1))
+end
+
 
 end # module

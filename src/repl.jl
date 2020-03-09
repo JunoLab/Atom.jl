@@ -136,34 +136,36 @@ function hideprompt(f)
     can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\x03$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
     can_write_to_terminal && take!(waiter_out)
   end
+  r = nothing
+  try
+    r = f()
+  finally
+    flush(stdout)
+    flush(stderr)
 
-  r = f()
+    sleep(0.05)
 
-  flush(stdout)
-  flush(stderr)
+    pos = @rpc cursorpos()
+    INIT_COMPLETE[] && can_write_to_terminal && is_blocking_repl_input[] && put!(waiter_in, nothing)
+    pos[1] != 0 && println()
 
-  sleep(0.05)
+    # restore prompt
+    get_main_mode().prompt = current_prompt[]
 
-  pos = @rpc cursorpos()
-  INIT_COMPLETE[] && can_write_to_terminal && is_blocking_repl_input[] && put!(waiter_in, nothing)
-  pos[1] != 0 && println()
+    if applicable(LineEdit.write_prompt, stdout, mode)
+      LineEdit.write_prompt(stdout, mode)
+    elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
+      LineEdit.write_prompt(stdout, mode.parent_prompt)
+    else
+      printstyled(stdout, current_prompt[], color=:green)
+    end
 
-  # restore prompt
-  get_main_mode().prompt = current_prompt[]
+    truncate(LineEdit.buffer(mistate), 0)
 
-  if applicable(LineEdit.write_prompt, stdout, mode)
-    LineEdit.write_prompt(stdout, mode)
-  elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
-    LineEdit.write_prompt(stdout, mode.parent_prompt)
-  else
-    printstyled(stdout, current_prompt[], color=:green)
+    # restore input buffer
+    LineEdit.edit_insert(LineEdit.buffer(mistate), buf)
+    LineEdit.refresh_multi_line(mistate)
   end
-
-  truncate(LineEdit.buffer(mistate), 0)
-
-  # restore input buffer
-  LineEdit.edit_insert(LineEdit.buffer(mistate), buf)
-  LineEdit.refresh_multi_line(mistate)
   r
 end
 
