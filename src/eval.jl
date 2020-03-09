@@ -17,7 +17,12 @@ const is_backend_working = Ref{Bool}(false)
 
 function run_with_backend(f, args...)
   put!(eval_channel_in, (f, args))
-  take!(eval_channel_out)
+  r = take!(eval_channel_out)
+  if r isa EvalError || r isa ErrorException
+    render′(Editor(), r)
+  else
+    r
+  end
 end
 
 function start_eval_backend()
@@ -28,12 +33,12 @@ function start_eval_backend()
         f, args = take!(eval_channel_in)
         Base.sigatomic_end()
         is_backend_working[] = true
-        res = f(args...)
+        res = @errs f(args...)
         is_backend_working[] = false
         Base.sigatomic_begin()
         put!(eval_channel_out, res)
       catch err
-        put!(eval_channel_out, nothing)
+        put!(eval_channel_out, err)
       finally
         is_backend_working[] = false
       end
