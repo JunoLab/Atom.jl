@@ -3,7 +3,6 @@ using JuliaInterpreter: pc_expr, extract_args, debug_command, root, caller,
 import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, Inline, display_error, hideprompt, getmodule
 import Juno: Row
-using MacroTools
 
 mutable struct DebuggerState
   frame::Union{Nothing, Frame}
