@@ -55,7 +55,7 @@ include("modules.jl")
 
 include("eval.jl")
 include("outline.jl")
-include("completions.jl")
+include("completions/completions.jl")
 include("goto.jl")
 include("datatip.jl")
 include("workspace.jl")
