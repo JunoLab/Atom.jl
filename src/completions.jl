@@ -1,6 +1,25 @@
-### baseline completions ###
+import REPL.REPLCompletions, FuzzyCompletions
 
-handle("completions") do data
+const CompletionSuggetion = Dict{Symbol, String}
+
+# as an heuristic, suppress completions if there are over 500 completions,
+# ref: currently `completions("", 0, Main)` returns 1098 completions as of v1.5
+const SUPPRESS_COMPLETION_THRESHOLD = 500
+
+# autocomplete-plus only shows at most 200 completions
+# ref: https://github.com/atom/autocomplete-plus/blob/master/lib/suggestion-list-element.js#L49
+const MAX_COMPLETIONS = 200
+
+const DESCRIPTION_LIMIT = 200
+
+# threshold up to which METHOD_COMPLETION_CACHE can get fat, to make sure it won't eat up memory
+# NOTE: with 2000 elements it used ~10MiB on my machine.
+const MAX_METHOD_COMPLETION_CACHE = 3000
+
+# REPL-backend completion
+# -----------------------
+
+handle("replcompletionadapter") do data
   @destruct [
     # general
     line,
@@ -15,37 +34,17 @@ handle("completions") do data
     force || false
   ] = data
 
-  withpath(path) do
-    basecompletionadapter(
-      # general
-      line, mod,
-      # local context
-      context, row - startRow, column,
-      # configurations
-      force
-    )
-  end
+  return replcompletionadapter(
+    # general
+    line, mod,
+    # local context
+    context, row - startRow, column,
+    # configurations
+    force
+  )
 end
 
-using REPL.REPLCompletions
-
-const CompletionSuggetion = Dict{Symbol, String}
-
-# as an heuristic, suppress completions if there are over 500 completions,
-# ref: currently `completions("", 0)` returns **1132** completions as of v1.3
-const SUPPRESS_COMPLETION_THRESHOLD = 500
-
-# autocomplete-plus only shows at most 200 completions
-# ref: https://github.com/atom/autocomplete-plus/blob/master/lib/suggestion-list-element.js#L49
-const MAX_COMPLETIONS = 200
-
-const DESCRIPTION_LIMIT = 200
-
-# threshold up to which METHOD_COMPLETION_CACHE can get fat, to make sure it won't eat up memory
-# NOTE: with 2000 elements it used ~10MiB on my machine.
-const MAX_METHOD_COMPLETION_CACHE = 3000
-
-function basecompletionadapter(
+function replcompletionadapter(
   # general
   line, m = "Main",
   # local context
@@ -56,22 +55,18 @@ function basecompletionadapter(
   mod = getmodule(m)
 
   cs, replace, shouldcomplete = try
-    completions(line, lastindex(line), mod)
+    REPLCompletions.completions(line, lastindex(line), mod)
   catch err
     # might error when e.g. type inference fails
     REPLCompletions.Completion[], 1:0, false
   end
+  prefix = line[replace]
 
-  # suppress completions if there are too many of them unless activated manually
-  # e.g. when invoked with `$|`, `(|`, etc.
-  # TODO: check whether `line` is a valid text to complete in frontend
-  if !force && length(cs) > SUPPRESS_COMPLETION_THRESHOLD
-    cs = REPLCompletions.Completion[]
-    replace = 1:0
-  end
+  # suppress completions if there are still too many of them i.e. when invoked with `$|`, `(|`, etc.
+  # XXX: the heuristics below mayn't be so robust to work for all the cases.
+  !force && (isempty(prefix) && length(cs) > SUPPRESS_COMPLETION_THRESHOLD) && (cs = REPLCompletions.Completion[])
 
   # initialize suggestions with local completions so that they show up first
-  prefix = line[replace]
   comps = if force || !isempty(prefix)
     filter!(let p = prefix
       c -> startswith(c[:text], p)
@@ -87,7 +82,7 @@ function basecompletionadapter(
     end
   end
 
-  cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  @inbounds cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
   for c in cs
     if afterusing
@@ -98,6 +93,100 @@ function basecompletionadapter(
 
   return comps
 end
+
+# Fuzzy completion
+# ----------------
+
+handle("fuzzycompletionadapter") do data
+  @destruct [
+    # general
+    line,
+    mod || "Main",
+    path || nothing,
+    # local context
+    context || "",
+    row || 1,
+    startRow || 0,
+    column || 1,
+    # configurations
+    force || false
+  ] = data
+
+  return fuzzycompletionadapter(
+    # general
+    line, mod,
+    # local context
+    context, row - startRow, column,
+    # configurations
+    force
+  )
+end
+
+function fuzzycompletionadapter(
+  # general
+  line, m = "Main",
+  # local context
+  context = "", row = 1, column = 1,
+  # configurations
+  force = false
+)
+  mod = getmodule(m)
+
+  cs, replace, shouldcomplete = try
+    FuzzyCompletions.completions(line, lastindex(line), mod)
+  catch err
+    # might error when e.g. type inference fails
+    FuzzyCompletions.Completion[], 1:0, false
+  end
+  prefix = line[replace]
+
+  if !force
+    filter!(c -> FuzzyCompletions.score(c) ≥ 0, cs) # filter negative scores
+
+    # suppress completions if there are still too many of them i.e. when invoked with `$|`, `(|`, etc.
+    # XXX: the heuristics below mayn't be so robust to work for all the cases.
+    (isempty(prefix) && length(cs) > SUPPRESS_COMPLETION_THRESHOLD) && (cs = FuzzyCompletions.Completion[])
+  end
+
+  # initialize suggestions with local completions so that they show up first
+  comps = localcompletions(context, row, column, prefix)
+  if !force
+    filter!(let p = prefix
+      # NOTE: let's be a bit strict on local completions so that we avoid verbose completions, e.g. troublemaker cases
+      comp -> FuzzyCompletions.fuzzyscore(p, comp[:text]) > 0
+    end, comps)
+  end
+
+  # FIFO cache refreshing
+  if length(METHOD_COMPLETION_CACHE) ≥ MAX_METHOD_COMPLETION_CACHE
+    for k in collect(keys(METHOD_COMPLETION_CACHE))[1:MAX_METHOD_COMPLETION_CACHE÷2]
+      delete!(METHOD_COMPLETION_CACHE, k)
+    end
+  end
+
+  @inbounds cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  afterusing = FuzzyCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
+  for c in cs
+    if afterusing
+      c isa FuzzyCompletions.PackageCompletion || continue
+    end
+    push!(comps, completion(mod, c, prefix))
+  end
+
+  return comps
+end
+
+# baseline completion
+# -------------------
+
+# for functions below works both for REPLCompletions and FuzzyCompletions modules
+for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
+          :PropertyCompletion, :FieldCompletion, :MethodCompletion, :BslashCompletion,
+          :ShellCompletion, :DictCompletion]
+  eval(:(const $c = Union{REPLCompletions.$c, FuzzyCompletions.$c}))
+end
+completion_text(c::REPLCompletions.Completion) = REPLCompletions.completion_text(c)
+completion_text(c::FuzzyCompletions.Completion) = FuzzyCompletions.completion_text(c)
 
 completion(mod, c, prefix) = CompletionSuggetion(
   :replacementPrefix  => prefix,
@@ -119,21 +208,21 @@ const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
     MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
     MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
 
-[`OrderedCollections.OrderedDict`](@ref) that caches details of `REPLCompletions.MethodCompletion`s:
+[`OrderedCollections.OrderedDict`](@ref) that caches details of [`MethodCompletion`](@ref)s:
 - result of a return type inference
 - documentation description
 
 This cache object has the following structure:
-Keys are hash `String` of a `REPLCompletions.MethodCompletion` object,
+Keys are hash `String` of a `MethodCompletion` object,
   which can be used for cache detection or refered lazily by
   [autocompluete-plus's `getSuggestionDetailsOnSelect` API]
   (https://github.com/atom/autocomplete-plus/wiki/Provider-API#defining-a-provider)
 Values can be either of:
-- `MethodCompletionInfo`: keeps (temporary) information of this `REPLCompletions.MethodCompletion`
+- `MethodCompletionInfo`: keeps (temporary) information of this `MethodCompletion`
   + `f`: a function object
   + `m`: a `Method` object
   + `tt`: an input `Tuple` type
-- `MethodCompletionDetail`: stores the lazily computed detail of this `REPLCompletions.MethodCompletion`
+- `MethodCompletionDetail`: stores the lazily computed detail of this `MethodCompletion`
   + `rt`: `String` representing a return type of this method call
   + `desc`: `String` representing documentation of this method
 
@@ -142,7 +231,7 @@ If the second element is still a `MethodCompletionInfo` instance, that means its
 If the second element is already a `MethodCompletionDetail` then we can reuse this cache.
 
 !!! note
-    If a method gets updated (i.e. redefined etc), key hash for the `REPLCompletions.MethodCompletion`
+    If a method gets updated (i.e. redefined etc), key hash for the `MethodCompletion`
       will be different from the previous one, so it's okay if we just rely on the hash key.
 
 !!! warning
@@ -150,7 +239,7 @@ If the second element is already a `MethodCompletionDetail` then we can reuse th
 """
 const METHOD_COMPLETION_CACHE = OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}()
 
-function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
+function completion(mod, c::MethodCompletion, prefix)
   k = repr(hash(c))
 
   m = c.method
@@ -194,27 +283,27 @@ function completion(mod, c::REPLCompletions.MethodCompletion, prefix)
 end
 
 completiontext(c) = completion_text(c)
-completiontext(c::REPLCompletions.MethodCompletion) = begin
+completiontext(c::MethodCompletion) = begin
   ct = completion_text(c)
   m = match(r"^(.*) in .*$", ct)
   m isa Nothing ? ct : m[1]
 end
-completiontext(c::REPLCompletions.DictCompletion) = rstrip(completion_text(c), [']', '"'])
-completiontext(c::REPLCompletions.PathCompletion) = rstrip(completion_text(c), '"')
+completiontext(c::DictCompletion) = rstrip(completion_text(c), [']', '"'])
+completiontext(c::PathCompletion) = rstrip(completion_text(c), '"')
 
 completionreturntype(c) = ""
-completionreturntype(c::REPLCompletions.PropertyCompletion) = begin
+completionreturntype(c::PropertyCompletion) = begin
   isdefined(c.value, c.property) || return ""
   shortstr(typeof(getproperty(c.value, c.property)))
 end
-completionreturntype(c::REPLCompletions.FieldCompletion) =
+completionreturntype(c::FieldCompletion) =
   shortstr(fieldtype(c.typ, c.field))
-completionreturntype(c::REPLCompletions.DictCompletion) =
+completionreturntype(c::DictCompletion) =
   shortstr(valtype(c.dict))
-completionreturntype(::REPLCompletions.PathCompletion) = "Path"
+completionreturntype(::PathCompletion) = "Path"
 
 completionurl(c) = ""
-completionurl(c::REPLCompletions.ModuleCompletion) = begin
+completionurl(c::ModuleCompletion) = begin
   mod, name = c.parent, c.mod
   val = getfield′(mod, name)
   if val isa Module # module info
@@ -223,46 +312,46 @@ completionurl(c::REPLCompletions.ModuleCompletion) = begin
     uridocs(mod, name)
   end
 end
-completionurl(c::REPLCompletions.MethodCompletion) = uridocs(c.method.module, c.method.name)
-completionurl(c::REPLCompletions.PackageCompletion) = urimoduleinfo(c.package)
-completionurl(c::REPLCompletions.KeywordCompletion) = uridocs("Main", c.keyword)
+completionurl(c::MethodCompletion) = uridocs(c.method.module, c.method.name)
+completionurl(c::PackageCompletion) = urimoduleinfo(c.package)
+completionurl(c::KeywordCompletion) = uridocs("Main", c.keyword)
 
 completionmodule(mod, c) = shortstr(mod)
-completionmodule(mod, c::REPLCompletions.ModuleCompletion) = shortstr(c.parent)
-completionmodule(mod, c::REPLCompletions.MethodCompletion) = shortstr(c.method.module)
-completionmodule(mod, c::REPLCompletions.FieldCompletion) = shortstr(c.typ) # predicted type
-completionmodule(mod, ::REPLCompletions.KeywordCompletion) = ""
-completionmodule(mod, ::REPLCompletions.PathCompletion) = ""
+completionmodule(mod, c::ModuleCompletion) = shortstr(c.parent)
+completionmodule(mod, c::MethodCompletion) = shortstr(c.method.module)
+completionmodule(mod, c::FieldCompletion) = shortstr(c.typ) # predicted type
+completionmodule(mod, ::KeywordCompletion) = ""
+completionmodule(mod, ::PathCompletion) = ""
 
 completiontype(c) = "variable"
-completiontype(c::REPLCompletions.ModuleCompletion) = begin
+completiontype(c::ModuleCompletion) = begin
   ct = completion_text(c)
   ismacro(ct) && return "snippet"
   mod, name = c.parent, Symbol(ct)
   val = getfield′(mod, name)
   wstype(mod, name, val)
 end
-completiontype(::REPLCompletions.MethodCompletion) = "method"
-completiontype(::REPLCompletions.PackageCompletion) = "import"
-completiontype(::REPLCompletions.PropertyCompletion) = "property"
-completiontype(::REPLCompletions.FieldCompletion) = "property"
-completiontype(::REPLCompletions.DictCompletion) = "property"
-completiontype(::REPLCompletions.KeywordCompletion) = "keyword"
-completiontype(::REPLCompletions.PathCompletion) = "path"
+completiontype(::MethodCompletion) = "method"
+completiontype(::PackageCompletion) = "import"
+completiontype(::PropertyCompletion) = "property"
+completiontype(::FieldCompletion) = "property"
+completiontype(::DictCompletion) = "property"
+completiontype(::KeywordCompletion) = "keyword"
+completiontype(::PathCompletion) = "path"
 
 completionicon(c) = ""
-completionicon(c::REPLCompletions.ModuleCompletion) = begin
+completionicon(c::ModuleCompletion) = begin
   ismacro(c.mod) && return "icon-mention"
   mod, name = c.parent, Symbol(c.mod)
   val = getfield′(mod, name)
   wsicon(mod, name, val)
 end
-completionicon(::REPLCompletions.DictCompletion) = "icon-key"
-completionicon(::REPLCompletions.PathCompletion) = "icon-file"
+completionicon(::DictCompletion) = "icon-key"
+completionicon(::PathCompletion) = "icon-file"
 
 completiondetailtype(c) = ""
-completiondetailtype(::REPLCompletions.ModuleCompletion) = "module"
-completiondetailtype(::REPLCompletions.KeywordCompletion) = "keyword"
+completiondetailtype(::ModuleCompletion) = "module"
+completiondetailtype(::KeywordCompletion) = "keyword"
 
 function localcompletions(context, row, col, prefix)
   ls = locals(context, row, col)
@@ -289,7 +378,8 @@ function localcompletion(l, prefix, lines)
   )
 end
 
-### completion details on selection ###
+# completion details
+# ------------------
 
 handle("completiondetail") do _comp
   comp = Dict(Symbol(k) => v for (k, v) in _comp)
