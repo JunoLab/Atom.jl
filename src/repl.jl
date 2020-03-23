@@ -83,7 +83,7 @@ function instantiate_repl_keybindings(repl)
 end
 
 function blockinput_frontend(s,o...)
-  print(LineEdit.terminal(s), "\r\e[1A\e[0K\e[1A\e[0K\e[1A\e[0K")
+  print(LineEdit.terminal(s), "\r\e[1A\e[0K")
 
   return :done
 end
@@ -133,7 +133,7 @@ function hideprompt(f)
 
   if INIT_COMPLETE[]
     # Ctrl-C to escape REPL modes, then sentinel and trigger chars.
-    can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\x03$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
+    can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\b\a$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
     can_write_to_terminal && take!(waiter_out)
   end
   r = nothing
