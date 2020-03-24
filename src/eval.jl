@@ -64,7 +64,7 @@ function evalshow(text, line, path, mod)
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
-    lock(evallock)
+    # lock(evallock)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -78,7 +78,7 @@ function evalshow(text, line, path, mod)
         end
       end
     end
-    unlock(evallock)
+    # unlock(evallock)
 
     Base.invokelatest() do
       display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
@@ -104,7 +104,7 @@ function eval(text, line, path, mod, errorinrepl = false)
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
-    lock(evallock)
+    # lock(evallock)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -120,7 +120,7 @@ function eval(text, line, path, mod, errorinrepl = false)
         end
       end
     end
-    unlock(evallock)
+    # unlock(evallock)
 
     Base.invokelatest() do
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
@@ -157,7 +157,7 @@ function evalall(code, mod = nothing, path = "untitled")
       Main
     end
 
-    lock(evallock)
+    # lock(evallock)
     hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -181,7 +181,7 @@ function evalall(code, mod = nothing, path = "untitled")
         end
       end
     end
-    unlock(evallock)
+    # unlock(evallock)
   end
 end
 
