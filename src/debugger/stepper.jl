@@ -385,13 +385,10 @@ function stepview(ex)
 end
 
 function evalscope(f)
-  locked = islocked(Atom.evallock)
   try
     @msg doneWorking()
-    locked && unlock(Atom.evallock)
     f()
   finally
-    locked && lock(Atom.evallock)
     @msg working()
   end
 end

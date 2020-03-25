@@ -215,9 +215,10 @@ function evalrepl(mod, line)
     return blockinput()
   end
 
-  global ans
+  is_evaling() && return nothing
+
+  ans = nothing
   try
-    # lock(evallock)
     msg("working")
     inREPL[] = true
     fixjunodisplays()
@@ -247,7 +248,6 @@ function evalrepl(mod, line)
     display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
     inREPL[] = false
-    # unlock(evallock)
     @async begin
       msg("doneWorking")
       msg("updateWorkspace")
@@ -257,7 +257,7 @@ function evalrepl(mod, line)
 end
 
 function changeREPLmodule(mod)
-  islocked(evallock) && return nothing
+  is_evaling() && return nothing
 
   mod = getmodule(mod)
 
