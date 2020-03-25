@@ -122,17 +122,16 @@ function hideprompt(f)
 
   buf = String(take!(copy(LineEdit.buffer(mistate))))
 
+  # clear prompt and restore later
+  get_main_mode().prompt = ""
+
   # clear input buffer
   truncate(LineEdit.buffer(mistate), 0)
   LineEdit.refresh_multi_line(mistate)
 
   can_write_to_terminal = false
-
-  # clear prompt and restore later
-  get_main_mode().prompt = ""
-
   if INIT_COMPLETE[]
-    # Ctrl-C to escape REPL modes, then sentinel and trigger chars.
+    # Escape REPL modes, then write sentinel and trigger chars.
     can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\b\a$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
     can_write_to_terminal && take!(waiter_out)
   end
@@ -216,9 +215,10 @@ function evalrepl(mod, line)
     return blockinput()
   end
 
-  global ans
+  is_evaling() && return nothing
+
+  ans = nothing
   try
-    lock(evallock)
     msg("working")
     inREPL[] = true
     fixjunodisplays()
@@ -248,7 +248,6 @@ function evalrepl(mod, line)
     display_error(stderr, err, stacktrace(catch_backtrace()))
   finally
     inREPL[] = false
-    unlock(evallock)
     @async begin
       msg("doneWorking")
       msg("updateWorkspace")
@@ -258,7 +257,7 @@ function evalrepl(mod, line)
 end
 
 function changeREPLmodule(mod)
-  islocked(evallock) && return nothing
+  is_evaling() && return nothing
 
   mod = getmodule(mod)
 

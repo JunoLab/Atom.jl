@@ -9,11 +9,14 @@ ends_with_semicolon(x) = REPL.ends_with_semicolon(split(x,'\n',keepempty = false
 withpath(f, path) =
   CodeTools.withpath(f, path == nothing || isuntitled(path) ? nothing : path)
 
-const evallock = ReentrantLock()
 const eval_channel_in = Channel(1)
 const eval_channel_out = Channel(1)
 const eval_backend_task = Ref{Any}(nothing)
 const is_backend_working = Ref{Bool}(false)
+
+function is_evaling()
+  return is_backend_working[] || inREPL[]
+end
 
 function run_with_backend(f, args...)
   put!(eval_channel_in, (f, args))
@@ -64,7 +67,6 @@ function evalshow(text, line, path, mod)
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
-    lock(evallock)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -78,7 +80,6 @@ function evalshow(text, line, path, mod)
         end
       end
     end
-    unlock(evallock)
 
     Base.invokelatest() do
       display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
@@ -104,7 +105,6 @@ function eval(text, line, path, mod, errorinrepl = false)
   @dynamic let Media.input = Editor()
     mod = getmodule(mod)
 
-    lock(evallock)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -120,7 +120,6 @@ function eval(text, line, path, mod, errorinrepl = false)
         end
       end
     end
-    unlock(evallock)
 
     Base.invokelatest() do
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
@@ -157,7 +156,6 @@ function evalall(code, mod = nothing, path = "untitled")
       Main
     end
 
-    lock(evallock)
     hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
@@ -181,7 +179,6 @@ function evalall(code, mod = nothing, path = "untitled")
         end
       end
     end
-    unlock(evallock)
   end
 end
 
