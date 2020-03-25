@@ -65,9 +65,10 @@ function displayinplotpane(x)
       # render(PlotPane(), HTML(string("data:image/svg+xml,", stringmime("image/svg+xml", x, context=plotpane_io_ctx(io)))))
       io = IOBuffer()
       show(plotpane_io_ctx(io), "image/svg+xml", x)
-      str = HTTP.URIs.escapeuri(String(take!(io)))
-      startswith(str, "data:") || (str = string("data:image/svg+xml,", str))
+      str = base64encode(String(take!(io)))
+      startswith(str, "data:") || (str = string("data:image/svg+xml;base64,", str))
       @msg ploturl(str)
+      # render(PlotPane(), HTML("<img src=\""*str*"\">"))
       return true
     catch err
       err isa MethodError && err.f == Base.show || rethrow(err)
