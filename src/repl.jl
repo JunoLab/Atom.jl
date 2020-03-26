@@ -22,12 +22,10 @@ function isREPL(; before_run_repl = false)
   isdefined(Base, :active_repl) &&
   isdefined(Base.active_repl, :interface) &&
   isdefined(Base.active_repl.interface, :modes) &&
-  if before_run_repl
-    true
-  else
+  (before_run_repl || (
     isdefined(Base.active_repl, :mistate) &&
     isa(Base.active_repl.mistate, REPL.LineEdit.MIState)
-  end
+  ))
 end
 
 handle("changeprompt") do prompt
@@ -57,18 +55,7 @@ handle("fullpath") do uri
   return fullREPLpath(uri)
 end
 
-handle("validatepath") do uri
-  return isfile′(fullREPLpath(uri)[1])
-end
-
 const juliaprompt = "julia> "
-
-handle("resetprompt") do linebreak
-  isREPL() || return
-  linebreak && println()
-  changeREPLprompt(juliaprompt)
-  nothing
-end
 
 const current_prompt = Ref{String}(juliaprompt)
 
