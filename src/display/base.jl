@@ -101,10 +101,14 @@ import Base.Docs: doc
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
 @render Inline f::Function begin
-  name = string(typeof(f).name)
-  inner = match(r"typeof\((.+)\)", name)
-  if inner ≠ nothing
-    name = inner[1]
+  if ismacro(f)
+    name = string(f)
+  else
+    name = string(typeof(f).name)
+    inner = match(r"typeof\((.+)\)", name)
+    if inner ≠ nothing
+      name = inner[1]
+    end
   end
   binding = Docs.Binding(typeof(f).name.module, Symbol(name))
   if isanon(f)
