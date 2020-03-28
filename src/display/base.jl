@@ -129,7 +129,7 @@ end
 @render Inline f::Core.Builtin begin
   LazyTree(
     span(c(span(".syntax--support.syntax--function", string(f)), " (built-in function)")),
-    ()->[(Atom.CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)]
+    ()->[(CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)]
   )
 end
 
@@ -197,7 +197,7 @@ end
         Text("..."))
 end
 
-(render(i::Inline, x::Irrational{sym}) where sym) =
+render(i::Inline, x::Irrational{sym}) where sym =
   render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 @render i::Inline xs::Tuple begin
