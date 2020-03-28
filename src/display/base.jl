@@ -104,6 +104,17 @@ isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
   isanon(f) ? span(".syntax--support.syntax--function", "λ") :
     LazyTree(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
              ()->[(Atom.CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)])
+
+@render Inline f::Core.IntrinsicFunction begin
+  id = Core.Intrinsics.bitcast(Int32, f)
+  span(c(span(".syntax--support.syntax--function", string(f)), " (intrinsic function #$id)"))
+end
+
+@render Inline f::Core.Builtin begin
+  LazyTree(
+    span(c(span(".syntax--support.syntax--function", string(f)), " (built-in function)")),
+    ()->[(Atom.CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)]
+  )
 end
 
 # TODO: lazy load a recursive tree
