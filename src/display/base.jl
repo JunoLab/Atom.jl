@@ -101,9 +101,36 @@ import Base.Docs: doc
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
 @render Inline f::Function begin
-  isanon(f) ? span(".syntax--support.syntax--function", "λ") :
-    LazyTree(span(".syntax--support.syntax--function", string(typeof(f).name.mt.name)),
-             ()->[(Atom.CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)])
+  if ismacro(f)
+    name = string(f)
+  else
+    name = string(typeof(f).name)
+    inner = match(r"typeof\((.+)\)", name)
+    if inner ≠ nothing
+      name = inner[1]
+    end
+  end
+  binding = Docs.Binding(typeof(f).name.module, Symbol(name))
+  if isanon(f)
+    span(".syntax--support.syntax--function", "λ")
+  else
+    LazyTree(
+      span(".syntax--support.syntax--function", name),
+      ()->[(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : [])..., methods(f)]
+    )
+  end
+end
+
+@render Inline f::Core.IntrinsicFunction begin
+  id = Core.Intrinsics.bitcast(Int32, f)
+  span(c(span(".syntax--support.syntax--function", string(f)), " (intrinsic function #$id)"))
+end
+
+@render Inline f::Core.Builtin begin
+  LazyTree(
+    span(c(span(".syntax--support.syntax--function", string(f)), " (built-in function)")),
+    ()->[(Atom.CodeTools.hasdoc(f) ? [md_hlines(doc(f))] : [])..., methods(f)]
+  )
 end
 
 # TODO: lazy load a recursive tree
