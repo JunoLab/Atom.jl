@@ -161,16 +161,21 @@
     end
 
     @testset "path completion" begin
-        let line = "\"", cs = comps(line)
-            @test_skip length(cs) ==
-                  length(completions(line, lastindex(line))[1]) ==
-                  length(readdir(@__DIR__))
-            @test filter(cs) do c
-                c[:type] == "path" &&
-                c[:icon] == "icon-file" &&
-                c[:rightLabel] |> isempty
-            end |> !isempty
-        end
+        w = pwd()
+        cd(@__DIR__)
+
+        line = "\""
+        cs = comps(line)
+        @test length(cs) ==
+              length(completions(line, lastindex(line))[1]) ==
+              length(readdir(@__DIR__))
+        @test filter(cs) do c
+            c[:type] == "path" &&
+            c[:icon] == "icon-file" &&
+            c[:rightLabel] |> isempty
+        end |> !isempty
+
+        cd(w)
     end
 
     # completion suppressing
