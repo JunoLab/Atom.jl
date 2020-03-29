@@ -94,6 +94,8 @@ end
 
 @render Inline _::Nothing span(".syntax--constant", "nothing")
 
+@render Inline _::Missing span(".syntax--constant", "missing")
+
 @render Inline _::Undefined span(".fade", "<undefined>")
 
 import Base.Docs: doc
