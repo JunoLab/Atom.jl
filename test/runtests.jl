@@ -7,8 +7,12 @@ atomjldir = joinpath′(@__DIR__, "..")
 atomsrcdir = joinpath′(atomjldir, "src")
 atomjlfile = joinpath′(atomsrcdir, "Atom.jl")
 webiofile = joinpath′(atomsrcdir, "display", "webio.jl")
+traceurfile = joinpath′(atomsrcdir, "profiler", "traceur.jl")
 
-# files in `Atom` module (except files in its submodules)
+# files in `Atom` module except files in submodules
+# TODO:
+# currently both Revise-like and CSTPraser-based module traverse fails
+# to detect lazily loaded files even if they are actually loaded.
 atommodfiles = let
     files = []
     debuggerdir = joinpath′(atomsrcdir, "debugger")
@@ -23,15 +27,12 @@ atommodfiles = let
         end
         if d == profilerdir
             push!(files, joinpath′(d, "profiler.jl"))
-            push!(files, joinpath′(d, "traceur.jl"))
+            # push!(files, joinpath′(d, "traceur.jl"))
             continue
         end
 
         for f in fs
-            # NOTE: currently both Revise-like and CSTPraser-based approach fails
-            # to detect display/webio.jl as a file in Atom module
             f == "webio.jl" && continue
-
             # .jl check is needed for travis, who creates hoge.cov files
             endswith(f, ".jl") && push!(files, joinpath′(d, f))
         end

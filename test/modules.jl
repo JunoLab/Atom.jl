@@ -24,12 +24,17 @@
         if use_compiled_modules()
             # works for precompiled packages
             let (parentfile, included_files) = modulefiles(Atom)
-                expected = Set(atommodfiles)
-                actual = Set((parentfile, included_files...))
-                @test actual == expected
+                for f in included_files
+                    @test f in atommodfiles
+                end
+                # NOTE: `+ 1` stands for Atom.jl (`parentfile`)
+                @test length(included_files) + 1 === length(atommodfiles)
 
-                # can't detect display/webio.jl
-                @test_broken webiofile in modfiles
+                # TODO:
+                # Revise-like module traverse fails to detect lazily loaded files even if
+                # they are actually loaded.
+                @test_broken webiofile in included_files
+                @test_broken traceurfile in included_files
             end
 
             # fails for non-precompiled packages
@@ -41,17 +46,16 @@
         ## CSTPraser-based module file detection
         # basic
         let included_files = normpath.(modulefiles("Atom", atomjlfile))
-            # finds all the files in Atom module except display/webio.jl
-            for f in atommodfiles
-                f == webiofile && continue
-                @test f in included_files
+            for f in included_files
+                @test f in atommodfiles
             end
+            @test length(included_files) === length(atommodfiles)
 
-            # only finds files in a module -- exclude files in the submodules
-            @test length(atommodfiles) == length(included_files)
-
-            # can't look for non-toplevel `include` calls
+            # TODO:
+            # CSTParser-based module traverse is currently not able to find non-toplevel
+            # `include` calls
             @test_broken webiofile in included_files
+            @test_broken traceurfile in included_files
         end
 
         # safety checks for recursive `include`s
