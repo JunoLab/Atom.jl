@@ -1,4 +1,4 @@
-import Traceur
+import .Traceur
 
 function trace(ex, args...)
     :($(showtrace)($(gettrace)(() -> $(esc(ex)); $(map(esc, args)...))))
