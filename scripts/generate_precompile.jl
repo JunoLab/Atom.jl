@@ -47,24 +47,12 @@ try
                     println(io, SnoopCompile.lookup_kwbody_str)
                 end
                 println(io, "function _precompile_()")
-                println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing\n")
+                println(io, "    ccall(:jl_generating_output, Cint, ()) == 1 || return nothing")
                 for stmt in sort(stmts)
                     if startswith(stmt, "isdefined")
-                        println(io, """
-                                        try
-                                            $(stmt)
-                                        catch err
-                                            @debug err
-                                        end
-                                    """) # don't assert on this
+                        println(io, "    try; $(stmt); catch err; @debug err; end") # don't assert on this
                     else
-                        println(io, """
-                                        try
-                                            @assert($(stmt))
-                                        catch err
-                                            @debug err
-                                        end
-                                    """)
+                        println(io, "    try; @assert($(stmt)); catch err; @debug err; end")
                     end
                 end
                 println(io, "end")
