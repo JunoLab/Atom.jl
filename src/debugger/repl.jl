@@ -1,6 +1,5 @@
 using REPL
 using REPL.LineEdit
-using REPL.REPLCompletions
 using JuliaInterpreter: moduleof, locals, eval_code
 import ..Atom: @msg
 
@@ -62,6 +61,9 @@ function debugprompt()
 end
 
 # completions
+
+# NOTE: shouldn't conflict with identifiers exported by FuzzyCompletions
+using REPL: REPLCompletions
 
 struct JunoDebuggerRPELCompletionProvider <: REPL.CompletionProvider end
 

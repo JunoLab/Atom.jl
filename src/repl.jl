@@ -301,6 +301,9 @@ end
 
 # completions
 
+# NOTE: shouldn't conflict with identifiers exported by FuzzyCompletions
+using REPL: REPLCompletions
+
 struct JunoREPLCompletionProvider <: REPL.CompletionProvider
   mod::Module
 end
