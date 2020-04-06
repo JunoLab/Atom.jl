@@ -4,8 +4,7 @@ __precompile__()
 module Atom
 
 using Base.StackTraces, InteractiveUtils, Logging
-using Juno, Lazy, JSON, MacroTools, Media
-import Requires
+using Juno, Lazy, JSON, MacroTools, Media, Requires
 import Media: @dynamic
 
 function __init__()
@@ -38,9 +37,8 @@ function __init__()
     nothing
   end
 
-  Requires.@require WebIO="0f1e0344-ec1d-5b48-a673-e5cf874b6c29" begin
-    include("display/webio.jl")
-  end
+  @require WebIO="0f1e0344-ec1d-5b48-a673-e5cf874b6c29" include("display/webio.jl")
+  @require Traceur="37b6cedf-1f77-55f8-9503-c64b63398394" include("profiler/traceur.jl")
 end
 
 # basics
@@ -64,7 +62,6 @@ include("formatter.jl")
 include("frontend.jl")
 include("debugger/debugger.jl")
 include("profiler/profiler.jl")
-include("profiler/traceur.jl")
 
 include("precompile.jl")
 _precompile_()
