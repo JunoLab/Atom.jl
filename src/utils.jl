@@ -214,20 +214,24 @@ Retrieves docs for `mod.word` with [`@doc`](@ref) macro. If `@doc` is not availa
     You may want to run [`cangetdocs`](@ref) in advance.
 """
 getdocs(mod::Module, word::AbstractString, fallbackmod::Module = Main) = begin
-  md = if iskeyword(word)
-    Core.eval(Main, :(@doc($(Symbol(word)))))
-  else
-    docsym = Symbol("@doc")
-    if isdefined(mod, docsym)
-      include_string(mod, "@doc $word")
-    elseif isdefined(fallbackmod, docsym)
-      word = string(mod) * "." * word
-      include_string(fallbackmod, "@doc $word")
+  try
+    md = if iskeyword(word)
+      Core.eval(Main, :(@doc($(Symbol(word)))))
     else
-      MD("@doc is not available in " * string(mod))
+      docsym = Symbol("@doc")
+      if isdefined(mod, docsym)
+        include_string(mod, "@doc $word")
+      elseif isdefined(fallbackmod, docsym)
+        word = string(mod) * "." * word
+        include_string(fallbackmod, "@doc $word")
+      else
+        MD("@doc is not available in " * string(mod))
+      end
     end
+    md_hlines(md)
+  catch err
+    return MD("")
   end
-  md_hlines(md)
 end
 getdocs(mod::AbstractString, word::AbstractString, fallbackmod::Module = Main) =
   getdocs(getmodule(mod), word, fallbackmod)
