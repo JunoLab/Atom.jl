@@ -63,13 +63,13 @@ function _precompile_()
     try; isdefined(Atom, Symbol("#203#207")) && precompile(Tuple{getfield(Atom, Symbol("#203#207"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#210#211")) && precompile(Tuple{getfield(Atom, Symbol("#210#211")),Base.MethodList}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#210#211")) && precompile(Tuple{getfield(Atom, Symbol("#210#211")),MD}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#266#268")) && precompile(Tuple{getfield(Atom, Symbol("#266#268")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#264#266")) && precompile(Tuple{getfield(Atom, Symbol("#264#266")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#27#28")) && precompile(Tuple{getfield(Atom, Symbol("#27#28"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#31#32")) && precompile(Tuple{getfield(Atom, Symbol("#31#32")),String}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#33#35")) && precompile(Tuple{getfield(Atom, Symbol("#33#35")),String}); catch err; @debug err; end

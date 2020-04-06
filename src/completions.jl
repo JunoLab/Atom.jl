@@ -16,10 +16,10 @@ const DESCRIPTION_LIMIT = 200
 # NOTE: with 2000 elements it used ~10MiB on my machine.
 const MAX_METHOD_COMPLETION_CACHE = 3000
 
-# REPL-backend completion
-# -----------------------
+# baseline completions
+# --------------------
 
-handle("replcompletionadapter") do data
+handle("completions") do data
   @destruct [
     # general
     line,
@@ -31,18 +31,25 @@ handle("replcompletionadapter") do data
     startRow || 0,
     column || 1,
     # configurations
+    is_fuzzy || true,
     force || false
   ] = data
 
-  return replcompletionadapter(
+  adapter = is_fuzzy ? fuzzycompletionadapter : replcompletionadapter
+  return adapter(
     # general
     line, mod,
     # local context
     context, row - startRow, column,
     # configurations
     force
-  )
+  )::Vector{CompletionSuggetion}
 end
+
+# NOTE:
+# `replcompletionadapter` and `fuzzycompletionadapter` are really similar
+# and maybe better to be refactored into a single function,
+# but we define them as separate functions for type-stabilities for now
 
 function replcompletionadapter(
   # general
@@ -92,34 +99,6 @@ function replcompletionadapter(
   end
 
   return comps
-end
-
-# Fuzzy completion
-# ----------------
-
-handle("fuzzycompletionadapter") do data
-  @destruct [
-    # general
-    line,
-    mod || "Main",
-    path || nothing,
-    # local context
-    context || "",
-    row || 1,
-    startRow || 0,
-    column || 1,
-    # configurations
-    force || false
-  ] = data
-
-  return fuzzycompletionadapter(
-    # general
-    line, mod,
-    # local context
-    context, row - startRow, column,
-    # configurations
-    force
-  )
 end
 
 function fuzzycompletionadapter(
@@ -175,9 +154,6 @@ function fuzzycompletionadapter(
 
   return comps
 end
-
-# baseline completion
-# -------------------
 
 # for functions below works both for REPLCompletions and FuzzyCompletions modules
 for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
