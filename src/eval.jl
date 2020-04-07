@@ -36,7 +36,7 @@ function start_eval_backend()
         f, args = take!(eval_channel_in)
         Base.sigatomic_end()
         is_backend_working[] = true
-        res = @errs f(args...)
+        res = @errs Base.invokelatest(f, args...)
         is_backend_working[] = false
         Base.sigatomic_begin()
         put!(eval_channel_out, res)
@@ -73,10 +73,12 @@ function evalshow(text, line, path, mod)
           res = @errs include_string(mod, text, path, line)
 
           if res isa EvalError
-              Base.showerror(IOContext(stderr, :limit => true), res)
+            Base.showerror(IOContext(stderr, :limit => true), res)
           elseif res !== nothing && !ends_with_semicolon(text)
             display(res)
           end
+
+          res
         end
       end
     end
@@ -84,7 +86,9 @@ function evalshow(text, line, path, mod)
     Base.invokelatest() do
       display = Media.getdisplay(typeof(result), Media.pool(Editor()), default = Editor())
       !isa(result, EvalError) && ends_with_semicolon(text) && (result = nothing)
-      display ≠ Editor() && result !== nothing && @ierrs render(display, result)
+      if display ≠ Editor() && result !== nothing
+        @ierrs render(display, result)
+      end
     end
   end
 end
