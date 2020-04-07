@@ -72,10 +72,12 @@ function evalshow(text, line, path, mod)
         withpath(path) do
           res = @errs include_string(mod, text, path, line)
 
-          if res isa EvalError
-            Base.showerror(IOContext(stderr, :limit => true), res)
-          elseif res !== nothing && !ends_with_semicolon(text)
-            display(res)
+          Base.invokelatest() do
+            if res isa EvalError
+              Base.showerror(IOContext(stderr, :limit => true), res)
+            elseif res !== nothing && !ends_with_semicolon(text)
+              display(res)
+            end
           end
 
           res
@@ -114,10 +116,12 @@ function eval(text, line, path, mod, errorinrepl = false)
         withpath(path) do
           res = @errs include_string(mod, text, path, line)
           if errorinrepl && res isa EvalError
-            try
-              Base.showerror(IOContext(stderr, :limit => true), res)
-            catch err
-              show(stderr, err)
+            Base.invokelatest() do
+              try
+                Base.showerror(IOContext(stderr, :limit => true), res)
+              catch err
+                show(stderr, err)
+              end
             end
           end
           return res
@@ -170,11 +174,13 @@ function evalall(code, mod = nothing, path = "untitled")
             ee = EvalError(err, stacktrace(catch_backtrace()))
 
             # show error in REPL:
-            Base.showerror(IOContext(stderr, :limit => true), ee)
-            # show notification (if enabled in Atom):
-            @msg error(d(:msg => "Error evaluating $(basename(path))",
-                         :detail => string(ee),
-                         :dismissable => true))
+            Base.invokelatest() do
+              Base.showerror(IOContext(stderr, :limit => true), ee)
+              # show notification (if enabled in Atom):
+              @msg error(d(:msg => "Error evaluating $(basename(path))",
+                           :detail => string(ee),
+                           :dismissable => true))
+            end
           end
 
           Base.invokelatest() do
