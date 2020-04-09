@@ -36,14 +36,18 @@ handle("format") do data
   ))
 end
 
+# HACK: extract keyword arguments of `format_text`; `Base.kwarg_decl` isn't available as of v1.0
 const FORMAT_TEXT_KWARGS = let
   ms = collect(methods(format_text))
   filter!(m->m.module==JuliaFormatter, ms)
-  Base.kwarg_decl(first(ms))
+  m = match(r";(.+)\)", string(first(ms)))
+  m === nothing ? Symbol[] : Symbol.(strip.(split(m.captures[1]), Ref((' ', ','))))
 end
 function format_text′(text; kwargs...)
   # only pass valid keyword arguments to `format_text`
-  valid_kwargs_dict = filter(((k,_),)->in(k,FORMAT_TEXT_KWARGS), kwargs)
+  valid_kwargs_dict = filter(kwargs) do (k, _)
+    @static isempty(FORMAT_TEXT_KWARGS) ? false : in(k,FORMAT_TEXT_KWARGS)
+  end
   ks = (collect(keys(valid_kwargs_dict))...,)
   vs = (collect(values(valid_kwargs_dict))...,)
   valid_kwargs_nt = NamedTuple{ks}(vs)
