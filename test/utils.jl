@@ -2,7 +2,12 @@ let old_pwd = pwd()
 cd(dirname(@__FILE__))
 
 @testset "path utilities" begin
-    @test Atom.realpath′("./utils.jl") == realpath(@__FILE__)
+    @static if Sys.isapple()
+        @warn "skipped a `realpath` test"
+        @test_skip Atom.realpath′("./utils.jl") == realpath(@__FILE__)
+    else
+        @test Atom.realpath′("./utils.jl") == realpath(@__FILE__)
+    end
     @test Atom.realpath′(".././dontexist") == ".././dontexist"
 
     @test Atom.isuntitled(".\\untitled-asdj2123:12") == true

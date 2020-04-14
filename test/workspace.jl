@@ -41,6 +41,6 @@
         @test !isempty(items)
         @test items[1][:type] == "variable"
         @test items[1][:icon] == "n"
-        @test items[1][:nativetype] == "Int64"
+        @test items[1][:nativetype] == "$(Int)"
     end
 end
