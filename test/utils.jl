@@ -49,6 +49,7 @@ end
     else
         @test Atom.fullREPLpath("@ Atom /home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
         @test Atom.fullREPLpath("/home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
+        @test Atom.fullREPLpath("/home/user/fo o/.julia/bar.jl:25") == ("/home/user/fo o/.julia/bar.jl", 25)
         @test Atom.fullREPLpath("./foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
         @test Atom.fullREPLpath("foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
     end
