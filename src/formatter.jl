@@ -3,7 +3,7 @@ using JuliaFormatter
 handle("format") do data
   @destruct [
     text,
-    dir,
+    dir || ".",
     indent || 4,
     margin || 92,
   ] = data
