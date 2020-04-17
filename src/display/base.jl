@@ -203,7 +203,11 @@ render(i::Inline, x::Irrational{sym}) where sym =
   render(i, span(c(string(sym), " = ", render(i, float(x)), "...")))
 
 @render i::Inline xs::Tuple begin
-  span(c("(", interpose(map(x->render(i, x), xs), ", ")..., ")"))
+  if length(xs) === 1
+    span(c("(", render(i, first(xs)), ",)"))
+  else
+    span(c("(", interpose(map(x->render(i, x), xs), ", ")..., ")"))
+  end
 end
 
 include("methods.jl")
