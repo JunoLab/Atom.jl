@@ -1,7 +1,7 @@
 # Atom
 
 [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://JunoLab.github.io/JunoDocs.jl/latest)
-![CI](https://github.com/JunoLab/Atom.jl/workflows/CI/badge.svg)
+[![CI](https://github.com/JunoLab/Atom.jl/workflows/CI/badge.svg)](https://github.com/JunoLab/Atom.jl/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/JunoLab/Atom.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JunoLab/Atom.jl)
 
 This is the language server backend for [Juno](http://junolab.org/), the [Julia](http://julialang.org/) IDE.
