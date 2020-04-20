@@ -65,10 +65,10 @@ const FORMAT_TEXT_KWARGS = let
   m = match(r";(.+)\)", string(first(ms)))
   m === nothing ? Symbol[] : Symbol.(strip.(split(m.captures[1]), Ref((' ', ','))))
 end
-function format_text′(text; kwargs...)
+function format_text′(text; options...)
   # only pass valid keyword arguments to `format_text`
-  valid_kwargs_dict = filter(kwargs) do (k, _)
+  valid_option_dict = filter(options) do (k, _)
     @static isempty(FORMAT_TEXT_KWARGS) ? false : in(k,FORMAT_TEXT_KWARGS)
   end
-  return format_text(text; kwargs(valid_kwargs_dict)...)
+  return format_text(text; kwargs(valid_option_dict)...)
 end
