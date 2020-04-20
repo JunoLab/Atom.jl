@@ -29,24 +29,11 @@ end
 
 handle("activateParentProject") do dir
   hideprompt() do
-    if (path = find_project_file(dir)) === nothing
+    if (path = search_up_file("Project.toml", dir)) === nothing
       @warn "No project file found for `$dir`"
       return
     end
     Pkg.activate(path)
-  end
-end
-
-function find_project_file(dir)
-  while true
-    next_dir = dirname(dir)
-    (
-      next_dir == dir || # ensure to escape infinite recursion
-      isempty(dir)       # reached to the system root
-    ) && return nothing
-    path = joinpath(dir, "Project.toml")
-    isfile(path) && return path
-    dir = next_dir
   end
 end
 

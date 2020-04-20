@@ -12,6 +12,17 @@ end
 iswritablefile(file) = Base.uperm(file) == 0x06
 nonwritablefiles(files) = filter(!iswritablefile, files)
 
+function search_up_file(basename, dir)
+  parent_dir = dirname(dir)
+  return if (parent_dir == dir || # ensure to escape infinite recursion
+      isempty(dir)) # reached to the system root
+    nothing
+  else
+    path = joinpath(dir, basename)
+    isfile(path) ? path : search_up_file(basename, parent_dir)
+  end
+end
+
 # path utilities
 # --------------
 
