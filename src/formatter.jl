@@ -1,33 +1,5 @@
 using JuliaFormatter
 
-@static if isdefined(JuliaFormatter, :CONFIG_FILE_NAME) &&
-           isdefined(JuliaFormatter, :kwargs) &&
-           isdefined(JuliaFormatter, :parse_config) &&
-           isdefined(JuliaFormatter, :overwrite_options)
-  using JuliaFormatter: CONFIG_FILE_NAME, kwargs, parse_config, overwrite_options
-else
-  const CONFIG_FILE_NAME = ".JuliaFormatter.toml"
-
-  function kwargs(dict)
-      ns = (Symbol.(keys(dict))...,)
-      vs = (collect(values(dict))...,)
-      return pairs(NamedTuple{ns}(vs))
-  end
-
-  function parse_config(tomlfile)
-    config_dict = Pkg.TOML.parsefile(tomlfile)
-    if (style = get(config_dict, "style", nothing)) !== nothing
-      @assert (style == "default" || style == "yas") "currently $(CONFIG_FILE_NAME) accepts only \"default\" or \"yas\" for the style configuration"
-      if style == "yas" && isdefined(JuliaFormatter, :YASStyle)
-        config_dict["style"] = JuliaFormatter.YASStyle()
-      end
-    end
-    return kwargs(config_dict)
-  end
-
-  overwrite_options(options, config) = kwargs(merge(options, config))
-end
-
 handle("format") do data
   @destruct [
     text,
@@ -36,10 +8,10 @@ handle("format") do data
     margin || 92,
   ] = data
 
-  options = if (config_path = search_up_file(CONFIG_FILE_NAME, dir)) === nothing
-    kwargs((indent = indent, margin = margin)) # fallback
+  options = if (config_path = search_up_file(JuliaFormatter.CONFIG_FILE_NAME, dir)) === nothing
+    JuliaFormatter.kwargs((indent = indent, margin = margin)) # fallback
   else
-    kwargs(parse_config(config_path))
+    JuliaFormatter.kwargs(JuliaFormatter.parse_config(config_path))
   end
 
   try
@@ -70,5 +42,5 @@ function format_text′(text; options...)
   valid_option_dict = filter(options) do (k, _)
     @static isempty(FORMAT_TEXT_KWARGS) ? false : in(k,FORMAT_TEXT_KWARGS)
   end
-  return format_text(text; kwargs(valid_option_dict)...)
+  return format_text(text; JuliaFormatter.kwargs(valid_option_dict)...)
 end
