@@ -59,7 +59,7 @@ end
 end
 
 @testset "finding project file" begin
-    using Atom: find_project_file
+    find_project_file(dir) = Atom.search_up_file("Project.toml", dir)
 
     # when exists
     atomjl_project_file_path = joinpath′(atomjldir, "Project.toml")
