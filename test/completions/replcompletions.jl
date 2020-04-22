@@ -5,7 +5,7 @@ using REPL.REPLCompletions
 comps(line; mod = "Main", context = "", row = 1, column = 1, force = false) =
     Atom.replcompletionadapter(line, mod, context, row, column, force)
 # emurate `getSuggestionDetailsOnSelect` API
-add_details!(c) = Atom.completiondetail!(c)
+add_details!(c) = Atom.completiondetail!(JSON.parse(json(c)))
 
 @testset "module completion" begin
     ## basic
@@ -78,8 +78,8 @@ end
             # shows module where the method defined in right label
             @test c[:rightLabel] == string(mod)
 
-            add_details!(c)
-            @test c[:leftLabel] == "String" # shows the infered return type in left label from method signature
+            c = add_details!(c)
+            @test c["leftLabel"] == "String" # shows the infered return type in left label from method signature
         end
 
         # shows the infered return type in left label from input types
@@ -92,8 +92,8 @@ end
             @test c[:type] == "method"
             @test c[:rightLabel] == string(mod)
 
-            add_details!(c)
-            @test c[:leftLabel] == "" # don't show a return type when it can't be inferred
+            c = add_details!(c)
+            @test c["leftLabel"] == "" # don't show a return type when it can't be inferred
         end
         let cs = comps("f(1, "; mod = string(mod))
             filter!(c -> c[:text] == "f(a)", cs)
@@ -104,11 +104,11 @@ end
             @test c[:rightLabel] == string(mod)
 
             # infer return type with input types
-            add_details!(c)
+            c = add_details!(c)
             @static if VERSION ≥ v"1.1"
-                @test c[:leftLabel] == "$(Int)"
+                @test c["leftLabel"] == "$(Int)"
             else
-                @test_broken c[:leftLabel] == "$(Int)"
+                @test_broken c["leftLabel"] == "$(Int)"
             end
         end
 
@@ -168,8 +168,8 @@ end
     c = cs[i]
     @test c[:type] == "keyword"
     @test isempty(c[:rightLabel])
-    add_details!(c)
-    @test !isempty(c[:description])
+    c = add_details!(c)
+    @test !isempty(c["description"])
 end
 
 @testset "path completion" begin

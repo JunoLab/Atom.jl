@@ -1,6 +1,38 @@
 import REPL.REPLCompletions, FuzzyCompletions
 
-const CompletionSuggetion = Dict{Symbol, String}
+const CompletionSuggetion = let
+  n2t = (
+    (:replacementPrefix, String),
+    # suggestion body
+    (:text, String),
+    (:type, String),
+    (:icon, String),
+    (:rightLabel, String),
+    (:leftLabel, String),
+    (:description, String),
+    (:descriptionMoreURL, String),
+    # for `getSuggestionDetailsOnSelect` API
+    (:detailtype, String)
+  )
+  NamedTuple{tuple(first.(n2t)...), Tuple{last.(n2t)...}}
+end
+
+function CompletionSuggetion(
+  prefix, text, type, icon;
+  rl = "", ll = "", desc = "", url = "", detail = ""
+)::CompletionSuggetion
+  return (
+    replacementPrefix = prefix,
+    text = text,
+    type = type,
+    icon = icon,
+    rightLabel = rl,
+    leftLabel = ll,
+    description = desc,
+    descriptionMoreURL = url,
+    detailtype = detail
+  )
+end
 
 # as an heuristic, suppress completions if there are over 500 completions,
 # ref: currently `completions("", 0, Main)` returns 1098 completions as of v1.5
@@ -43,7 +75,7 @@ handle("completions") do data
     context, row - startRow, column,
     # configurations
     force
-  )::Vector{CompletionSuggetion}
+  )
 end
 
 # NOTE:
@@ -76,7 +108,7 @@ function replcompletionadapter(
   # initialize suggestions with local completions so that they show up first
   comps = if force || !isempty(prefix)
     filter!(let p = prefix
-      c -> startswith(c[:text], p)
+      c -> startswith(c.text, p)
     end, localcompletions(context, row, column, prefix))
   else
     CompletionSuggetion[]
@@ -132,7 +164,7 @@ function fuzzycompletionadapter(
   if !force
     filter!(let p = prefix
       # NOTE: let's be a bit strict on local completions so that we avoid verbose completions, e.g. troublemaker cases
-      comp -> FuzzyCompletions.fuzzyscore(p, comp[:text]) > 0
+      comp -> FuzzyCompletions.fuzzyscore(p, comp.text) > 0
     end, comps)
   end
 
@@ -164,18 +196,11 @@ end
 completion_text(c::REPLCompletions.Completion) = REPLCompletions.completion_text(c)
 completion_text(c::FuzzyCompletions.Completion) = FuzzyCompletions.completion_text(c)
 
-completion(mod, c, prefix) = CompletionSuggetion(
-  :replacementPrefix  => prefix,
-  # suggestion body
-  :text               => completiontext(c),
-  :type               => completiontype(c),
-  :icon               => completionicon(c),
-  :rightLabel         => completionmodule(mod, c),
-  :leftLabel          => completionreturntype(c),
-  :descriptionMoreURL => completionurl(c),
-  # for `getSuggestionDetailsOnSelect` API
-  :detailtype         => completiondetailtype(c)
-)
+completion(mod, c, prefix) =
+  CompletionSuggetion(
+    prefix, completiontext(c), completiontype(c), completionicon(c);
+    rl = completionmodule(mod, c), ll = completionreturntype(c), url = completionurl(c), detail = completiondetailtype(c)
+  )
 
 const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
 const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
@@ -238,23 +263,14 @@ function completion(mod, c::MethodCompletion, prefix)
       m = m,
       tt = c.input_types
     ))
-    push!(METHOD_COMPLETION_CACHE, k => info)
+    METHOD_COMPLETION_CACHE[k] = info
     rt, desc = "", ""
     dt = k
   end
 
   return CompletionSuggetion(
-    :replacementPrefix  => prefix,
-    # suggestion body
-    :text               => completiontext(c),
-    :type               => completiontype(c),
-    :icon               => completionicon(c),
-    :rightLabel         => completionmodule(mod, c),
-    :leftLabel          => rt,
-    :description        => desc,
-    :descriptionMoreURL => completionurl(c),
-    # for `getSuggestionDetailsOnSelect` API
-    :detailtype         => dt
+    prefix, completiontext(c), completiontype(c), completionicon(c);
+    rl = completionmodule(mod, c), ll = rt, desc = desc, url = completionurl(c), detail = dt
   )
 end
 
@@ -341,35 +357,24 @@ function localcompletion(l, prefix, lines)
   else
     l.verbatim
   end |> s -> strlimit(s, DESCRIPTION_LIMIT)
+  type = (type = static_type(l)) == "variable" ? "attribute" : type
+  icon = (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon
   return CompletionSuggetion(
-    :replacementPrefix  => prefix,
-    # suggestion body
-    :text               => l.name,
-    :type               => (type = static_type(l)) == "variable" ? "attribute" : type,
-    :icon               => (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon,
-    :rightLabel         => l.root,
-    :description        => desc,
-    # for `getSuggestionDetailsOnSelect` API
-    :detailtype         => "", # shouldn't complete
+    prefix, l.name, type, icon;
+    rl = l.root, desc = desc, detail = ""
   )
 end
 
 # completion details
 # ------------------
 
-handle("completiondetail") do _comp
-  comp = Dict(Symbol(k) => v for (k, v) in _comp)
-  completiondetail!(comp)
-  return comp
-end
-
 function completiondetail!(comp)
-  dt = comp[:detailtype]::String
+  dt = comp["detailtype"]::String
   isempty(dt) && return comp
-  word = comp[:text]::String
+  word = comp["text"]::String
 
   if dt == "module"
-    mod = comp[:rightLabel]::String
+    mod = comp["rightLabel"]::String
     completiondetail_module!(comp, mod, word)
   elseif dt == "keyword"
     completiondetail_keyword!(comp, word)
@@ -377,17 +382,20 @@ function completiondetail!(comp)
     completiondetail_method!(comp, dt)
   end
 
-  comp[:detailtype] = "" # may not be needed, but empty this to make sure any further detail completion doesn't happen
+  comp["detailtype"] = "" # may not be needed, but empty this to make sure any further detail completion doesn't happen
+  return comp
 end
+
+handle(completiondetail!, "completiondetail")
 
 function completiondetail_module!(comp, mod, word)
   mod = getmodule(mod)
   cangetdocs(mod, word) || return
-  comp[:description] = completiondescription(getdocs(mod, word))
+  comp["description"] = completiondescription(getdocs(mod, word))
 end
 
 completiondetail_keyword!(comp, word) =
-  comp[:description] = completiondescription(getdocs(Main, word))
+  comp["description"] = completiondescription(getdocs(Main, word))
 
 using JuliaInterpreter: sparam_syms
 using Base.Docs
@@ -400,15 +408,15 @@ function completiondetail_method!(comp, k)
     # This path sometimes happens maybe because of some lags between Juno and getSuggestionDetailsOnSelect API,
     # especially just after we booted Julia, and there are not so much inference caches in the Julia internal.
     # But since details are computed, we can just use here as well
-    comp[:leftLabel] = v.rt
-    comp[:description] = v.desc
+    comp["leftLabel"] = v.rt
+    comp["description"] = v.desc
     return
   end
   f, m, tt = v.f, v.m, v.tt
 
   # return type inference
   rt = rt_inf(f, m, Base.tuple_type_tail(tt))
-  comp[:leftLabel] = rt
+  comp["leftLabel"] = rt
 
   # description for this method
   mod = m.module
@@ -423,13 +431,11 @@ function completiondetail_method!(comp, k)
   else
     ""
   end
-  comp[:description] = desc
+  comp["description"] = desc
 
   # update method completion cache with the results
-  push!(METHOD_COMPLETION_CACHE, k => MethodCompletionDetail((
-    rt = rt,
-    desc = desc
-  )))
+
+  METHOD_COMPLETION_CACHE[k] = MethodCompletionDetail((rt = rt, desc = desc))
 end
 
 function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))

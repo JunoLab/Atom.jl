@@ -1,5 +1,7 @@
 @testset "outline" begin
     using Atom: OutlineItem
+    Atom.OutlineItem(name, type, icon, start, stop) =
+        (name = name, type = type, icon = icon, start = start, stop = stop)
     outline(text) = Atom.outline(Atom.toplevelitems(text))
 
     # basic
@@ -34,36 +36,12 @@
         const sss = 3
         end
         """
-        let os = Set(Atom.todict.(outline(str)))
+        let os = Set(outline(str))
             for o in [
-                    Dict(
-                        :type => "module",
-                        :name => "Foo",
-                        :icon => "icon-package",
-                        :start => 1,
-                        :stop => 7
-                    )
-                    Dict(
-                        :type => "function",
-                        :name => "foo(x)",
-                        :icon => "λ",
-                        :start => 2,
-                        :stop => 2
-                    )
-                    Dict(
-                        :type => "function",
-                        :name => "bar(x::Int)",
-                        :icon => "λ",
-                        :start => 3,
-                        :stop => 5
-                    )
-                    Dict(
-                        :type => "constant",
-                        :name => "sss",
-                        :icon => "c",
-                        :start => 6,
-                        :stop => 6
-                    )
+                    OutlineItem("Foo", "module", "icon-package", 1, 7)
+                    OutlineItem("foo(x)", "function", "λ", 2, 2)
+                    OutlineItem("bar(x::Int)", "function", "λ", 3, 5)
+                    OutlineItem("sss", "constant", "c", 6, 6)
                 ]
                 @test o in os
             end

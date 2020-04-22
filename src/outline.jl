@@ -7,7 +7,7 @@ handle("updateeditor") do data
     ] = data
 
     return try
-        todict.(updateeditor(text, mod, path, updateSymbols))
+        updateeditor(text, mod, path, updateSymbols)
     catch err
         []
     end
@@ -23,26 +23,10 @@ function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
     outline(toplevelitems(text))
 end
 
-struct OutlineItem
-    name::String
-    type::String
-    icon::String
-    start::Int
-    stop::Int
-end
 OutlineItem(name, type, icon, item::ToplevelItem) =
-    OutlineItem(name, type, icon, first(item.lines), last(item.lines))
+    (name = name, type = type, icon = icon, start = first(item.lines), stop = last(item.lines))
 
-# for messaging over julia ⟷ Atom
-todict(item::OutlineItem) = Dict(
-    :name  => item.name,
-    :type  => item.type,
-    :icon  => item.icon,
-    :start => item.start,
-    :stop  => item.stop
-)
-
-outline(items)::Vector{OutlineItem} = filter!(item -> item !== nothing, outlineitem.(items))
+outline(items) = filter!(item -> item !== nothing, outlineitem.(items))
 
 outlineitem(item::ToplevelItem) = nothing # fallback case
 outlineitem(binding::ToplevelBinding) = begin

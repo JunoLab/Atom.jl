@@ -12,7 +12,7 @@ handle("gotosymbol") do data
     mod || "Main",
     text || "",
   ] = data
-  gotosymbol(
+  return gotosymbol(
     word, path,
     column, row, startRow, context, onlyGlobal,
     mod, text,
@@ -30,10 +30,7 @@ function gotosymbol(
     # local goto
     if !onlyglobal
       localitems = localgotoitem(word, path, column, row, startrow, context)
-      isempty(localitems) || return Dict(
-        :error => false,
-        :items => todict.(localitems)
-      )
+      isempty(localitems) || return (error = false, items = localitems)
     end
 
     # global goto
@@ -43,35 +40,26 @@ function gotosymbol(
     else
       globalgotoitems(word, m, path, text)
     end
-    isempty(globalitems) || return Dict(
-      :error => false,
-      :items => todict.(globalitems),
-    )
+    isempty(globalitems) || return (error = false, items = globalitems)
   catch err
-    return Dict(:error => true)
+    return (error = true,)
   end
 
-  return Dict(:error => true) # nothing hits
+  return (error = true,) # nothing hits
 end
 
-struct GotoItem
-  name::String
-  text::String
-  file::String
-  line::Int
-
-  GotoItem(name::String, text::String, file::String, line::Int = 0) =
-    new(name, text, normpath(file), line)
+const GotoItem = let
+  n2t = (
+    (:name, String),
+    (:text, String),
+    (:file, String),
+    (:line, Int)
+  )
+  NamedTuple{tuple(first.(n2t)...), Tuple{last.(n2t)...}}
 end
+GotoItem(name::String, text::String, file::String, line::Int = 0)::GotoItem =
+  (name = name, text = text, file = normpath(file), line = line)
 GotoItem(name::String, file::String, line::Int = 0) = GotoItem(name, name, file, line)
-
-# for messaging over julia ⟷ Atom
-todict(gotoitem::GotoItem) = Dict(
-  :text      => gotoitem.text,
-  :file      => gotoitem.file,
-  :line      => gotoitem.line,
-  :secondary => string(gotoitem.file, ':', gotoitem.line + 1),
-)
 
 ### local goto
 
