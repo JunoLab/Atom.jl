@@ -67,8 +67,8 @@ function displayinplotpane(x)
       show(plotpane_io_ctx(io), "image/svg+xml", x)
       str = base64encode(String(take!(io)))
       startswith(str, "data:") || (str = string("data:image/svg+xml;base64,", str))
-      @msg ploturl(str)
-      # render(PlotPane(), HTML("<img src=\""*str*"\">"))
+      # @msg ploturl(str)
+      render(PlotPane(), HTML("<img src=\""*str*"\">"))
       return true
     catch err
       err isa MethodError && err.f == Base.show || rethrow(err)
