@@ -199,15 +199,9 @@ function startdebugging(
           debug_command(_compiledMode[], frame, :finish, true)
         elseif val == :continue
           debug_command(_compiledMode[], frame, :c, true)
-        elseif val isa Tuple && val[1] == :toline && val[2] isa Int
-          method = frame.framecode.scope
-          @assert method isa Method
-          # set temporary breakpoint
-          bp = JuliaInterpreter.breakpoint(method, val[2])
-          _ret = debug_command(_compiledMode[], frame, :finish, true)
-          # and remove it again
-          JuliaInterpreter.remove(bp)
-          _ret
+        elseif val isa Tuple && val[1] == :toline && (line = val[2]) isa Int
+          scope = JuliaInterpreter.scopeof(frame)
+          debug_command(_compiledMode[], frame, :until, !isa(scope, Method); line = line)
         else
           warn("Internal: Unknown debugger message $val.")
         end
