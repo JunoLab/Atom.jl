@@ -8,7 +8,7 @@ Downstreams: completions.jl, goto.jl, datatip.jl, refactor.jl
 struct LocalBinding
     name::String
     verbatim::String
-    span::UnitRange{Int64}
+    span::UnitRange{Int}
     line::Int
     expr::EXPR
 end
@@ -16,7 +16,7 @@ end
 struct LocalScope
     name::String
     verbatim::String
-    span::UnitRange{Int64}
+    span::UnitRange{Int}
     line::Int
     children::Vector{Union{LocalBinding,LocalScope}}
     expr::EXPR
@@ -32,17 +32,17 @@ struct ActualLocalBinding
     locality::Float64
     expr::EXPR
 end
-function ActualLocalBinding(bs::LocalBS, root::String, line::Int, byteoffset::Int)
+function ActualLocalBinding(bs::LocalBS, root::String, line::Integer, byteoffset::Integer)
     locality = distance(line, byteoffset, bs.line, bs.span)
     return ActualLocalBinding(bs.name, bs.verbatim, root, bs.line, locality, bs.expr)
 end
 
 """
-    locals(text::String, line::Int, col::Int)::Vector{ActualLocalBinding}
+    locals(text::String, line::Integer, col::Integer)::Vector{ActualLocalBinding}
 
 Returns local bindings in `text`, while computing localities based on `line` and `col`.
 """
-function locals(text::String, line::Int, col::Int)::Vector{ActualLocalBinding}
+function locals(text::String, line::Integer, col::Integer)::Vector{ActualLocalBinding}
     expr = CSTParser.parse(text, true)
     traverse_expr!(expr)
     bindings = localbindings(expr, text)
