@@ -80,48 +80,50 @@ end
 function debug_file(mod, text, path, should_step, line_offset = 0)
   mod = getmodule(mod)
 
-  hideprompt() do
-    local expr, exprs
-    try
-      expr = MacroTools.postwalk(Base.parse_input_line(text, filename = path)) do x
-        # NOTE: correct line numbers using line offset for debugging a block or cell
-        if x isa LineNumberNode
-          return LineNumberNode(x.line + line_offset, x.file)
+  task_local_storage(:SOURCE_PATH, path) do
+    hideprompt() do
+      local expr, exprs
+      try
+        expr = MacroTools.postwalk(Base.parse_input_line(text, filename = path)) do x
+          # NOTE: correct line numbers using line offset for debugging a block or cell
+          if x isa LineNumberNode
+            return LineNumberNode(x.line + line_offset, x.file)
+          end
+          return x
         end
-        return x
+        exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
+      catch err
+        println(stderr)
+        Base.showerror(stderr, ErrorException("Error while parsing file or runtime error."), [])
+        println(stderr)
+        return
       end
-      exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
-    catch err
-      println(stderr)
-      Base.showerror(stderr, ErrorException("Error while parsing file or runtime error."), [])
-      println(stderr)
-      return
+
+      lc = should_step ? :stepexpr : :continue
+
+      debugmode(true)
+
+      for (i, (mod, ex)) in enumerate(exprs)
+        lc == :stop && break
+
+        temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
+
+        frame = JuliaInterpreter.prepare_thunk(mod, ex)
+
+        _, lc = Base.invokelatest(startdebugging,
+          frame,
+          lc == :continue || lc == nothing,
+          istoplevel = true,
+          toggle_ui = false
+        )
+
+        JuliaInterpreter.remove.(temp_bps)
+      end
+
+      debugmode(false)
+
+      nothing
     end
-
-    lc = should_step ? :stepexpr : :continue
-
-    debugmode(true)
-
-    for (i, (mod, ex)) in enumerate(exprs)
-      lc == :stop && break
-
-      temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
-
-      frame = JuliaInterpreter.prepare_thunk(mod, ex)
-
-      _, lc = Base.invokelatest(startdebugging,
-        frame,
-        lc == :continue || lc == nothing,
-        istoplevel = true,
-        toggle_ui = false
-      )
-
-      JuliaInterpreter.remove.(temp_bps)
-    end
-
-    debugmode(false)
-
-    nothing
   end
 end
 
