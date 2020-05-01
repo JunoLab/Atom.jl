@@ -36,16 +36,11 @@ handle("completions") do data
   ] = data
 
   adapter = is_fuzzy ? fuzzycompletionadapter : replcompletionadapter
-  # NOTE:
-  # we need `Int`s here so that dispatches work correctly even on 32bits machines
-  # ref: https://github.com/JunoLab/Juno.jl/issues/550
-  row = Int(row - startRow)
-  col = Int(column)
   return adapter(
     # general
     line, mod,
     # local context
-    context, row, col,
+    context, row - startRow, column,
     # configurations
     force
   )::Vector{CompletionSuggetion}
