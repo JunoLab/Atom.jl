@@ -38,20 +38,38 @@ end
 @testset "REPL path finding" begin
     if Sys.iswindows()
         @test Atom.fullREPLpath(raw"@ Atom C:\Users\ads\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl", 25)
-        @test Atom.fullREPLpath(raw"@ Atom C:\Users\ads one\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads one\.julia\dev\Atom\src\repl.jl", 25)
-        @test Atom.fullREPLpath(raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\Atom\src\repl.jl", 25)
-        @test Atom.fullREPLpath(raw"C:\Users\ads one\.julia\dev\Atom\src\repl.jl:25") == (raw"C:\Users\ads one\.julia\dev\Atom\src\repl.jl", 25)
-        @test Atom.fullREPLpath(raw".\foo\bar.jl:1") == (Atom.fullpath(raw".\foo\bar.jl"), 1)
-        @test Atom.fullREPLpath(raw".\fo o\bar.jl:1") == (Atom.fullpath(raw".\fo o\bar.jl"), 1)
-        @test Atom.fullREPLpath(raw".\foo\ba r.jl:1") == (Atom.fullpath(raw".\foo\ba r.jl"), 1)
-        @test Atom.fullREPLpath(raw"foo\bar.jl:1") == (Atom.fullpath(raw".\foo\bar.jl"), 1)
-        @test Atom.fullREPLpath(raw"foo\ba r.jl:1") == (Atom.fullpath(raw".\foo\ba r.jl"), 1)
+        @test Atom.fullREPLpath(raw"@ Atom C:\Users\ads\.julia\dev\At om\src\repl.jl:25") == (raw"C:\Users\ads\.julia\dev\At om\src\repl.jl", 25)
+        @test Atom.fullREPLpath(raw"@ Atom Users\ads\.julia\dev\At om\src\repl.jl:25") == (raw"Users\ads\.julia\dev\At om\src\repl.jl", 25)
+
+        @test Atom.fullREPLpath(raw"C:\Us ers\ads\.julia\dev\At om\src\re pl.jl:25") == (raw"C:\Us ers\ads\.julia\dev\At om\src\re pl.jl", 25)
+        @test Atom.fullREPLpath(raw"C:\Us ers\ads\.julia\dev\At om\src\repl:25") == (raw"C:\Us ers\ads\.julia\dev\At om\src\repl", 25)
+        @test Atom.fullREPLpath(raw"C:\Us ers\ads\.julia\dev\At om\src\repl") == (raw"C:\Us ers\ads\.julia\dev\At om\src\repl", 0)
+        @test Atom.fullREPLpath(raw"C:\Us ers\ads\.julia\dev\At om\src\repl.jl") == (raw"C:\Us ers\ads\.julia\dev\At om\src\repl.jl", 0)
+        @test Atom.fullREPLpath(raw"C:\Us ers\ads one\julia\dev\At om\src\repl.jl") == (raw"C:\Us ers\ads one\julia\dev\At om\src\repl.jl", 0)
+        @test Atom.fullREPLpath(raw"C:/Us ers/ads one/julia/dev/At om\src/re pl.jl") == (raw"C:/Us ers/ads one/julia/dev/At om\src/re pl.jl", 0)
+
+        @test Atom.fullREPLpath(raw"Users\ads\.julia\dev\Atom\src\repl.jl:25") == (Atom.fullpath(raw"Users\ads\.julia\dev\Atom\src\repl.jl"), 25)
+        @test Atom.fullREPLpath(raw"Users\ads\.julia\dev\At om\src\repl.jl:25") == (Atom.fullpath(raw"Users\ads\.julia\dev\At om\src\repl.jl"), 25)
+        @test Atom.fullREPLpath(raw"Users\ads\.julia\dev\At om\src\repl.jl:25") == (Atom.fullpath(raw".\Users\ads\.julia\dev\At om\src\repl.jl"), 25)
+        @test Atom.fullREPLpath(raw".\Us ers\ads\.julia\dev\At om\src\repl.jl:25") == (Atom.fullpath(raw".\Us ers\ads\.julia\dev\At om\src\repl.jl"), 25)
+        @test Atom.fullREPLpath(raw"..\Us ers\ads\.julia\dev\At om\src\repl.jl:25") == (Atom.fullpath(raw"..\Us ers\ads\.julia\dev\At om\src\repl.jl"), 25)
     else
-        @test Atom.fullREPLpath("@ Atom /home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
-        @test Atom.fullREPLpath("/home/user/foo/.julia/bar.jl:25") == ("/home/user/foo/.julia/bar.jl", 25)
-        @test Atom.fullREPLpath("/home/user/fo o/.julia/bar.jl:25") == ("/home/user/fo o/.julia/bar.jl", 25)
-        @test Atom.fullREPLpath("./foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
-        @test Atom.fullREPLpath("foo/bar.jl:1") == (Atom.fullpath("./foo/bar.jl"), 1)
+        @test Atom.fullREPLpath("@ Atom /home/Users/ads/.julia/dev/Atom/src/repl.jl:25") == ("/home/Users/ads/.julia/dev/Atom/src/repl.jl", 25)
+        @test Atom.fullREPLpath("@ Atom /home/Users/ads/.julia/dev/At om/src/repl.jl:25") == ("/home/Users/ads/.julia/dev/At om/src/repl.jl", 25)
+        @test Atom.fullREPLpath("@ Atom Users/ads/.julia/dev/At om/src/repl.jl:25") == ("Users/ads/.julia/dev/At om/src/repl.jl", 25)
+
+        @test Atom.fullREPLpath("/home/Us ers/ads/.julia/dev/At om/src/re pl.jl:25") == ("/home/Us ers/ads/.julia/dev/At om/src/re pl.jl", 25)
+        @test Atom.fullREPLpath("/home/Us ers/ads/.julia/dev/At om/src/repl:25") == ("/home/Us ers/ads/.julia/dev/At om/src/repl", 25)
+        @test Atom.fullREPLpath("/home/Us ers/ads/.julia/dev/At om/src/repl") == ("/home/Us ers/ads/.julia/dev/At om/src/repl", 0)
+        @test Atom.fullREPLpath("/home/Us ers/ads/.julia/dev/At om/src/repl.jl") == ("/home/Us ers/ads/.julia/dev/At om/src/repl.jl", 0)
+        @test Atom.fullREPLpath("/home/Us ers/ads one/julia/dev/At om/src/repl.jl") == ("/home/Us ers/ads one/julia/dev/At om/src/repl.jl", 0)
+        @test Atom.fullREPLpath("/home/Us ers/ads one/julia/dev/At om/src/re pl.jl") == ("/home/Us ers/ads one/julia/dev/At om/src/re pl.jl", 0)
+
+        @test Atom.fullREPLpath("Users/ads/.julia/dev/Atom/src/repl.jl:25") == (Atom.fullpath("Users/ads/.julia/dev/Atom/src/repl.jl"), 25)
+        @test Atom.fullREPLpath("Users/ads/.julia/dev/At om/src/repl.jl:25") == (Atom.fullpath("Users/ads/.julia/dev/At om/src/repl.jl"), 25)
+        @test Atom.fullREPLpath("Users/ads/.julia/dev/At om/src/repl.jl:25") == (Atom.fullpath("./Users/ads/.julia/dev/At om/src/repl.jl"), 25)
+        @test Atom.fullREPLpath("./Us ers/ads/.julia/dev/At om/src/repl.jl:25") == (Atom.fullpath("./Us ers/ads/.julia/dev/At om/src/repl.jl"), 25)
+        @test Atom.fullREPLpath("../Us ers/ads/.julia/dev/At om/src/repl.jl:25") == (Atom.fullpath("../Us ers/ads/.julia/dev/At om/src/repl.jl"), 25)
     end
 end
 
