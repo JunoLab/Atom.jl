@@ -80,10 +80,7 @@ function finddevpackages()
   sort!(devpkgs)
 end
 
-const SRC_DIR = joinpath(Sys.BINDIR,"..","..","base")
-const RELEASE_DIR = joinpath(Sys.BINDIR,"..","share","julia","base")
-basepath(file) =
-  normpath(joinpath((@static isdir(SRC_DIR) ? SRC_DIR : RELEASE_DIR), file))
+basepath(file) = normpath(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia", "base", file))
 
 fullpath(path) =
   realpath′(isuntitled(path) || isabspath(path) ? path : basepath(path))
