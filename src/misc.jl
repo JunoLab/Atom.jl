@@ -25,6 +25,7 @@ handle("activateProject") do dir
   hideprompt() do
     Pkg.activate(dir)
   end
+  update_project()
 end
 
 handle("activateParentProject") do dir
@@ -35,12 +36,14 @@ handle("activateParentProject") do dir
     end
     Pkg.activate(path)
   end
+  update_project()
 end
 
 handle("activateDefaultProject") do
   hideprompt() do
     Pkg.activate()
   end
+  update_project()
 end
 
 handle("evalsimple") do code
@@ -79,13 +82,6 @@ handle("reportinfo") do
   io = IOBuffer()
   versioninfo(io)
   println(io)
-
-  old = stdout
-  rd, wr = redirect_stdout()
-  Pkg.status()
-  redirect_stdout(old)
-  close(wr)
-  println(io, String(read(rd)))
-
+  println(io, project_status())
   String(take!(io))
 end

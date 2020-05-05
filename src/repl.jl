@@ -237,14 +237,15 @@ function evalrepl(mod, line)
     inREPL[] = false
     @async begin
       msg("doneWorking")
-      msg("updateWorkspace")
+      update_workspace()
+      update_project()
     end
     nothing
   end
 end
 
 function changeREPLmodule(mod)
-  is_evaling() && return nothing
+  is_evaling() && return
 
   mod = getmodule(mod)
 
@@ -260,6 +261,17 @@ function changeREPLmodule(mod)
     end
   end
   main_mode.complete = JunoREPLCompletionProvider(mod)
+
+  # FIXME: this should happen only once after Pkg's REPL initialization
+  pkg_mode = Base.active_repl.interface.modes[end]
+  if pkg_mode isa LineEdit.Prompt && parentmodule(collect(methods(pkg_mode.on_done))[1].module) == Pkg
+    pkg_mode.on_done = let original = pkg_mode.on_done
+      (s, buf, ok) -> begin
+        original(s, buf, ok)
+        update_project()
+      end
+    end
+  end
 
   INIT_COMPLETE[] = true
 end

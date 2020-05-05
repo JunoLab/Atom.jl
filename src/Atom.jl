@@ -12,9 +12,8 @@ function __init__()
 
   atreplinit() do repl
     fixdisplayorder()
+    instantiate_repl_keybindings(repl)
   end
-
-  atreplinit(instantiate_repl_keybindings)
 
   start_eval_backend()
 
@@ -45,6 +44,7 @@ end
 include("comm.jl")
 include("utils.jl")
 include("misc.jl")
+include("environments.jl")
 include("display/display.jl")
 include("progress.jl")
 include("static/static.jl")

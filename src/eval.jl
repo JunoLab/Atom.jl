@@ -24,6 +24,8 @@ function run_with_backend(f, args...)
   if r isa EvalError || r isa ErrorException
     render′(Editor(), r)
   else
+    update_project()
+    # update_workspace()
     r
   end
 end
