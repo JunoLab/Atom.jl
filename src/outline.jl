@@ -9,7 +9,7 @@ handle("updateeditor") do data
     return try
         updateeditor(text, mod, path, updateSymbols)
     catch err
-        []
+        OutlineItem[]
     end
 end
 
@@ -23,8 +23,15 @@ function updateeditor(text, mod = "Main", path = nothing, updateSymbols = true)
     outline(toplevelitems(text))
 end
 
+struct OutlineItem
+    name::String
+    type::String
+    icon::String
+    start::Int
+    stop::Int
+end
 OutlineItem(name, type, icon, item::ToplevelItem) =
-    (name = name, type = type, icon = icon, start = first(item.lines), stop = last(item.lines))
+    OutlineItem(name, type, icon, first(item.lines), last(item.lines))
 
 outline(items) = filter!(item -> item !== nothing, outlineitem.(items))
 

@@ -12,9 +12,9 @@ add_details!(c) = Atom.completiondetail!(JSON.parse(json(c)))
     let line = "@", cs = comps(line, mod = "Atom")
         # test detecting all the macros in Atom module
         @test filter(cs) do c
-            c[:type] == "snippet" &&
-            c[:icon] == "icon-mention" &&
-            c[:rightLabel] == "Atom"
+            c.type == "snippet" &&
+            c.icon == "icon-mention" &&
+            c.rightLabel == "Atom"
         end |> length == filter(names(Atom, all=true, imported=true)) do n
             startswith(string(n), '@')
         end |> length
@@ -23,8 +23,8 @@ add_details!(c) = Atom.completiondetail!(JSON.parse(json(c)))
     ## advanced
     let cs = comps("match(code", mod = "Atom")
         @test filter(cs) do c
-            c[:text] == "codeblock_regex" &&
-            c[:rightLabel] == "Atom"
+            c.text == "codeblock_regex" &&
+            c.rightLabel == "Atom"
         end |> !isempty
     end
 
@@ -44,7 +44,7 @@ end
         @test length(cs) == length(FuzzyCompletions.completions(line, lastindex(line))[1])
         # test detecting all the `push!` methods available
         @test filter(cs) do c
-            c[:type] == "method"
+            c.type == "method"
         end |> length == length(methods(push!))
     end
 
@@ -53,7 +53,7 @@ end
     let mod = Main.eval(:(module $(gensym("tempmod")) end))
         # initial state check
         let cs = comps(line)
-            filter!(c -> c[:text] == "push!(::$(mod).Singleton)", cs)
+            filter!(c -> c.text == "push!(::$(mod).Singleton)", cs)
             @test isempty(cs)
         end
 
@@ -67,13 +67,13 @@ end
             push!(::Singleton) = ""
         end
         let cs = comps(line)
-            filter!(c -> c[:text] == "push!(::$(mod).Singleton)", cs)
+            filter!(c -> c.text == "push!(::$(mod).Singleton)", cs)
             # dynamic method addition
             @test length(cs) === 1
             c = cs[1]
-            @test c[:type] == "method"
+            @test c.type == "method"
             # shows module where the method defined in right label
-            @test c[:rightLabel] == string(mod)
+            @test c.rightLabel == string(mod)
 
             c = add_details!(c)
             @test c["leftLabel"] == "String" # shows the infered return type in left label from method signature
@@ -82,23 +82,23 @@ end
         # shows the infered return type in left label from input types
         @eval mod f(a) = a
         let cs = comps("f("; mod = string(mod))
-            filter!(c -> c[:text] == "f(a)", cs)
+            filter!(c -> c.text == "f(a)", cs)
             @test length(cs) === 1
             c = cs[1]
-            @test c[:text] == "f(a)"
-            @test c[:type] == "method"
-            @test c[:rightLabel] == string(mod)
+            @test c.text == "f(a)"
+            @test c.type == "method"
+            @test c.rightLabel == string(mod)
 
             c = add_details!(c)
             @test c["leftLabel"] == "" # don't show a return type when it can't be inferred
         end
         let cs = comps("f(1, "; mod = string(mod))
-            filter!(c -> c[:text] == "f(a)", cs)
+            filter!(c -> c.text == "f(a)", cs)
             @test length(cs) === 1
             c = cs[1]
-            @test c[:text] == "f(a)"
-            @test c[:type] == "method"
-            @test c[:rightLabel] == string(mod)
+            @test c.text == "f(a)"
+            @test c.type == "method"
+            @test c.rightLabel == string(mod)
 
             # infer return type with input types
             c = add_details!(c)
@@ -115,8 +115,8 @@ end
         end
         @test_nowarn let cs = comps("g("; mod = string(mod))
             @test !isempty(cs)
-            @test cs[1][:type] == "method"
-            @test cs[1][:text] == "g(x)"
+            @test cs[1].type == "method"
+            @test cs[1].text == "g(x)"
         end
     end
 end
@@ -129,9 +129,9 @@ let m = Main.eval(:(module $(gensym("tempmod")) end))
     @testset "property completion" begin
         props = string.(propertynames(m.dict))
         foreach(comps("dict.", mod = ms)) do c
-            @test c[:text] in props
-            @test c[:type] == "property"
-            @test c[:rightLabel] == ms
+            @test c.text in props
+            @test c.type == "property"
+            @test c.rightLabel == ms
         end
     end
 
@@ -139,21 +139,21 @@ let m = Main.eval(:(module $(gensym("tempmod")) end))
         line = "split(\"\", \"\")[1]."
         fields = string.(fieldnames(SubString{String}))
         foreach(comps(line, mod = ms)) do c
-            @test c[:text] in fields
-            @test c[:type] == "property"
-            @test c[:rightLabel] == "SubString{String}" # the type of object who has those fields
-            @test c[:leftLabel] == string(fieldtype(SubString{String}, Symbol(c[:text])))
+            @test c.text in fields
+            @test c.type == "property"
+            @test c.rightLabel == "SubString{String}" # the type of object who has those fields
+            @test c.leftLabel == string(fieldtype(SubString{String}, Symbol(c.text)))
         end
     end
 
     @testset "dictionary completion" begin
         ks = repr.(keys(m.dict))
         foreach(comps("dict[", mod = ms)) do c
-            @test c[:text] in ks
-            @test c[:type] == "property"
-            @test c[:icon] == "icon-key"
-            @test c[:rightLabel] == ms
-            @test c[:leftLabel] == string(Int)
+            @test c.text in ks
+            @test c.type == "property"
+            @test c.icon == "icon-key"
+            @test c.rightLabel == ms
+            @test c.leftLabel == string(Int)
         end
     end
 end
@@ -161,11 +161,11 @@ end
 @testset "keyword completion" begin
     for line in ["begin", "beg", "bgin", "bg"]
         cs = comps(line)
-        i = findfirst(c -> c[:text] == "begin", cs)
+        i = findfirst(c -> c.text == "begin", cs)
         @test i !== nothing
         c = cs[i]
-        @test c[:type] == "keyword"
-        @test isempty(c[:rightLabel])
+        @test c.type == "keyword"
+        @test isempty(c.rightLabel)
         c = add_details!(c)
         @test !isempty(c["description"])
     end
@@ -181,9 +181,9 @@ end
           length(REPLCompletions.completions(line, lastindex(line))[1]) ==
           length(readdir(pwd()))
     foreach(cs) do c
-        @test c[:type] == "path"
-        @test c[:icon] == "icon-file"
-        @test c[:rightLabel] |> isempty
+        @test c.type == "path"
+        @test c.icon == "icon-file"
+        @test c.rightLabel |> isempty
     end
 end
 
@@ -218,41 +218,41 @@ end
         # local completions ordered by proximity
         prefix = "a"
         let c = comps′(prefix, 3, 6)[1]
-            @test c[:text] == "aaa"
-            @test c[:rightLabel] == "foo"
-            @test c[:type] == type
-            @test c[:icon] == icon
-            @test c[:description] == "aaa = 3"
+            @test c.text == "aaa"
+            @test c.rightLabel == "foo"
+            @test c.type == type
+            @test c.icon == icon
+            @test c.description == "aaa = 3"
         end
         let c = comps′(prefix, 6, 6)[1]
-            @test c[:text] == "aaa"
-            @test c[:rightLabel] == "foo"
-            @test c[:type] == type
-            @test c[:icon] == icon
-            @test c[:description] == "aaa = 3"
+            @test c.text == "aaa"
+            @test c.rightLabel == "foo"
+            @test c.type == type
+            @test c.icon == icon
+            @test c.description == "aaa = 3"
         end
         let c = comps′(prefix, 8, 6)[1]
-            @test c[:text] == "abc"
-            @test c[:rightLabel] == "foo"
-            @test c[:type] == type
-            @test c[:icon] == icon
-            @test c[:description] == "abc = 3"
+            @test c.text == "abc"
+            @test c.rightLabel == "foo"
+            @test c.type == type
+            @test c.icon == icon
+            @test c.description == "abc = 3"
         end
 
         # show a bound line as is if binding verbatim is not so useful
         let c = comps′("x", 5, 13)[1]
-            @test c[:text] == "x"
-            @test c[:rightLabel] == "foo"
-            @test c[:type] == type
-            @test c[:icon] == icon
-            @test c[:description] == "function foo(x)"
+            @test c.text == "x"
+            @test c.rightLabel == "foo"
+            @test c.type == type
+            @test c.icon == icon
+            @test c.description == "function foo(x)"
         end
 
         # show all the local bindings in order when forcibly invoked
         let cs = comps′("", 6, 6, true)
-            inds = findall(c -> c[:type] == type && c[:icon] == icon, cs)
+            inds = findall(c -> c.type == type && c.icon == icon, cs)
             @test inds == [1, 2, 3, 4]
-            @test map(c -> c[:text], cs[inds]) == ["foo", "aaa", "x", "abc"]
+            @test map(c -> c.text, cs[inds]) == ["foo", "aaa", "x", "abc"]
         end
 
         # suppress local completions when in "troublemaker" cases

@@ -48,18 +48,16 @@ function gotosymbol(
   return (error = true,) # nothing hits
 end
 
-const GotoItem = let
-  n2t = (
-    (:name, String),
-    (:text, String),
-    (:file, String),
-    (:line, Int)
-  )
-  NamedTuple{tuple(first.(n2t)...), Tuple{last.(n2t)...}}
+struct GotoItem
+  name::String
+  text::String
+  file::String
+  line::Int
+  GotoItem(name, text, file::String, line) =
+    new(name, text, normpath(file), line)
 end
-GotoItem(name::String, text::String, file::String, line::Int = 0)::GotoItem =
-  (name = name, text = text, file = normpath(file), line = line)
-GotoItem(name::String, file::String, line::Int = 0) = GotoItem(name, name, file, line)
+
+GotoItem(name, file, line = 0) = GotoItem(name, name, file, line)
 
 ### local goto
 
@@ -244,8 +242,8 @@ function _collecttoplevelitems_static(mod::Union{Nothing, String}, entrypath::St
   return pathitemsmap
 end
 
-GotoItem(path::String, item::ToplevelItem) = GotoItem("", path) # fallback case
-function GotoItem(path::String, binding::ToplevelBinding)
+GotoItem(path, item::ToplevelItem) = GotoItem("", path) # fallback case
+function GotoItem(path, binding::ToplevelBinding)
   expr = binding.expr
   bind = binding.bind
   name = CSTParser.defines_macro(expr) ? string('@', bind.name) : bind.name

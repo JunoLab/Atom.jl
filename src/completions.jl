@@ -1,38 +1,21 @@
 import REPL.REPLCompletions, FuzzyCompletions
 
-const CompletionSuggetion = let
-  n2t = (
-    (:replacementPrefix, String),
-    # suggestion body
-    (:text, String),
-    (:type, String),
-    (:icon, String),
-    (:rightLabel, String),
-    (:leftLabel, String),
-    (:description, String),
-    (:descriptionMoreURL, String),
-    # for `getSuggestionDetailsOnSelect` API
-    (:detailtype, String)
-  )
-  NamedTuple{tuple(first.(n2t)...), Tuple{last.(n2t)...}}
+struct CompletionSuggestion
+  replacementPrefix::String
+  # suggestion body
+  text::String
+  type::String
+  icon::String
+  rightLabel::String
+  leftLabel::String
+  description::String
+  descriptionMoreURL::String
+  # for `getSuggestionDetailsOnSelect` API
+  detailtype::String
 end
 
-function CompletionSuggetion(
-  prefix, text, type, icon;
-  rl = "", ll = "", desc = "", url = "", detail = ""
-)::CompletionSuggetion
-  return (
-    replacementPrefix = prefix,
-    text = text,
-    type = type,
-    icon = icon,
-    rightLabel = rl,
-    leftLabel = ll,
-    description = desc,
-    descriptionMoreURL = url,
-    detailtype = detail
-  )
-end
+CompletionSuggestion(prefix, text, type, icon; rl = "", ll = "", desc = "", url = "", detail = "") =
+  CompletionSuggestion(prefix, text, type, icon, rl, ll, desc, url, detail)
 
 # as an heuristic, suppress completions if there are over 500 completions,
 # ref: currently `completions("", 0, Main)` returns 1098 completions as of v1.5
@@ -111,7 +94,7 @@ function replcompletionadapter(
       c -> startswith(c.text, p)
     end, localcompletions(context, row, column, prefix))
   else
-    CompletionSuggetion[]
+    CompletionSuggestion[]
   end
 
   # FIFO cache refreshing
@@ -197,7 +180,7 @@ completion_text(c::REPLCompletions.Completion) = REPLCompletions.completion_text
 completion_text(c::FuzzyCompletions.Completion) = FuzzyCompletions.completion_text(c)
 
 completion(mod, c, prefix) =
-  CompletionSuggetion(
+  CompletionSuggestion(
     prefix, completiontext(c), completiontype(c), completionicon(c);
     rl = completionmodule(mod, c), ll = completionreturntype(c), url = completionurl(c), detail = completiondetailtype(c)
   )
@@ -268,7 +251,7 @@ function completion(mod, c::MethodCompletion, prefix)
     dt = k
   end
 
-  return CompletionSuggetion(
+  return CompletionSuggestion(
     prefix, completiontext(c), completiontype(c), completionicon(c);
     rl = completionmodule(mod, c), ll = rt, desc = desc, url = completionurl(c), detail = dt
   )
@@ -359,7 +342,7 @@ function localcompletion(l, prefix, lines)
   end |> s -> strlimit(s, DESCRIPTION_LIMIT)
   type = (type = static_type(l)) == "variable" ? "attribute" : type
   icon = (icon = static_icon(l)) == "v" ? "icon-chevron-right" : icon
-  return CompletionSuggetion(
+  return CompletionSuggestion(
     prefix, l.name, type, icon;
     rl = l.root, desc = desc, detail = ""
   )

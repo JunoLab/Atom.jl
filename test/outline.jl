@@ -1,7 +1,5 @@
 @testset "outline" begin
     using Atom: OutlineItem
-    Atom.OutlineItem(name, type, icon, start, stop) =
-        (name = name, type = type, icon = icon, start = start, stop = stop)
     outline(text) = Atom.outline(Atom.toplevelitems(text))
 
     # basic
