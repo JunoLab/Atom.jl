@@ -23,15 +23,16 @@ update_project() = @msg updateProject(project_info())
 
 # IDEA: Pkg.project will be useful for this, but it's only available as of v1.4
 function project_info()
-  m = match(r"^Status \`(?<path>.+)\`"m, project_status())
+  m = match(r"Status \`(?<path>.+)\`$"m, project_status())
   m === nothing && return false
   return project_info(m[:path])
 end
 
 function project_info(path)
+  path = string(expanduser(path))
   return (
-    name = splitpath(path)[end-1],
-    path = expanduser(path)
+    name = Pkg.REPLMode.projname(path),
+    path = path,
   )
 end
 
@@ -50,11 +51,12 @@ function allprojects()
   end
 
   # IDEA: maybe filtering dated manifests ?
-  all_manifest_files = Set(filter(isfile, keys(manifest_usage)))
-
-  projects = project_info.(collect(all_manifest_files))
+  all_project_files = map(collect(keys(manifest_usage))) do f
+    replace(f, "Manifest.toml" => "Project.toml")
+  end
+  filter!(isfile, all_project_files)
+  projects = project_info.(all_project_files)
   active = project_info().name
-
   return (projects = projects, active = active)
 end
 

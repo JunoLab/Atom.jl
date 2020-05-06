@@ -52,6 +52,7 @@ include("utils.jl")
 include("misc.jl")
 include("display.jl")
 include("static/static.jl")
+include("environments.jl")
 include("modules.jl")
 
 include("eval.jl")
