@@ -44,13 +44,12 @@ using Pkg.TOML, Dates
 function allprojects()
   manifest_usage = Dict{String,DateTime}()
   usagefile_path = joinpath(Base.DEPOT_PATH[1], "logs", "manifest_usage.toml")
-  isfile(usagefile_path) || return []
+  isfile(usagefile_path) || return (projects = [], active = "")
   for (filename, infos) in TOML.parse(read(usagefile_path, String))
     for info in infos
       manifest_usage[filename] = max(get(manifest_usage, filename, DateTime(0)), DateTime(info["time"]))
     end
   end
-  manifest_usage
 
   # IDEA: maybe filtering dated manifests ?
   all_manifest_files = Set(filter(isfile, keys(manifest_usage)))
