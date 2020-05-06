@@ -21,8 +21,6 @@ else
 
 update_project() = @msg updateProject(project_info())
 
-atinit(update_project)
-
 # IDEA: Pkg.project will be useful for this, but it's only available as of v1.4
 function project_info()
   m = match(r"^Status \`(?<path>.+)\`"m, project_status())
