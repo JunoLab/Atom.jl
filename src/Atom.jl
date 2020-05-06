@@ -15,6 +15,26 @@ function __init__()
     instantiate_repl_keybindings(repl)
   end
 
+  # HACK: overwrite Pkg mode `on_done` function after Pkg mode has been Initialized
+  f = (repl) -> begin
+    i = findfirst(Base.active_repl.interface.modes) do mode
+      mode isa LineEdit.Prompt &&
+      isdefined(mode, :on_done) &&
+      let ms = collect(methods(mode.on_done))
+        length(ms) > 0 && parentmodule(ms[1].module) == Pkg
+      end
+    end
+    i === nothing && return # if no Pkg mode somehow
+    pkg_mode = Base.active_repl.interface.modes[i]
+    pkg_mode.on_done = let original = pkg_mode.on_done
+      (s, buf, ok) -> begin
+        original(s, buf, ok)
+        update_project()
+      end
+    end
+  end
+  push!(Base.repl_hooks, f)
+
   start_eval_backend()
 
   Atom.handle("connected") do
