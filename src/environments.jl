@@ -28,7 +28,7 @@ function steal_stdout(f)
   return rd
 end
 
-handle(project_info, "updateProject")
+atinit(update_project)
 
 using Pkg: depots, API.DateTime, logdir, TOML
 

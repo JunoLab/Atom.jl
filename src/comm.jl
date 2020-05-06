@@ -72,16 +72,22 @@ macro ierrs(ex)
     end)
 end
 
-"""
-    initialise(; welcome = false)
+const init_hooks = []
+atinit(f::Function) = pushfirst!(init_hooks, f)
 
-Sets up the environment for Atom.jl: Stop `SIGINT`s from killing Julia and send
-a welcome message to Atom if `welcome == true`.
 """
-function initialise(; welcome = false)
+    initialise(; init_hook = true, welcome = false)
+
+Sets up the environment for Atom.jl:
+- Stop `SIGINT`s from killing Julia
+- call initialization hooks registered in [`init_hooks`](@ref) if `init_hook`
+- send a welcome message to Atom if `welcome`
+"""
+function initialise(; init_hook = true, welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
   # exit_on_sigint(false)
+  init_hook && for f in init_hooks; f(); end
   welcome && @msg welcome()
 end
 
