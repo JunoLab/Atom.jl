@@ -77,7 +77,6 @@ handle("cancelCallback") do args...
   # message" warnings.
 end
 
-using Pkg: status
 handle("reportinfo") do
   io = IOBuffer()
   versioninfo(io)
