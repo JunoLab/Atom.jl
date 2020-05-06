@@ -55,7 +55,10 @@ function allprojects()
   # IDEA: maybe filtering dated manifests ?
   all_manifest_files = Set(filter(isfile, keys(manifest_usage)))
 
-  return project_info.(collect(all_manifest_files))
+  projects = project_info.(collect(all_manifest_files))
+  active = project_info().name
+
+  return (projects = projects, active = active)
 end
 
 handle(allprojects, "allProjects")
