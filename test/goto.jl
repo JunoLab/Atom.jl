@@ -1,6 +1,4 @@
 @testset "goto symbols" begin
-    using Atom: todict
-
     @testset "goto local symbols" begin
         let str = """
             function localgotoitem(word, path, column, row, startRow, context) # L0
@@ -17,16 +15,16 @@
               end                                                              # L11
             end                                                                # L12
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1] |> todict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1]
 
             let item = localgotoitem("row", 2)
-                @test item[:line] === 0
-                @test item[:text] == "row"
-                @test item[:file] == "path"
+                @test item.line === 0
+                @test item.text == "row"
+                @test item.file == "path"
             end
-            @test localgotoitem("position", 2)[:line] === 1
-            @test localgotoitem("l", 4)[:line] === 3
-            @test localgotoitem("l", 8)[:line] === 7
+            @test localgotoitem("position", 2).line === 1
+            @test localgotoitem("l", 4).line === 3
+            @test localgotoitem("l", 8).line === 7
         end
 
         # ignore dot accessors
@@ -37,14 +35,14 @@
                 return val
             end
             """,
-            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1] |> todict
+            localgotoitem(word, line) = Atom.localgotoitem(word, "path", typemax(Int), line + 1, 0, str)[1]
 
-            @test localgotoitem("expr.args", 1)[:line] === 0
-            @test localgotoitem("bind.val", 2)[:line] === 1
+            @test localgotoitem("expr.args", 1).line === 0
+            @test localgotoitem("bind.val", 2).line === 1
         end
 
         # don't error on fallback case
-        @test_nowarn @test Atom.localgotoitem("word", nothing, 1, 1, 0, "") == []
+        @test (Atom.localgotoitem("word", nothing, 1, 1, 0, ""); true)
     end
 
     @testset "goto global symbols" begin
@@ -55,32 +53,32 @@
         let
             path = joinpath′(@__DIR__, "..", "src", "comm.jl")
             text = read(path, String)
-            items = todict.(globalgotoitems("Atom.handlers", Atom, path, text))
+            items = globalgotoitems("Atom.handlers", Atom, path, text)
             @test !isempty(items)
-            @test items[1][:file] == path
-            @test items[1][:text] == "handlers"
-            items = todict.(globalgotoitems("Main.Atom.handlers", Atom, path, text))
+            @test items[1].file == path
+            @test items[1].text == "handlers"
+            items = globalgotoitems("Main.Atom.handlers", Atom, path, text)
             @test !isempty(items)
-            @test items[1][:file] == path
-            @test items[1][:text] == "handlers"
+            @test items[1].file == path
+            @test items[1].text == "handlers"
 
             # can access the non-exported (non-method) bindings in the other module
             path = joinpath′(@__DIR__, "..", "src", "goto.jl")
             text = read(@__FILE__, String)
-            items = todict.(globalgotoitems("Atom.SYMBOLSCACHE", Main, @__FILE__, text))
+            items = globalgotoitems("Atom.SYMBOLSCACHE", Main, @__FILE__, text)
             @test !isempty(items)
-            @test items[1][:file] == path
-            @test items[1][:text] == "SYMBOLSCACHE"
+            @test items[1].file == path
+            @test items[1].text == "SYMBOLSCACHE"
         end
 
         @testset "goto modules" begin
-            let item = globalgotoitems("Atom", Main, nothing, "")[1] |> todict
-                @test item[:file] == joinpath′(atomsrcdir, "Atom.jl")
-                @test item[:line] == 3
+            let item = globalgotoitems("Atom", Main, nothing, "")[1]
+                @test item.file == joinpath′(atomsrcdir, "Atom.jl")
+                @test item.line == 3
             end
-            let item = globalgotoitems("SubJunk", Junk, nothing, "")[1] |> todict
-                @test item[:file] == subjunkspath
-                @test item[:line] == 3
+            let item = globalgotoitems("SubJunk", Junk, nothing, "")[1]
+                @test item.file == subjunkspath
+                @test item.line == 3
             end
         end
 
@@ -92,10 +90,10 @@
                 word = "handlers"
 
                 # basic
-                let items = todict.(toplevelgotoitems(word, mod, path, ""))
+                let items = toplevelgotoitems(word, mod, path, "")
                     @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].text == word
                 end
 
                 # check caching works
@@ -105,19 +103,19 @@
                 @test length(SYMBOLSCACHE[key]) == length(atommodfiles)
 
                 # when `path` isn't given, i.e. via docpane / workspace
-                let items = todict.(toplevelgotoitems(word, mod, nothing, ""))
+                let items = toplevelgotoitems(word, mod, nothing, "")
                     @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].text == word
                 end
 
                 # same as above, but without any previous cache -- falls back to CSTPraser-based module-walk
                 delete!(SYMBOLSCACHE, key)
 
-                let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
+                let items = toplevelgotoitems(word, mod, nothing, "")
                     @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].text == word
                 end
 
                 # check CSTPraser-based module-walk finds all the included files
@@ -132,22 +130,22 @@
                 word = "toplevelval"
 
                 # basic -- no need to pass a buffer text
-                let items = toplevelgotoitems(word, mod, path, "") .|> todict
+                let items = toplevelgotoitems(word, mod, path, "")
                     @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:line] == 14
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].line == 14
+                    @test items[1].text == word
                 end
 
                 # check caching works
                 @test haskey(Atom.SYMBOLSCACHE, key)
 
                 # when `path` isn't given, i.e.: via docpane / workspace
-                let items = toplevelgotoitems(word, mod, nothing, "") .|> todict
+                let items = toplevelgotoitems(word, mod, nothing, "")
                     @test !isempty(items)
-                    @test items[1][:file] == path
-                    @test items[1][:line] == 14
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].line == 14
+                    @test items[1].text == word
                 end
             end
 
@@ -163,12 +161,12 @@
                 mod = Main.Junk.SubJunk
                 word = "imwithdoc"
 
-                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                items = toplevelgotoitems(word, mod, path, text)
                 @test length(items) === 1
                 if length(items) === 1
-                    @test items[1][:file] == path
-                    @test items[1][:line] == 6
-                    @test items[1][:text] == word
+                    @test items[1].file == path
+                    @test items[1].line == 6
+                    @test items[1].text == word
                 end
             end
 
@@ -178,11 +176,10 @@
                 mod = Main
                 word = "atomsrcdir"
 
-                items = toplevelgotoitems(word, mod, path, text) .|> todict
+                items = toplevelgotoitems(word, mod, path, text)
                 @test !isempty(items)
-                @test items[1][:file] == path
-                @test items[1][:line] == 6
-                @test items[1][:text] == word
+                @test items[1].file == path
+                @test items[1].text == word
             end
 
             # don't mix a function and a macro with the same name
@@ -224,10 +221,10 @@
                 item.name == word
             end |> !isempty
 
-            let items = toplevelgotoitems(word, mod, path, newtext) .|> todict
+            let items = toplevelgotoitems(word, mod, path, newtext)
                 @test !isempty(items)
-                @test items[1][:file] == path
-                @test items[1][:text] == "toplevelval2"
+                @test items[1].file == path
+                @test items[1].text == "toplevelval2"
             end
 
             # re-update the cache
@@ -245,7 +242,7 @@
             SYMBOLSCACHE["Atom"][atomjlfile] = prevstate
 
             # don't error on fallback case
-            @test_nowarn @test updatesymbols(key, nothing, text) === nothing
+            @test (updatesymbols(key, nothing, text); true)
         end
 
         @testset "regenerating toplevel symbols" begin
@@ -283,23 +280,23 @@
             end
 
             ## aggregate methods with default params
-            @eval Main function funcwithdefaultargs(args, defarg = "default") end
+            let m = eval(:(module $(gensym(:atomjltestmodule)) end))
+                @eval m function funcwithdefaultargs(args, defarg = "default") end
+                let items = methodgotoitems(methods(m.funcwithdefaultargs))
+                    # should be handled as an unique method
+                    @test length(items) === 1
+                    # show a method with full arguments
+                    @test "funcwithdefaultargs(args, defarg)" in map(i -> i.text, items)
+                end
 
-            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> todict
-                # should be handled as an unique method
-                @test length(items) === 1
-                # show a method with full arguments
-                @test "funcwithdefaultargs(args, defarg)" in map(i -> i[:text], items)
-            end
-
-            @eval Main function funcwithdefaultargs(args::String, defarg = "default") end
-
-            let items = methodgotoitems(methods(funcwithdefaultargs)) .|> todict
-                # should be handled as different methods
-                @test length(items) === 2
-                # show methods with full arguments
-                @test "funcwithdefaultargs(args, defarg)" in map(i -> i[:text], items)
-                @test "funcwithdefaultargs(args::String, defarg)" in map(i -> i[:text], items)
+                @eval m function funcwithdefaultargs(args::String, defarg = "default") end
+                let items = methodgotoitems(methods(m.funcwithdefaultargs))
+                    # should be handled as different methods
+                    @test length(items) === 2
+                    # show methods with full arguments
+                    @test "funcwithdefaultargs(args, defarg)" in map(i -> i.text, items)
+                    @test "funcwithdefaultargs(args::String, defarg)" in map(i -> i.text, items)
+                end
             end
         end
 
@@ -311,6 +308,6 @@
         end
 
         ## don't error on the fallback case
-        @test_nowarn @test globalgotoitems("word", Main, nothing, "") == []
+        @test (globalgotoitems("word", Main, nothing, ""); true)
     end
 end
