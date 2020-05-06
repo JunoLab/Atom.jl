@@ -58,7 +58,7 @@ handle("completions") do data
     context, row - startRow, column,
     # configurations
     force
-  )::CompletionSuggestion
+  )::Vector{CompletionSuggestion}
 end
 
 # NOTE:
