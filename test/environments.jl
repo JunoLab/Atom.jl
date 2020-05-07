@@ -4,15 +4,10 @@
     try
         Pkg.activate(atomjldir)
 
-        @static if VERSION < v"1.1"
-
         # test status check
         @test !isempty(Atom.project_status())
 
-        else  # if VERSION < v"1.1"
-
-        # test status check
-        @test occursin(r"Status `.+Atom.+`$"m, Atom.project_status())
+        @static VERSION ≥ v"1.4" && begin
 
         # test current project info
         prj_info = Atom.project_info()
@@ -24,7 +19,7 @@
         @test Atom.project_info() in prjs.projects
         @test prjs.active == "Atom"
 
-        end  # if VERSION < v"1.1"
+        end  # if VERSION ≥ v"1.4"
     finally
         Pkg.activate()
     end
