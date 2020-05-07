@@ -2,9 +2,10 @@ selector(items) = @rpc select(items)
 
 input() = @rpc input()
 
-info(s) = @msg info(string(s))
-
 sendnotify(s::AbstractString) = @msg notify(s)
+
+sendnotification(message::AbstractString; kind = :Info, options = Dict()) =
+  @msg notification(message, kind, options)
 
 macro !(ex)
   quote
