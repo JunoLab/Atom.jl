@@ -1,15 +1,18 @@
-project_status() = read(steal_stdout(Pkg.status), String)
+project_status() = steal_stdout(Pkg.status)
 
 function steal_stdout(f)
   old = stdout
   rd, wr = redirect_stdout()
+  local res
   try
     f()
   finally
     redirect_stdout(old)
     close(wr)
+    res = read(rd, String)
+    close(rd)
   end
-  return rd
+  return res
 end
 
 @static if VERSION < v"1.4"
