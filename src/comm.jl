@@ -73,13 +73,13 @@ macro ierrs(ex)
 end
 
 """
-    initialise(; init_hook = true, welcome = false)
+    initialise(; welcome = false)
 
 Sets up the environment for Atom.jl:
 - Stop `SIGINT`s from killing Julia
 - send a welcome message to Atom if `welcome`
 """
-function initialise(; init_hook = true, welcome = false)
+function initialise(; welcome = false)
   Juno.isprecompiling() && return
   Juno.setactive!(true)
   # exit_on_sigint(false)
