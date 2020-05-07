@@ -33,7 +33,7 @@ end
 OutlineItem(name, type, icon, item::ToplevelItem) =
     OutlineItem(name, type, icon, first(item.lines), last(item.lines))
 
-outline(items) = filter!(item -> item !== nothing, outlineitem.(items))::Vector{OutlineItem}
+outline(items)::Vector{OutlineItem} = filter!(item -> item !== nothing, outlineitem.(items))
 
 outlineitem(item::ToplevelItem) = nothing # fallback case
 outlineitem(binding::ToplevelBinding) = begin
