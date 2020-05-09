@@ -237,14 +237,15 @@ function evalrepl(mod, line)
     inREPL[] = false
     @async begin
       msg("doneWorking")
-      msg("updateWorkspace")
+      update_workspace()
+      update_project()
     end
     nothing
   end
 end
 
 function changeREPLmodule(mod)
-  is_evaling() && return nothing
+  is_evaling() && return
 
   mod = getmodule(mod)
 

@@ -1,7 +1,3 @@
-handle("workspace") do mod
-  workspace(mod)
-end
-
 function workspace(mod)
   mod = getmodule(mod)
   ns = Symbol.(CodeTools.filtervalid(names(mod; all = true)))
@@ -13,6 +9,10 @@ function workspace(mod)
   isdebugging() && prepend!(contexts, JunoDebugger.contexts())
   contexts
 end
+
+handle(workspace, "workspace")
+
+update_workspace() = @msg updateWorkspace()
 
 wsitem(mod, name) = begin
   val = getfield′(mod, name)

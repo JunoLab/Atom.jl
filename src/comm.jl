@@ -75,8 +75,9 @@ end
 """
     initialise(; welcome = false)
 
-Sets up the environment for Atom.jl: Stop `SIGINT`s from killing Julia and send
-a welcome message to Atom if `welcome == true`.
+Sets up the environment for Atom.jl:
+- Stop `SIGINT`s from killing Julia
+- send a welcome message to Atom if `welcome`
 """
 function initialise(; welcome = false)
   Juno.isprecompiling() && return
