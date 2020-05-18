@@ -53,28 +53,28 @@ end
 
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-    try; isdefined(Atom, Symbol("#107#108")) && precompile(Tuple{getfield(Atom, Symbol("#107#108")),Array{Any,1}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#113#114")) && precompile(Tuple{getfield(Atom, Symbol("#113#114")),Hiccup.Node{:table}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#113#114")) && precompile(Tuple{getfield(Atom, Symbol("#113#114")),Juno.Model}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#121#122")) && precompile(Tuple{getfield(Atom, Symbol("#121#122")),Text{String}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#180#181")) && precompile(Tuple{getfield(Atom, Symbol("#180#181"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#187#192")) && precompile(Tuple{getfield(Atom, Symbol("#187#192"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#188#193")) && precompile(Tuple{getfield(Atom, Symbol("#188#193"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#200#205")) && precompile(Tuple{getfield(Atom, Symbol("#200#205"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#214#219")) && precompile(Tuple{getfield(Atom, Symbol("#214#219"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#222#223")) && precompile(Tuple{getfield(Atom, Symbol("#222#223")),Base.MethodList}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#222#223")) && precompile(Tuple{getfield(Atom, Symbol("#222#223")),MD}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#277#279")) && precompile(Tuple{getfield(Atom, Symbol("#277#279")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#33#34")) && precompile(Tuple{getfield(Atom, Symbol("#33#34"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#37#38")) && precompile(Tuple{getfield(Atom, Symbol("#37#38")),String}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#39#41")) && precompile(Tuple{getfield(Atom, Symbol("#39#41")),String}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#55#56")) && precompile(Tuple{getfield(Atom, Symbol("#55#56")),String}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#117#118")) && precompile(Tuple{getfield(Atom, Symbol("#117#118")),Array{Any,1}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#123#124")) && precompile(Tuple{getfield(Atom, Symbol("#123#124")),Hiccup.Node{:table}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#123#124")) && precompile(Tuple{getfield(Atom, Symbol("#123#124")),Juno.Model}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#131#132")) && precompile(Tuple{getfield(Atom, Symbol("#131#132")),Text{String}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#190#191")) && precompile(Tuple{getfield(Atom, Symbol("#190#191"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#197#202")) && precompile(Tuple{getfield(Atom, Symbol("#197#202"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#198#203")) && precompile(Tuple{getfield(Atom, Symbol("#198#203"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#210#215")) && precompile(Tuple{getfield(Atom, Symbol("#210#215"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#224#229")) && precompile(Tuple{getfield(Atom, Symbol("#224#229"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#232#233")) && precompile(Tuple{getfield(Atom, Symbol("#232#233")),Base.MethodList}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#232#233")) && precompile(Tuple{getfield(Atom, Symbol("#232#233")),MD}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#285#287")) && precompile(Tuple{getfield(Atom, Symbol("#285#287")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#39#40")) && precompile(Tuple{getfield(Atom, Symbol("#39#40"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#43#44")) && precompile(Tuple{getfield(Atom, Symbol("#43#44")),String}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#45#47")) && precompile(Tuple{getfield(Atom, Symbol("#45#47")),String}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#61#63")) && precompile(Tuple{getfield(Atom, Symbol("#61#63")),String}); catch err; @debug err; end
     try; @assert(let fbody = try __lookup_kwbody__(which(sprint, (Function,Atom.CompletionSuggestion,))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Nothing,Int64,typeof(sprint),Function,Atom.CompletionSuggestion,))
@@ -91,6 +91,7 @@ function _precompile_()
     try; @assert(precompile(Tuple{Type{Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Axes,F,Args} where Args<:Tuple where F where Axes},typeof(Atom.localdatatip),Tuple{Array{Atom.ActualLocalBinding,1},Base.RefValue{SubString{String}},Int64}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{Type{JSON.Writer.CompositeTypeWrapper},Atom.CompletionSuggestion,NTuple{9,Symbol}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{Type{Set},Array{OutlineItem,1}})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(Atom.allprojects)})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.appendline),String,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.completion),Module,FuzzyCompletions.DictCompletion,String})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.completion),Module,FuzzyCompletions.FieldCompletion,String})); catch err; @debug err; end
@@ -126,6 +127,8 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(Atom.processdoc!),MD,String,Array{Any,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(Atom.project_info)})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(Atom.project_status)})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.realpath′),String})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.renderMD),Markdown.Admonition})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.renderMD),Markdown.BlockQuote})); catch err; @debug err; end
@@ -161,7 +164,6 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Array{Symbol,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Atom.Undefined})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Base.EnvDict})); catch err; @debug err; end
-    try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{Int64,Base.GenericCondition{Base.AlwaysLockedST}}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{Method,Any}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{String,Any}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{String,Array{String,1}}})); catch err; @debug err; end
@@ -189,10 +191,12 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.broadcasted),Function,Array{Atom.ActualLocalBinding,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.copyto_nonleaf!),Array{Dict{Symbol,Any},1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.localdatatip),Tuple{Base.Broadcast.Extruded{Array{Atom.ActualLocalBinding,1},Tuple{Bool},Tuple{Int64}},Base.RefValue{SubString{String}},Int64}},Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.copyto_nonleaf!),Array{Int64,1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.localdatatip),Tuple{Base.Broadcast.Extruded{Array{Atom.ActualLocalBinding,1},Tuple{Bool},Tuple{Int64}},Base.RefValue{SubString{String}},Int64}},Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(Base.Broadcast.copyto_nonleaf!),Array{NamedTuple{(:name, :path),Tuple{String,String}},1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.project_info),Tuple{Base.Broadcast.Extruded{Array{String,1},Tuple{Bool},Tuple{Int64}}}},Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.copyto_nonleaf!),Array{Nothing,1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.outlineitem),Tuple{Base.Broadcast.Extruded{Array{Atom.ToplevelItem,1},Tuple{Bool},Tuple{Int64}}}},Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.copyto_nonleaf!),Array{OutlineItem,1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.outlineitem),Tuple{Base.Broadcast.Extruded{Array{Atom.ToplevelItem,1},Tuple{Bool},Tuple{Int64}}}},Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.materialize),Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Nothing,typeof(Atom.localdatatip),Tuple{Array{Atom.ActualLocalBinding,1},Base.RefValue{SubString{String}},Int64}}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.Broadcast.restart_copyto_nonleaf!),Array{Union{Nothing, OutlineItem},1},Array{Nothing,1},Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.outlineitem),Tuple{Base.Broadcast.Extruded{Array{Atom.ToplevelItem,1},Tuple{Bool},Tuple{Int64}}}},OutlineItem,Int64,Base.OneTo{Int64},Int64,Int64})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(Base.CoreLogging.with_logger),Function,Atom.Progress.JunoProgressLogger})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base._promote_typejoin),Type{Nothing},Type{OutlineItem}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.allocatedinline),Type{Atom.GotoItem}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Base.allocatedinline),Type{Dict{String,Array{Atom.GotoItem,1}}}})); catch err; @debug err; end
@@ -236,6 +240,9 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(Media.render),Juno.Inline,Text{String}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(Media.render),Juno.Inline,Type{T} where T})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(clearsymbols)})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(convert),Type{Array{OutlineItem,1}},Array{Nothing,1}})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(convert),Type{Array{OutlineItem,1}},Array{OutlineItem,1}})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(convert),Type{Array{OutlineItem,1}},Array{Union{Nothing, OutlineItem},1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(convert),Type{Union{Nothing, Atom.Binding}},Atom.Binding})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(delete!),Dict{String,Dict{String,Array{Atom.GotoItem,1}}},String})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(findfirst),Function,Array{Atom.CompletionSuggestion,1}})); catch err; @debug err; end
@@ -257,7 +264,6 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(in),OutlineItem,Set{OutlineItem}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isempty),Array{Atom.GotoItem,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isempty),Array{Atom.ToplevelItem,1}})); catch err; @debug err; end
-    try; @assert(precompile(Tuple{typeof(isempty),Array{OutlineItem,1}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(ismacro),Function})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(ismacro),String})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Array{Any,1}})); catch err; @debug err; end
@@ -266,7 +272,6 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(isundefined),Atom.Undefined})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Base.RefValue{Bool}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Base.RefValue{Tuple{String,Int64}}})); catch err; @debug err; end
-    try; @assert(precompile(Tuple{typeof(isundefined),Dict{Int64,Base.GenericCondition{Base.AlwaysLockedST}}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Dict{Method,Any}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Dict{String,Any}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(isundefined),Dict{String,Array{String,1}}})); catch err; @debug err; end
@@ -296,6 +301,7 @@ function _precompile_()
     try; @assert(precompile(Tuple{typeof(similar),Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.localdatatip),Tuple{Base.Broadcast.Extruded{Array{Atom.ActualLocalBinding,1},Tuple{Bool},Tuple{Int64}},Base.RefValue{SubString{String}},Int64}},Type{Dict{Symbol,Any}}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(similar),Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.outlineitem),Tuple{Base.Broadcast.Extruded{Array{Atom.ToplevelItem,1},Tuple{Bool},Tuple{Int64}}}},Type{Nothing}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(similar),Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.outlineitem),Tuple{Base.Broadcast.Extruded{Array{Atom.ToplevelItem,1},Tuple{Bool},Tuple{Int64}}}},Type{OutlineItem}})); catch err; @debug err; end
+    try; @assert(precompile(Tuple{typeof(similar),Base.Broadcast.Broadcasted{Base.Broadcast.DefaultArrayStyle{1},Tuple{Base.OneTo{Int64}},typeof(Atom.project_info),Tuple{Base.Broadcast.Extruded{Array{String,1},Tuple{Bool},Tuple{Int64}}}},Type{NamedTuple{(:name, :path),Tuple{String,String}}}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(sprint),Function,Base.Generator{CSTParser.EXPR,typeof(Atom.str_value)}})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(strlimit),String,Int64})); catch err; @debug err; end
     try; @assert(precompile(Tuple{typeof(toplevelitems),String})); catch err; @debug err; end
