@@ -46,9 +46,10 @@ handle("activateDefaultProject") do
   update_project()
 end
 
-function evalsimple(code)
+function evalsimple(code, mod = "Main")
+  mod = mod == "Main" ? Main : Core.eval(Main, :(module $(gensym(mod)) end))
   return with_logger(JunoProgressLogger()) do
-    include_string(Main, code)
+    include_string(mod, code)
   end
 end
 handle(evalsimple, "evalsimple")
