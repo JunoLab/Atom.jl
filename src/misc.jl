@@ -46,9 +46,12 @@ handle("activateDefaultProject") do
   update_project()
 end
 
-handle("evalsimple") do code
-  Core.eval(Main, Meta.parse(code))
+function evalsimple(code)
+  return with_logger(JunoProgressLogger()) do
+    include_string(Main, code)
+  end
 end
+handle(evalsimple, "evalsimple")
 
 handle("exit") do
   exit()
