@@ -144,7 +144,7 @@ function trim(xs, len = 25)
   end
 end
 
-pluralize(n::Int, one, more=one) = string(n, " ", n == 1 ? one : more)
+pluralize(n::Integer, one, more=one) = string(n, " ", n == 1 ? one : more)
 pluralize(xs, one, more=one) = pluralize(length(xs), one, more)
 
 @render i::Inline xs::Vector begin

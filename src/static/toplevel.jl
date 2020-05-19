@@ -51,7 +51,7 @@ toplevelitems(text::String, expr::Nothing; kwargs...)::Vector{ToplevelItem} = To
 
 function _toplevelitems(
     text::String, expr::EXPR,
-    items::Vector{ToplevelItem} = ToplevelItem[], line::Int = 1, pos::Int = 1;
+    items::Vector{ToplevelItem} = ToplevelItem[], line::Integer = 1, pos::Integer = 1;
     mod::Union{Nothing, String} = nothing, inmod::Bool = false,
 )
     # add items if `mod` isn't specified or in a target modle
@@ -59,11 +59,11 @@ function _toplevelitems(
         # binding
         bind = bindingof(expr)
         if bind !== nothing
-            lines = line:line+countlines(expr, text, pos, false)
+            lines = line:line+counteols_in_expr(expr, text, pos, false)
             push!(items, ToplevelBinding(expr, bind, lines))
         end
 
-        lines = line:line+countlines(expr, text, pos, false)
+        lines = line:line+counteols_in_expr(expr, text, pos, false)
 
         # destructure multiple returns
         if ismultiplereturn(expr)
@@ -92,7 +92,7 @@ function _toplevelitems(
         end
         for arg in expr
             _toplevelitems(text, arg, items, line, pos; mod = mod, inmod = inmod)
-            line += countlines(arg, text, pos)
+            line += counteols_in_expr(arg, text, pos)
             pos += arg.fullspan
         end
     end

@@ -126,7 +126,7 @@ end
 # ---------------
 
 """
-    strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
+    strlimit(str::AbstractString, limit::Integer = 30, ellipsis::AbstractString = "…")
 
 Chops off `str` so that its _length_ doesn't exceed `limit`. The excessive part
   will be replaced by `ellipsis`.
@@ -134,7 +134,7 @@ Chops off `str` so that its _length_ doesn't exceed `limit`. The excessive part
 !!! note
     The length of returned string will _never_ exceed `limit`.
 """
-function strlimit(str::AbstractString, limit::Int = 30, ellipsis::AbstractString = "…")
+function strlimit(str::AbstractString, limit::Integer = 30, ellipsis::AbstractString = "…")
   will_append = length(str) > limit
 
   io = IOBuffer()

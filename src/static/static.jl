@@ -64,7 +64,7 @@ isexport(expr::EXPR) = typof(expr) === CSTParser.Export
 # string utilities
 # ----------------
 
-function Base.countlines(expr::EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
+function counteols_in_expr(expr::EXPR, text::String, pos::Integer, full::Bool = true; eol = '\n')
     endpos = pos + (full ? expr.fullspan : expr.span)
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
@@ -117,19 +117,19 @@ function str_value(x::EXPR)::String
 end
 
 """
-    str_value_verbatim(expr::EXPR, text::String, pos::Int)::String
+    str_value_verbatim(expr::EXPR, text::String, pos::Integer)::String
 
 _Extract_ a source code from `text` that corresponds to `expr` starting from `pos`.
 """
-function str_value_verbatim(expr::EXPR, text::String, pos::Int)::String
+function str_value_verbatim(expr::EXPR, text::String, pos::Integer)::String
     endpos = pos + expr.span
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
     e = prevind(text, clamp(endpos, 1, n + 1))
     return string(strip(text[s:e]))
 end
-str_value_verbatim(bind::Binding, text::String, pos::Int) = str_value_verbatim(bind.val, text, pos)
-str_value_verbatim(bind, text::String, pos::Int) = ""
+str_value_verbatim(bind::Binding, text::String, pos::Integer) = str_value_verbatim(bind.val, text, pos)
+str_value_verbatim(bind, text::String, pos::Integer) = ""
 
 # atom icon & types
 # -----------------
