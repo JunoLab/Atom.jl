@@ -72,7 +72,7 @@ function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
         elseif iswhereclause(expr)
             for arg in expr
                 localbindings(arg, text, bindings, pos, line)
-                line += countlines(arg, text, pos)
+                line += counteols_in_expr(arg, text, pos)
                 pos += arg.fullspan
             end
         else
@@ -85,7 +85,7 @@ function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
             children = LocalBS[]
             for arg in expr
                 localbindings(arg, text, children, pos, line)
-                line += countlines(arg, text, pos)
+                line += counteols_in_expr(arg, text, pos)
                 pos += arg.fullspan
             end
 
@@ -98,7 +98,7 @@ function localbindings(expr, text, bindings = LocalBS[], pos = 1, line = 1)
     # look for more local bindings if exists
     for arg in expr
         localbindings(arg, text, bindings, pos, line)
-        line += countlines(arg, text, pos)
+        line += counteols_in_expr(arg, text, pos)
         pos += arg.fullspan
     end
 

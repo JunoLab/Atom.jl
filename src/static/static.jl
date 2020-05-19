@@ -64,7 +64,7 @@ isexport(expr::EXPR) = typof(expr) === CSTParser.Export
 # string utilities
 # ----------------
 
-function Base.countlines(expr::EXPR, text::String, pos::Int, full::Bool = true; eol = '\n')
+function counteols_in_expr(expr::EXPR, text::String, pos::Integer, full::Bool = true; eol = '\n')
     endpos = pos + (full ? expr.fullspan : expr.span)
     n = ncodeunits(text)
     s = nextind(text, clamp(pos - 1, 0, n))
