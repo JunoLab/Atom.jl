@@ -31,7 +31,7 @@ function datatip(word, mod, path, column = 1, row = 1, startrow = 0, context = "
 end
 
 datatip(dt::Vector{Dict{Symbol, Any}}) = Dict(:error => false, :strings => dt)
-datatip(dt::Int) = Dict(:error => false, :line => dt)
+datatip(dt::Integer) = Dict(:error => false, :line => dt)
 datatip(dt::Vector{Int}) = datatip(dt[1])
 
 function localdatatip(word, column, row, startrow, context)

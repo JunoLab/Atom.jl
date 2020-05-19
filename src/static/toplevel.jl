@@ -51,7 +51,7 @@ toplevelitems(text::String, expr::Nothing; kwargs...)::Vector{ToplevelItem} = To
 
 function _toplevelitems(
     text::String, expr::EXPR,
-    items::Vector{ToplevelItem} = ToplevelItem[], line::Int = 1, pos::Int = 1;
+    items::Vector{ToplevelItem} = ToplevelItem[], line::Integer = 1, pos::Integer = 1;
     mod::Union{Nothing, String} = nothing, inmod::Bool = false,
 )
     # add items if `mod` isn't specified or in a target modle
