@@ -436,7 +436,11 @@ function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
 
     # sometimes method signature can tell the return type by itself
     sparams = Core.svec(sparam_syms(m)...)
-    inf = Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
+    inf = @static if isdefined(Core.Compiler, :NativeInterpreter)
+      Core.Compiler.typeinf_type(Core.Compiler.NativeInterpreter(), m, m.sig, sparams)
+    else
+      Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
+    end
     inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
   catch err
     # @error err
