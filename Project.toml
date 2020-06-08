@@ -37,7 +37,7 @@ WebSockets = "104b5d7c-a370-577a-8038-80a2059c5097"
 [compat]
 CSTParser = "=1.1.0, ^2"
 CodeTools = "^0.6.4, ^0.7"
-CodeTracking = "^0.5.7"
+CodeTracking = "^0.5.7, 1.0"
 DocSeeker = "^0.4"
 FlameGraphs = "^0.1, 0.2"
 FuzzyCompletions = "0.1"
