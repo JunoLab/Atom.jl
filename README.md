@@ -1,5 +1,9 @@
 # Atom
 
+**Attention**: We have decided to join forces with the [Julia extension for VSCode](https://github.com/julia-vscode/julia-vscode). As such, this Atom-based plugin is effectively in “maintenance-only mode” and we expect to only work on bug fixes in the future.
+
+----
+
 [![Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://JunoLab.github.io/JunoDocs.jl/latest)
 [![CI](https://github.com/JunoLab/Atom.jl/workflows/CI/badge.svg)](https://github.com/JunoLab/Atom.jl/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/JunoLab/Atom.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JunoLab/Atom.jl)
