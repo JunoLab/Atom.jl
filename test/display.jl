@@ -8,6 +8,27 @@
     @test Atom.render(Atom.Inline(), :abc)[:contents] == [":abc"]
     @test Atom.render(Atom.Inline(), Symbol("A B"))[:contents] == ["Symbol(\"A B\")"]
 
+    # function display
+    # basic
+    let d = Atom.render(Atom.Inline(), sin)
+        @test d[:type] === :lazy
+        @test d[:head][:contents] == ["sin"]
+    end
+
+    # in a specific module
+    m = eval(:(module $(gensym(:atomjltestmodule)) end))
+
+    let d = Atom.render(Atom.Inline(), Core.eval(m, :(mock_func() = nothing)))
+        @test d[:type] === :lazy
+        @test d[:head][:contents] == ["$(m).mock_func"]
+    end
+
+    # macro
+    let d = Atom.render(Atom.Inline(), Core.eval(m, :(macro mock_macro() end)))
+        @test d[:type] === :lazy
+        @test d[:head][:contents] == ["$(m).@mock_macro"]
+    end
+
     @test length(Atom.trim(rand(50), 20)) == 20
 
     @test Atom.isanon(sin) == false
