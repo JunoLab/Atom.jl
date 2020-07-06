@@ -66,7 +66,7 @@ end
 # and maybe better to be refactored into a single function,
 # but we define them as separate functions for type-stabilities for now
 
-function replcompletionadapter(
+@inbounds function replcompletionadapter(
   # general
   line, m = "Main",
   # local context
@@ -104,19 +104,14 @@ function replcompletionadapter(
     end
   end
 
-  @inbounds cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  afterusing = REPLCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
-  for c in cs
-    if afterusing
-      c isa REPLCompletions.PackageCompletion || continue
-    end
-    push!(comps, completion(mod, c, prefix))
-  end
+  cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(!ispkgcomp, cs) # need `Int` for correct dispatch on x86
+  append!(comps, completion.(Ref(mod), cs, prefix))
 
   return comps
 end
 
-function fuzzycompletionadapter(
+@inbounds function fuzzycompletionadapter(
   # general
   line, m = "Main",
   # local context
@@ -158,17 +153,14 @@ function fuzzycompletionadapter(
     end
   end
 
-  @inbounds cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  afterusing = FuzzyCompletions.afterusing(line, Int(first(replace))) # need `Int` for correct dispatch on x86
-  for c in cs
-    if afterusing
-      c isa FuzzyCompletions.PackageCompletion || continue
-    end
-    push!(comps, completion(mod, c, prefix))
-  end
+  cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
+  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(!ispkgcomp, cs) # need `Int` for correct dispatch on x86
+  append!(comps, completion.(Ref(mod), cs, prefix))
 
   return comps
 end
+
+const ispkgcomp = Base.Fix2(isa, REPLCompletions.PackageCompletion)
 
 # for functions below works both for REPLCompletions and FuzzyCompletions modules
 for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
