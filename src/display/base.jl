@@ -61,13 +61,15 @@ const inline_mime = "application/prs.juno.inline"
   end
 end
 
+_fieldlist(x, fields=fieldnames(typeof(x))) = [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]
+
 function defaultrepr(x, lazy = false, typerepr = typeof(x))
   fields = fieldnames(typeof(x))
   if isempty(fields)
     span(c(render(Inline(), typerepr), "()"))
   else
-    lazy ? LazyTree(typerepr, () -> [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]) :
-           Tree(typerepr, [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields])
+    lazy ? LazyTree(typerepr, () -> _fieldlist(x,fields)) :
+           Tree(typerepr, _fieldlist(x,fields))
   end
 end
 
@@ -102,12 +104,24 @@ import Base.Docs: doc
 
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
+function render_anon(i::Inline, f)
+    r(x) = render(i, x)
+    meths = methods(f)
+    if length(meths) == 1
+        sig, link = view(first(methods(f)))
+        header = span(c(r(sig), " at ", r(link)))
+        meths = ()
+    else
+        header = c("λ", fade(" with $(length(meths)) methods"))
+    end
+    LazyTree( span(".syntax--support.syntax--function", header),
+      ()->vcat([methods_table(i,meths)], _fieldlist(f))
+    )
+end
+
 @render i::Inline f::Function begin
   if isanon(f)
-    sig, link = view(first(methods(f)))
-    r(x) = render(i, x)
-    defaultrepr(f, true, span(".syntax--support.syntax--function",
-                              c("function ", r(sig), " at ", r(link))))
+    render_anon(i,f)
   else
     name = repr(f)
     name_without_module = string(f)
