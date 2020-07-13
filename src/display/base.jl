@@ -61,13 +61,13 @@ const inline_mime = "application/prs.juno.inline"
   end
 end
 
-function defaultrepr(x, lazy = false)
+function defaultrepr(x, lazy = false, typerepr = typeof(x))
   fields = fieldnames(typeof(x))
   if isempty(fields)
-    span(c(render(Inline(), typeof(x)), "()"))
+    span(c(render(Inline(), typerepr), "()"))
   else
-    lazy ? LazyTree(typeof(x), () -> [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]) :
-           Tree(typeof(x), [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields])
+    lazy ? LazyTree(typerepr, () -> [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]) :
+           Tree(typerepr, [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields])
   end
 end
 
@@ -102,15 +102,17 @@ import Base.Docs: doc
 
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
-@render Inline f::Function begin
-  name = repr(f)
-  name_without_module = string(f)
-  binding = Docs.Binding(typeof(f).name.module, Symbol(name_without_module))
+@render i::Inline f::Function begin
   if isanon(f)
-    span(".syntax--support.syntax--function", "λ")
+    sig, link = view(first(methods(f)))
+    r(x) = render(i, x)
+    defaultrepr(f, true, span(".syntax--support.syntax--function",
+                              c("function ", r(sig), " at ", r(link))))
   else
-    LazyTree(
-      span(".syntax--support.syntax--function", name),
+    name = repr(f)
+    name_without_module = string(f)
+    binding = Docs.Binding(typeof(f).name.module, Symbol(name_without_module))
+    LazyTree( span(".syntax--support.syntax--function", name),
       ()->[(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : [])..., methods(f)]
     )
   end
