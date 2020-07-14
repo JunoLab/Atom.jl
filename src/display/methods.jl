@@ -5,7 +5,7 @@ stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}" => "")
 interpose(xs, y) = map(i -> iseven(i) ? xs[i÷2] : y, 2:2length(xs))
 
 const methodloc_regex = r"(?<sig>.+) in (?<mod>.+) at (?<loc>.+)$"
-const anon_sig_head_regex = reg = r"^\(::.*var\".*?\)"
+const anon_sig_head_regex = reg = r"^\(.*::.*var\".*?\)"
 
 function view(m::Method)
   str = sprint(show, "text/html", m)
@@ -29,9 +29,11 @@ end
 
 @render i::Inline m::MethodList begin
   ms = collect(m)
-  isempty(ms) && return "$(m.mt.name) has no methods."
+  methodname = string(m.mt.name)
+  startswith(methodname, "#") && (methodname = "λ")
+  isempty(ms) && return "$methodname has no methods."
   length(ms) == 1 && return render(i, ms[1])
-  Tree(span(c(span(".syntax--support.syntax--function", string(m.mt.name)),
+  Tree(span(c(span(".syntax--support.syntax--function", methodname),
               " has $(length(ms)) methods:")),
               [methods_table(i, m)])
 end

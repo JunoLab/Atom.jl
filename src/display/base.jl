@@ -104,32 +104,24 @@ import Base.Docs: doc
 
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
-function render_anon(i::Inline, f)
-    r(x) = render(i, x)
-    meths = methods(f)
-    if length(meths) == 1
-        sig, link = view(first(methods(f)))
-        header = span(c(r(sig), " at ", r(link)))
-        meths = ()
-    else
-        header = c("λ", fade(" with $(length(meths)) methods"))
-    end
-    LazyTree( span(".syntax--support.syntax--function", header),
-      ()->vcat([methods_table(i,meths)], _fieldlist(f))
-    )
+# functions where `!hascompactrepr(f)` may display closed-over variables in
+# `repr(f)` which might take a very long time
+function hascompactrepr(f)
+  mt = typeof(f).name.mt
+  # this condition is copied from the implementation of Base.show_function
+  isdefined(mt, :module) && isdefined(mt.module, mt.name) && getfield(mt.module, mt.name) === f
 end
+_displayname(f) = isanon(f) ? "λ" : hascompactrepr(f) ? repr(f) : string(nameof(f))
 
 @render i::Inline f::Function begin
-  if isanon(f)
-    render_anon(i,f)
-  else
-    name = repr(f)
-    name_without_module = string(f)
-    binding = Docs.Binding(typeof(f).name.module, Symbol(name_without_module))
-    LazyTree( span(".syntax--support.syntax--function", name),
-      ()->[(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : [])..., methods(f)]
-    )
-  end
+  name = nameof(f)
+  mdl = typeof(f).name.module
+  binding = Docs.Binding(mdl, name)
+  LazyTree( span(".syntax--support.syntax--function", _displayname(f)),
+    ()-> [(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : []);
+          methods(f);
+          _fieldlist(f)]
+  )
 end
 
 @render Inline f::Core.IntrinsicFunction begin
