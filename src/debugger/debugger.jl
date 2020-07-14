@@ -14,6 +14,7 @@ using ..Atom, MacroTools, Lazy, Hiccup
 
 include("breakpoints.jl")
 include("stepper.jl")
+include("eval.jl")
 include("repl.jl")
 include("workspace.jl")
 include("datatip.jl")
