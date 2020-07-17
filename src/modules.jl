@@ -36,7 +36,7 @@ function modulefiles(mod::Module)
   end
   filedata === nothing && return nothing, nothing
   included_files = filter(mf -> mf[1] == mod, filedata)
-  return fixpath(parentfile), [fixpath(mf[2]) for mf in included_files]
+  return fixpath(parentfile), String[fixpath(mf[2]) for mf in included_files]
 end
 
 # Fix paths to files that define Julia (base and stdlibs)
