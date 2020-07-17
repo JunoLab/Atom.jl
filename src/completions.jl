@@ -160,8 +160,6 @@ end
   return comps
 end
 
-const ispkgcomp = Base.Fix2(isa, REPLCompletions.PackageCompletion)
-
 # for functions below works both for REPLCompletions and FuzzyCompletions modules
 for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
           :PropertyCompletion, :FieldCompletion, :MethodCompletion, :BslashCompletion,
@@ -170,6 +168,8 @@ for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageComple
 end
 completion_text(c::REPLCompletions.Completion) = REPLCompletions.completion_text(c)
 completion_text(c::FuzzyCompletions.Completion) = FuzzyCompletions.completion_text(c)
+
+const ispkgcomp = Base.Fix2(isa, PackageCompletion)
 
 completion(mod, c, prefix) =
   CompletionSuggestion(
