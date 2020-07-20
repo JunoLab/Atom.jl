@@ -61,13 +61,15 @@ const inline_mime = "application/prs.juno.inline"
   end
 end
 
-function defaultrepr(x, lazy = false)
+_fieldlist(x, fields=fieldnames(typeof(x))) = [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]
+
+function defaultrepr(x, lazy = false, typerepr = typeof(x))
   fields = fieldnames(typeof(x))
   if isempty(fields)
-    span(c(render(Inline(), typeof(x)), "()"))
+    span(c(render(Inline(), typerepr), "()"))
   else
-    lazy ? LazyTree(typeof(x), () -> [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields]) :
-           Tree(typeof(x), [SubTree(Text("$f → "), getfield′(x, f, UNDEF)) for f in fields])
+    lazy ? LazyTree(typerepr, () -> _fieldlist(x,fields)) :
+           Tree(typerepr, _fieldlist(x,fields))
   end
 end
 
@@ -102,18 +104,24 @@ import Base.Docs: doc
 
 isanon(f) = startswith(string(typeof(f).name.mt.name), "#")
 
-@render Inline f::Function begin
-  name = repr(f)
-  name_without_module = string(f)
-  binding = Docs.Binding(typeof(f).name.module, Symbol(name_without_module))
-  if isanon(f)
-    span(".syntax--support.syntax--function", "λ")
-  else
-    LazyTree(
-      span(".syntax--support.syntax--function", name),
-      ()->[(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : [])..., methods(f)]
-    )
-  end
+# functions where `!hascompactrepr(f)` may display closed-over variables in
+# `repr(f)` which might take a very long time
+function hascompactrepr(f)
+  mt = typeof(f).name.mt
+  # this condition is copied from the implementation of Base.show_function
+  isdefined(mt, :module) && isdefined(mt.module, mt.name) && getfield(mt.module, mt.name) === f
+end
+_displayname(f) = isanon(f) ? "λ" : hascompactrepr(f) ? repr(f) : string(nameof(f))
+
+@render i::Inline f::Function begin
+  name = nameof(f)
+  mdl = typeof(f).name.module
+  binding = Docs.Binding(mdl, name)
+  LazyTree( span(".syntax--support.syntax--function", _displayname(f)),
+    ()-> [(CodeTools.hasdoc(binding) ? [md_hlines(doc(binding))] : []);
+          methods(f);
+          _fieldlist(f)]
+  )
 end
 
 @render Inline f::Core.IntrinsicFunction begin

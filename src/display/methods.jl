@@ -5,10 +5,12 @@ stripparams(t) = replace(t, r"\{([A-Za-z, ]*?)\}" => "")
 interpose(xs, y) = map(i -> iseven(i) ? xs[i÷2] : y, 2:2length(xs))
 
 const methodloc_regex = r"(?<sig>.+) in (?<mod>.+) at (?<loc>.+)$"
+const anon_sig_head_regex = reg = r"^\(.*::.*var\".*?\)"
 
 function view(m::Method)
   str = sprint(show, "text/html", m)
   str = replace(str, methodloc_regex => s"\g<sig>")
+  str = replace(str, anon_sig_head_regex => "λ")
   str = string("<span>", str, "</span>")
   tv, decls, file, line = Base.arg_decl_parts(m)
   HTML(str), file == :null ? "not found" : Atom.baselink(string(file), line)
@@ -20,13 +22,18 @@ end
   span(c(r(sig), " at ", r(link)))
 end
 
-# TODO: factor out table view
+function methods_table(i, methods)
+  r(x) = render(i, x)
+  table(".syntax--methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, methods)])
+end
+
 @render i::Inline m::MethodList begin
   ms = collect(m)
-  isempty(ms) && return "$(m.mt.name) has no methods."
-  r(x) = render(i, x)
-  length(ms) == 1 && return r(ms[1])
-  Tree(span(c(span(".syntax--support.syntax--function", string(m.mt.name)),
+  methodname = string(m.mt.name)
+  startswith(methodname, "#") && (methodname = "λ")
+  isempty(ms) && return "$methodname has no methods."
+  length(ms) == 1 && return render(i, ms[1])
+  Tree(span(c(span(".syntax--support.syntax--function", methodname),
               " has $(length(ms)) methods:")),
-       [table(".syntax--methods", [tr(td(c(r(a))), td(c(r(b)))) for (a, b) in map(view, ms)])])
+              [methods_table(i, m)])
 end
