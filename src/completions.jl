@@ -361,16 +361,32 @@ function completiondetail!(comp)
   return comp
 end
 
+using Markdown
+
+description(docs) = ""
+description(docs::Markdown.MD) = begin
+  md = CodeTools.flatten(docs).content
+  for part in md
+    if part isa Markdown.Paragraph
+      desc = Markdown.plain(part)
+      occursin("No documentation found.", desc) && return ""
+      return strlimit(desc, DESCRIPTION_LIMIT)
+    end
+  end
+  return ""
+end
+
 handle(completiondetail!, "completiondetail")
 
 function completiondetail_module!(comp, mod, word)
   mod = getmodule(mod)
   cangetdocs(mod, word) || return
-  comp["description"] = completiondescription(getdocs(mod, word))
+  comp["description"] = description(getdocs(mod, word))
 end
 
-completiondetail_keyword!(comp, word) =
-  comp["description"] = completiondescription(getdocs(Main, word))
+const KEYWORD_DESCRIPTIONS = Dict(k => description(getdocs(Main, k)) for k in string.(keys(Docs.keywords)))
+
+completiondetail_keyword!(comp, word) = comp["description"] = get(KEYWORD_DESCRIPTIONS, word, "")
 
 using JuliaInterpreter: sparam_syms
 using Base.Docs
@@ -399,7 +415,7 @@ function completiondetail_method!(comp, k)
   desc = if cangetdocs(mod, fsym)
     try
       docs = Docs.doc(Docs.Binding(mod, fsym), Base.tuple_type_tail(m.sig))
-      completiondescription(docs)
+      description(docs)
     catch
       ""
     end
@@ -436,21 +452,6 @@ function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
     inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
   catch err
     # @error err
-  end
-  return ""
-end
-
-using Markdown
-
-completiondescription(docs) = ""
-completiondescription(docs::Markdown.MD) = begin
-  md = CodeTools.flatten(docs).content
-  for part in md
-    if part isa Markdown.Paragraph
-      desc = Markdown.plain(part)
-      occursin("No documentation found.", desc) && return ""
-      return strlimit(desc, DESCRIPTION_LIMIT)
-    end
   end
   return ""
 end
