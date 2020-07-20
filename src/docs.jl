@@ -38,10 +38,10 @@ function _searchdocs(needle, loaded = true, mod = Main, exportedonly = false, na
     return _searchdocs(nextneedle, loaded, nextmod, exportedonly, name_only)
   end
 
-  return @errs searchdocs(
+  return @errs(searchdocs(
     needle;
     loaded = loaded, mod = mod, exportedonly = exportedonly, name_only = name_only
-  ), mod
+  )), mod
 end
 
 function processdocs(items)
