@@ -49,8 +49,9 @@ function processdocs(items)
     errstr = sprint(showerror, items.err)
     err = startswith(errstr, "Please regenerate the") ?
             """
-            Please regenerate the documentation cache with the button above.
-            Note that this might take minutes. You can track the progress with the progress bar
+            Please regenerate the documentation cache with the ↻ button above.
+            Note that you need to add Docseeker.jl package in your environment (i.e. `] pkg> add DocSeeker`) in advance 
+            and caching might take minutes. You can track the progress with the progress bar
             in the lower left corner, and should be able to use Juno normally during that time.
             """ : errstr
     Dict(
