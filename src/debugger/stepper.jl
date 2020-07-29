@@ -363,7 +363,7 @@ end
 
 function stepview(ex)
   out = if @capture(ex, f_(as__))
-    fname = typeof(f).name.mt.name
+    fname = string(f)
     if Base.isoperator(fname)
       Row(interpose(as, span(".syntax--support.syntax--function", string(" ", fname, " ")))...)
     else
