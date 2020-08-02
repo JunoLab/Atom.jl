@@ -38,7 +38,7 @@ try
         @debug "Commented out `_precompile_` call in $atomjl_file for `precompile` statement generation"
 
         inf_timing = @snoopi include(test_file)
-        pc = SnoopCompile.parcel(inf_timing; blacklist=["Main"]) # NOTE: don't include functions used in test
+        pc = SnoopCompile.parcel(inf_timing; exclusions = ["Main"]) # NOTE: don't include functions used in test
 
         if (stmts = get(pc, :Atom, nothing)) !== nothing
             open(precompile_file, "w") do io

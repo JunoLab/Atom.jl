@@ -99,6 +99,7 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(Atom.pkgpath),String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.pluralize),Array{Int64,1},String,String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.processdoc!),MD,String,Array{Any,1}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(Atom.processdocs),Array{Tuple{Float64,DocSeeker.DocObj},1}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.processval!),Any,String,Array{Any,1}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.processval!),Function,String,Array{Any,1}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.project_info)})); catch err; @debug err; end
@@ -139,7 +140,8 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Array{Symbol,1}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Atom.Undefined})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Base.EnvDict})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{Int64,Base.GenericCondition{Base.AlwaysLockedST}}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Complex{Bool}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{Method,Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{String,Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{String,Array{String,1}}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Dict{String,Dict{String,Array{Atom.GotoItem,1}}}})); catch err; @debug err; end
@@ -150,6 +152,8 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Float64})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Function})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Int64})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Irrational{:π}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Irrational{:ℯ}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Module})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,OrderedCollections.OrderedDict{String,Union{NamedTuple{(:rt, :desc),Tuple{String,String}}, NamedTuple{(:f, :m, :tt),Tuple{Any,Method,Type}}}}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(Atom.wsicon),Module,Symbol,Regex})); catch err; @debug err; end
@@ -252,7 +256,7 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Atom.Undefined})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Base.RefValue{Bool}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Base.RefValue{Tuple{String,Int64}}})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(isundefined),Dict{Int64,Base.GenericCondition{Base.AlwaysLockedST}}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(isundefined),Dict{Method,Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Dict{String,Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Dict{String,Array{String,1}}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Dict{String,Dict{String,Array{Atom.GotoItem,1}}}})); catch err; @debug err; end
@@ -295,24 +299,24 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(|>),Array{Atom.CompletionSuggestion,1},typeof(length)})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(|>),Array{Atom.GotoItem,1},typeof(isempty)})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(|>),Array{Atom.ToplevelItem,1},typeof(length)})); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#115#116")) && Base.precompile(Tuple{getfield(Atom, Symbol("#115#116")),Array{Any,1}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#121#122")) && Base.precompile(Tuple{getfield(Atom, Symbol("#121#122")),Hiccup.Node{:table}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#121#122")) && Base.precompile(Tuple{getfield(Atom, Symbol("#121#122")),Juno.Model}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#129#130")) && Base.precompile(Tuple{getfield(Atom, Symbol("#129#130")),Text{String}}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#186#187")) && Base.precompile(Tuple{getfield(Atom, Symbol("#186#187"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#193#198")) && Base.precompile(Tuple{getfield(Atom, Symbol("#193#198"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#194#199")) && Base.precompile(Tuple{getfield(Atom, Symbol("#194#199"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#206#211")) && Base.precompile(Tuple{getfield(Atom, Symbol("#206#211"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#220#225")) && Base.precompile(Tuple{getfield(Atom, Symbol("#220#225"))}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#228#229")) && Base.precompile(Tuple{getfield(Atom, Symbol("#228#229")),Base.MethodList}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#228#229")) && Base.precompile(Tuple{getfield(Atom, Symbol("#228#229")),MD}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#281#283")) && Base.precompile(Tuple{getfield(Atom, Symbol("#281#283")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#113#114")) && Base.precompile(Tuple{getfield(Atom, Symbol("#113#114")),Array{Any,1}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#119#120")) && Base.precompile(Tuple{getfield(Atom, Symbol("#119#120")),Hiccup.Node{:table}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#119#120")) && Base.precompile(Tuple{getfield(Atom, Symbol("#119#120")),Juno.Model}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#127#128")) && Base.precompile(Tuple{getfield(Atom, Symbol("#127#128")),Text{String}}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#184#185")) && Base.precompile(Tuple{getfield(Atom, Symbol("#184#185"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#191#196")) && Base.precompile(Tuple{getfield(Atom, Symbol("#191#196"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#192#197")) && Base.precompile(Tuple{getfield(Atom, Symbol("#192#197"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#204#209")) && Base.precompile(Tuple{getfield(Atom, Symbol("#204#209"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#218#223")) && Base.precompile(Tuple{getfield(Atom, Symbol("#218#223"))}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#226#227")) && Base.precompile(Tuple{getfield(Atom, Symbol("#226#227")),Base.MethodList}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#226#227")) && Base.precompile(Tuple{getfield(Atom, Symbol("#226#227")),MD}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.DictCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.FieldCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.KeywordCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.MethodCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.ModuleCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.PathCompletion}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#279#281")) && Base.precompile(Tuple{getfield(Atom, Symbol("#279#281")),FuzzyCompletions.PropertyCompletion}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#39#40")) && Base.precompile(Tuple{getfield(Atom, Symbol("#39#40"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#43#44")) && Base.precompile(Tuple{getfield(Atom, Symbol("#43#44")),String}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#45#47")) && Base.precompile(Tuple{getfield(Atom, Symbol("#45#47")),String}); catch err; @debug err; end
