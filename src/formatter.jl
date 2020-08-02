@@ -31,12 +31,22 @@ handle("format") do data
 end
 
 # HACK: extract keyword arguments of `format_text`; `Base.kwarg_decl` isn't available as of v1.0
-const FORMAT_TEXT_KWARGS = let
-  ms = collect(methods(format_text))
-  filter!(m->m.module==JuliaFormatter, ms)
-  m = match(r";(.+)\)", string(first(ms)))
+const FORMAT_TEXT_KWARGS = try
+  s = filter!(collect(methods(format_text))) do m
+    return m.module == JuliaFormatter &&
+      length(m.sig.types) === 2
+  end |> first |> string
+  m = match(r";(.+)\)", s)
   m === nothing ? Symbol[] : Symbol.(strip.(split(m.captures[1]), Ref((' ', ','))))
+catch
+  Symbol[]
 end
+
+isempty(FORMAT_TEXT_KWARGS) && @warn """
+Atom.jl failed to recognize the keyword arguments of `JuliaFormatter.format_text`.
+The formatting options won't work when you format code via Juno's formatting interface.
+"""
+
 function format_text′(text; options...)
   # only pass valid keyword arguments to `format_text`
   valid_option_dict = filter(options) do (k, _)
