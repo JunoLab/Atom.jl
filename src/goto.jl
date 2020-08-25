@@ -157,7 +157,7 @@ function toplevelgotoitems(word, mod, path, text)
     SYMBOLSCACHE[key]
   else
     maybe = collecttoplevelitems(mod, path, text)
-    if isnothing(maybe)
+    if maybe === nothing
       return GotoItem[] # unsuccessful traverse, early return without caching
     end
     SYMBOLSCACHE[key] = maybe
