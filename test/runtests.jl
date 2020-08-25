@@ -1,4 +1,4 @@
-using Atom, Test, Atom.JSON, Logging, Atom.CSTParser
+using Atom, Test, Atom.JSON, Logging, Atom.CSTParser, Pkg
 
 
 joinpath′(files...) = Atom.fullpath(joinpath(files...))
