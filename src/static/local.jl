@@ -38,11 +38,11 @@ function ActualLocalBinding(bs::LocalBS, root::String, line::Integer, byteoffset
 end
 
 """
-    locals(text::String, line::Integer, col::Integer)::Vector{ActualLocalBinding}
+    locals(text::AbstractString, line::Integer, col::Integer)::Vector{ActualLocalBinding}
 
 Returns local bindings in `text`, while computing localities based on `line` and `col`.
 """
-function locals(text::String, line::Integer, col::Integer)::Vector{ActualLocalBinding}
+function locals(text::AbstractString, line::Integer, col::Integer)::Vector{ActualLocalBinding}
     expr = CSTParser.parse(text, true)
     traverse_expr!(expr)
     bindings = localbindings(expr, text)
