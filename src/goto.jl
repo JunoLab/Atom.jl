@@ -35,11 +35,9 @@ function gotosymbol(
 
     # global goto
     m = getmodule(mod)
-    globalitems = if m == Main && mod ≠ "Main" # unloaded module
-      globalgotoitems_unloaded(word, mod)
-    else
-      globalgotoitems(word, m, path, text)
-    end
+    m == Main && mod ≠ "Main" && (m = mod)# unloaded module
+    globalitems = globalgotoitems(word, m, path, text)
+
     isempty(globalitems) || return (error = false, items = globalitems)
   catch err
     return (error = true,)
@@ -76,8 +74,8 @@ localgotoitem(word, ::Nothing, column, row, startrow, context) = GotoItem[] # wh
 
 ### global goto - bundles toplevel gotos & method gotos
 
-# goto for loaded module -- using runtime information in need
-function globalgotoitems(word, mod, path, text)
+# for loaded module
+function globalgotoitems(word, mod::Module, path, text)
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
   head = string(identifiers[1])
@@ -88,8 +86,17 @@ function globalgotoitems(word, mod, path, text)
   end
 
   val = getfield′(mod, word)
-  val isa Module && return [GotoItem(val)] # module goto
+  return _globalgotoitems(val, word, mod, path, text)
+end
 
+# unloaded module
+function globalgotoitems(word, mod::String, path, text)
+  val = getfield′(Main, word) # use Main as a fallback
+  return _globalgotoitems(val, word, mod, path, text)
+end
+
+_globalgotoitems(val::Module, args...) = [GotoItem(val)] # module goto
+function _globalgotoitems(@nospecialize(val), word, mod, path, text)
   items = toplevelgotoitems(word, mod, path, text)
 
   # append method gotos that are not caught by `toplevelgotoitems`
@@ -97,24 +104,8 @@ function globalgotoitems(word, mod, path, text)
   files = map(item -> item.file, items)
   methoditems = filter!(item -> item.file ∉ files, methodgotoitems(ml))
   append!(items, methoditems)
-  return items
-end
-# goto for unloaded package
-function globalgotoitems_unloaded(word, pkg::String)
-  pathitemsmap = if haskey(SYMBOLSCACHE, pkg)
-    SYMBOLSCACHE[pkg]
-  else
-    (path = Base.find_package(pkg)) === nothing && return GotoItem[]
-    SYMBOLSCACHE[pkg] = _collecttoplevelitems_static(pkg, path)
-  end
 
-  ret = GotoItem[]
-  for (_, items) in pathitemsmap
-    @>> filter(let name = word
-      item -> name == item.name
-    end, items) append!(ret)
-  end
-  return ret
+  return items
 end
 
 ## module goto
@@ -155,7 +146,11 @@ function toplevelgotoitems(word, mod, path, text)
   pathitemsmap = if haskey(SYMBOLSCACHE, key)
     SYMBOLSCACHE[key]
   else
-    SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
+    maybe = collecttoplevelitems(mod, path, text)
+    if isnothing(maybe)
+      return GotoItem[] # unsuccessful traverse, early return without caching
+    end
+    SYMBOLSCACHE[key] = maybe
   end
 
   ret = GotoItem[]
@@ -168,6 +163,9 @@ function toplevelgotoitems(word, mod, path, text)
 end
 
 # entry methods
+# -------------
+
+# loaded module -- using runtime information in need
 function collecttoplevelitems(mod::Module, path::String, text::String)
   return if mod == Main || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
@@ -177,15 +175,44 @@ function collecttoplevelitems(mod::Module, path::String, text::String)
     _collecttoplevelitems(mod)
   end
 end
-# when `path === nothing`, e.g.: called from docpane/workspace
-collecttoplevelitems(mod::Module, path::Nothing, text::String) = _collecttoplevelitems(mod)
+
+# unloaded module, always use static approach
+# FIXME: unfunctional for files that define a module
+function collecttoplevelitems(mod::String, path::String, text::String)
+  fileline = CodeTools.find_include(path)
+  entrypath = if fileline === nothing
+    path # root file
+  else
+    first(fileline)
+  end
+  items = _collecttoplevelitems_static(stripdotprefixes(mod), entrypath)
+
+  if isempty(items) ||
+     (length(items) === 1 && isempty(first(values(items)))) # happens when `path` defines a `mod` as a submodule
+    return nothing
+  end
+
+  return items
+end
+
+# called from e.g. docpane/workspace
+function collecttoplevelitems(mod::Module, path::Nothing, text::String)
+  return _collecttoplevelitems(mod)
+end
+
+# should not happen, just in case
+function collecttoplevelitems(args...)
+  sig = join("::" .* string.(typeof.(args)), ", ")
+  @warn "invalid `collecttoplevelitems($(sig))` function call happen"
+  return nothing
+end
 
 function _collecttoplevelitems(mod::Module)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
     _collecttoplevelitems_loaded(stripdotprefixes(string(mod)), [entrypath; paths])
   else # if Revise-like approach fails, fallback to CSTParser-based approach
-    entrypath, line = moduledefinition(mod)
+    entrypath, = moduledefinition(mod)
     _collecttoplevelitems_static(stripdotprefixes(string(mod)), entrypath)
   end
 end
