@@ -245,7 +245,7 @@
             @test (updatesymbols(key, nothing, text); true)
         end
 
-        @testset "regenerating toplevel symbols" begin
+        @static VERSION ≥ v"1.5" && @testset "regenerating toplevel symbols" begin
             try
                 Pkg.develop(path = normpath(@__DIR__, "fixtures", "Example"))
 

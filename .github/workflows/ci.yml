@@ -13,7 +13,7 @@ jobs:
       fail-fast: false # don't stop CI even when one of them fails
       matrix:
         version:
-          - '1.4' # current stable
+          - '1.5' # current stable
           - '1.0' # lts
         os:
           - ubuntu-latest
