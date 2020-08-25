@@ -245,25 +245,22 @@
             @test (updatesymbols(key, nothing, text); true)
         end
 
-        @testset "regenerating toplevel symbols" begin
-            regeneratesymbols()
+        @static VERSION ≥ v"1.5" && @testset "regenerating toplevel symbols" begin
+            try
+                Pkg.develop(path = normpath(@__DIR__, "fixtures", "Example"))
 
-            # cache symbols in loaded modules
-            @test haskey(SYMBOLSCACHE, "Base")
-            @test length(keys(SYMBOLSCACHE["Base"])) > 100
-            @test haskey(SYMBOLSCACHE, "Atom")
-            @test length(keys(SYMBOLSCACHE["Atom"])) === length(atommodfiles)
+                regeneratesymbols()
 
-            # cache symbols even if not loaded
-            # FIXME:
-            # `Pkg.dependencies()` doesn't include dependencies in `extra` section.
-            # Let's skip this case until we find a way to make `Pkg.dependencies()` aware of them.
-            @test_skip haskey(SYMBOLSCACHE, "Example")
+                # cache symbols in loaded modules
+                @test haskey(SYMBOLSCACHE, "Base")
+                @test length(keys(SYMBOLSCACHE["Base"])) > 100
+                @test haskey(SYMBOLSCACHE, "Atom")
+                @test length(keys(SYMBOLSCACHE["Atom"])) === length(atommodfiles)
 
-            @testset "goto for unloaded packages" begin
-                using Atom: globalgotoitems_unloaded
-
-                @test !isempty(globalgotoitems_unloaded("hello", "Example"))
+                # cache symbols even if not loaded
+                @test haskey(SYMBOLSCACHE, "Example")
+            finally
+                Pkg.rm("Example")
             end
         end
 
@@ -271,6 +268,13 @@
             clearsymbols()
 
             @test length(keys(SYMBOLSCACHE)) === 0
+        end
+
+        # NOTE: test after the cache gets cleared
+        @testset "goto for unloaded packages" begin
+            exampledir = normpath(@__DIR__, "fixtures", "Example")
+            rootfile = normpath(exampledir, "src", "Example.jl")
+            @test !isempty(globalgotoitems("hello", "Example", rootfile, read(rootfile, String)))
         end
 
         @testset "goto methods" begin

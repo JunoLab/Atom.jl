@@ -1,1 +1,2 @@
 src/precompile.jl linguist-generated=true
+test/fixtures/Example linguist-vendored=true

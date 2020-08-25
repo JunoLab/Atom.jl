@@ -35,11 +35,9 @@ function gotosymbol(
 
     # global goto
     m = getmodule(mod)
-    globalitems = if m == Main && mod ≠ "Main" # unloaded module
-      globalgotoitems_unloaded(word, mod)
-    else
-      globalgotoitems(word, m, path, text)
-    end
+    m == Main && mod ≠ "Main" && (m = mod)# unloaded module
+    globalitems = globalgotoitems(word, m, path, text)
+
     isempty(globalitems) || return (error = false, items = globalitems)
   catch err
     return (error = true,)
@@ -53,13 +51,15 @@ struct GotoItem
   text::String
   file::String
   line::Int
-  GotoItem(name, text, file::String, line) =
+  GotoItem(name, text, file::AbstractString, line) =
     new(name, text, normpath(file), line)
 end
 
 GotoItem(name, file, line = 0) = GotoItem(name, name, file, line)
 
-### local goto
+##############
+# local goto #
+##############
 
 function localgotoitem(word, path, column, row, startrow, context)
   word = first(split(word, '.')) # always ignore dot accessors
@@ -74,10 +74,12 @@ function localgotoitem(word, path, column, row, startrow, context)
 end
 localgotoitem(word, ::Nothing, column, row, startrow, context) = GotoItem[] # when called from docpane/workspace
 
-### global goto - bundles toplevel gotos & method gotos
+###############
+# global goto #
+###############
 
-# goto for loaded module -- using runtime information in need
-function globalgotoitems(word, mod, path, text)
+# for loaded module
+function globalgotoitems(word, mod::Module, path, text)
   # strip a dot-accessed module if exists
   identifiers = split(word, '.')
   head = string(identifiers[1])
@@ -88,8 +90,17 @@ function globalgotoitems(word, mod, path, text)
   end
 
   val = getfield′(mod, word)
-  val isa Module && return [GotoItem(val)] # module goto
+  return _globalgotoitems(val, word, mod, path, text)
+end
 
+# unloaded module
+function globalgotoitems(word, mod::AbstractString, path, text)
+  val = getfield′(Main, word) # use Main as a fallback
+  return _globalgotoitems(val, word, mod, path, text)
+end
+
+_globalgotoitems(val::Module, args...) = [GotoItem(val)] # module goto
+function _globalgotoitems(@nospecialize(val), word, mod, path, text)
   items = toplevelgotoitems(word, mod, path, text)
 
   # append method gotos that are not caught by `toplevelgotoitems`
@@ -97,27 +108,13 @@ function globalgotoitems(word, mod, path, text)
   files = map(item -> item.file, items)
   methoditems = filter!(item -> item.file ∉ files, methodgotoitems(ml))
   append!(items, methoditems)
+
   return items
 end
-# goto for unloaded package
-function globalgotoitems_unloaded(word, pkg::String)
-  pathitemsmap = if haskey(SYMBOLSCACHE, pkg)
-    SYMBOLSCACHE[pkg]
-  else
-    (path = Base.find_package(pkg)) === nothing && return GotoItem[]
-    SYMBOLSCACHE[pkg] = _collecttoplevelitems_static(pkg, path)
-  end
 
-  ret = GotoItem[]
-  for (_, items) in pathitemsmap
-    @>> filter(let name = word
-      item -> name == item.name
-    end, items) append!(ret)
-  end
-  return ret
-end
-
-## module goto
+###############
+# module goto #
+###############
 
 function GotoItem(mod::Module)
   name = string(mod)
@@ -125,7 +122,9 @@ function GotoItem(mod::Module)
   GotoItem(name, file, line - 1)
 end
 
-## toplevel goto
+#################
+# toplevel goto #
+#################
 
 const PathItemsMap = Dict{String, Vector{GotoItem}}
 
@@ -150,12 +149,18 @@ const PathItemsMap = Dict{String, Vector{GotoItem}}
 """
 const SYMBOLSCACHE = Dict{String, PathItemsMap}()
 
+gen_new_cache() = PathItemsMap()
+
 function toplevelgotoitems(word, mod, path, text)
   key = string(mod)
   pathitemsmap = if haskey(SYMBOLSCACHE, key)
     SYMBOLSCACHE[key]
   else
-    SYMBOLSCACHE[key] = collecttoplevelitems(mod, path, text) # caching
+    maybe = collecttoplevelitems(mod, path, text)
+    if maybe === nothing
+      return GotoItem[] # unsuccessful traverse, early return without caching
+    end
+    SYMBOLSCACHE[key] = maybe
   end
 
   ret = GotoItem[]
@@ -168,7 +173,10 @@ function toplevelgotoitems(word, mod, path, text)
 end
 
 # entry methods
-function collecttoplevelitems(mod::Module, path::String, text::String)
+# -------------
+
+# loaded module -- using runtime information in need
+function collecttoplevelitems(mod::Module, path::AbstractString, text)
   return if mod == Main || isuntitled(path)
     # for `Main` module and unsaved editors, always use CSTPraser-based approach
     # with a given buffer text, and don't check module validity
@@ -177,23 +185,52 @@ function collecttoplevelitems(mod::Module, path::String, text::String)
     _collecttoplevelitems(mod)
   end
 end
-# when `path === nothing`, e.g.: called from docpane/workspace
-collecttoplevelitems(mod::Module, path::Nothing, text::String) = _collecttoplevelitems(mod)
+
+# unloaded module, always use static approach
+# FIXME: unfunctional for files that define a module
+function collecttoplevelitems(mod::AbstractString, path::AbstractString, text)
+  fileline = CodeTools.find_include(path)
+  entrypath = if fileline === nothing
+    path # root file
+  else
+    first(fileline)
+  end
+  items = _collecttoplevelitems_static(stripdotprefixes(mod), entrypath)
+
+  if isempty(items) ||
+     (length(items) === 1 && isempty(first(values(items)))) # happens when `path` defines a `mod` as a submodule
+    return nothing
+  end
+
+  return items
+end
+
+# called from e.g. docpane/workspace
+function collecttoplevelitems(mod::Module, path::Nothing, text)
+  return _collecttoplevelitems(mod)
+end
+
+# should not happen, just in case
+function collecttoplevelitems(args...)
+  sig = join("::" .* string.(typeof.(args)), ", ")
+  @warn "invalid `collecttoplevelitems($(sig))` function call happen"
+  return nothing
+end
 
 function _collecttoplevelitems(mod::Module)
   entrypath, paths = modulefiles(mod)
   return if entrypath !== nothing # Revise-like approach
     _collecttoplevelitems_loaded(stripdotprefixes(string(mod)), [entrypath; paths])
   else # if Revise-like approach fails, fallback to CSTParser-based approach
-    entrypath, line = moduledefinition(mod)
+    entrypath, = moduledefinition(mod)
     _collecttoplevelitems_static(stripdotprefixes(string(mod)), entrypath)
   end
 end
 
 # module-traverse for given files, which are collected by Revise-like approach:
 # NOTE: only works for loaded precompiled modules
-function _collecttoplevelitems_loaded(mod::Union{Nothing, String}, paths::Vector{String})
-  pathitemsmap = PathItemsMap()
+function _collecttoplevelitems_loaded(mod, paths)
+  pathitemsmap = gen_new_cache()
 
   entrypath, paths = paths[1], paths[2:end]
 
@@ -214,14 +251,16 @@ function _collecttoplevelitems_loaded(mod::Union{Nothing, String}, paths::Vector
 end
 
 # module-traverse based on CSTParser, looking for toplevel `included` calls
-function _collecttoplevelitems_static(mod::Union{Nothing, String}, entrypath::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
+function _collecttoplevelitems_static(mod, entrypath, pathitemsmap::PathItemsMap = gen_new_cache(); kwargs...)
   isfile′(entrypath) || return pathitemsmap
   # escape recursive `include` loops
   entrypath in keys(pathitemsmap) && return pathitemsmap
   text = read(entrypath, String)
-  _collecttoplevelitems_static(mod, entrypath, text, pathitemsmap; inmod = inmod)
+  return _collecttoplevelitems_static(mod, entrypath, text, pathitemsmap; kwargs...)
 end
-function _collecttoplevelitems_static(mod::Union{Nothing, String}, entrypath::String, text::String, pathitemsmap::PathItemsMap = PathItemsMap(); inmod = false)
+function _collecttoplevelitems_static(mod, entrypath, text, pathitemsmap::PathItemsMap = gen_new_cache();
+                                      inmod = false
+                                      )
   items = toplevelitems(text; mod = mod, inmod = inmod)
   pathitemsmap[entrypath] = GotoItem.(entrypath, items)
 
@@ -252,13 +291,14 @@ function GotoItem(path, binding::ToplevelBinding)
   GotoItem(name, text, path, line)
 end
 
-## update toplevel symbols cache
+# update cache
+# ------------
 # NOTE:
 # - only updates toplevel symbols in the current text buffer
 # - handled by the `updateeditor` handler in outline.jl
 
 function updatesymbols(mod, path::Nothing, text) end # fallback case
-function updatesymbols(mod, path::String, text)
+function updatesymbols(mod, path::AbstractString, text)
   m = getmodule(mod)
   mod = string(m)
 
@@ -274,21 +314,15 @@ function updatesymbols(mod, path::String, text)
   push!(SYMBOLSCACHE[mod], path => GotoItem.(path, items))
 end
 
-## generate toplevel symbols cache
-
-handle("regeneratesymbols") do
-  with_logger(JunoProgressLogger()) do
-    regeneratesymbols()
-  end
-  nothing
-end
+# generate cache
+# --------------
 
 function regeneratesymbols()
   id = "regenerate_symbols_progress"
   @info "Generating symbols cache in loaded modules" progress=0 _id=id
 
   loaded = Set(string.(Base.loaded_modules_array()))
-  pkgs = if isdefined(Pkg, :dependencies)
+  pkgs = @static if isdefined(Pkg, :dependencies)
     getfield.(values(Pkg.dependencies()), :name)
   else
     collect(keys(Pkg.installed()))
@@ -323,20 +357,28 @@ function regeneratesymbols()
   @info "Finished generating the symbols cache" progress=1 _id=id
 end
 
-## clear toplevel symbols cache
-
-handle("clearsymbols") do
-  clearsymbols()
-  nothing
+handle("regeneratesymbols") do
+  with_logger(JunoProgressLogger()) do
+    regeneratesymbols()
+  end
+  return nothing
 end
+
+# clear cache
+# -----------
 
 function clearsymbols()
   for key in keys(SYMBOLSCACHE)
     delete!(SYMBOLSCACHE, key)
   end
+  return nothing
 end
 
-## method goto
+handle(clearsymbols, "clearsymbols")
+
+###############
+# method goto #
+###############
 
 methodgotoitems(ml) = GotoItem.(aggregatemethods(ml))
 

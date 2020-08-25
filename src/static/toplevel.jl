@@ -31,8 +31,8 @@ struct ToplevelModuleUsage <: ToplevelItem
 end
 
 """
-    toplevelitems(text::String; kwargs...)::Vector{ToplevelItem}
-    toplevelitems(text::String, expr::EXPR; kwargs...)::Vector{ToplevelItem}
+    toplevelitems(text::AbstractString; kwargs...)::Vector{ToplevelItem}
+    toplevelitems(text::AbstractString, expr::EXPR; kwargs...)::Vector{ToplevelItem}
 
 Finds and returns toplevel "item"s (call and binding) in `text`.
 
@@ -41,19 +41,17 @@ keyword arguments:
     other than `mod`, otherwise enter into every module.
 - `inmod::Bool`: if `true`, don't include toplevel items until it enters into `mod`.
 """
-toplevelitems(text::String; kwargs...)::Vector{ToplevelItem} =
+toplevelitems(text::AbstractString; kwargs...)::Vector{ToplevelItem} =
     toplevelitems(text, CSTParser.parse(text, true); kwargs...)
-function toplevelitems(text::String, expr::EXPR; kwargs...)::Vector{ToplevelItem}
+function toplevelitems(text::AbstractString, expr::EXPR; kwargs...)::Vector{ToplevelItem}
     traverse_expr!(expr)
     return _toplevelitems(text, expr; kwargs...)
 end
-toplevelitems(text::String, expr::Nothing; kwargs...)::Vector{ToplevelItem} = ToplevelItem[]
+toplevelitems(text::AbstractString, expr::Nothing; kwargs...)::Vector{ToplevelItem} = ToplevelItem[]
 
-function _toplevelitems(
-    text::String, expr::EXPR,
-    items::Vector{ToplevelItem} = ToplevelItem[], line::Integer = 1, pos::Integer = 1;
-    mod::Union{Nothing, String} = nothing, inmod::Bool = false,
-)
+function _toplevelitems(text, expr, items = ToplevelItem[], line = 1, pos = 1;
+                        mod = nothing, inmod = false,
+                        )
     # add items if `mod` isn't specified or in a target modle
     if mod === nothing || inmod
         # binding
@@ -99,7 +97,7 @@ function _toplevelitems(
     return items
 end
 
-function shouldenter(expr::EXPR, mod::Union{Nothing, String})
+function shouldenter(expr::EXPR, mod::Union{Nothing,AbstractString})
     typof(expr) !== CSTParser.Call &&
     !(hasscope(expr) &&
     !(
@@ -110,5 +108,5 @@ function shouldenter(expr::EXPR, mod::Union{Nothing, String})
 end
 
 shouldentermodule(expr::EXPR, mod::Nothing) = true
-shouldentermodule(expr::EXPR, mod::String) =
+shouldentermodule(expr::EXPR, mod::AbstractString) =
     (bind = bindingof(expr)) === nothing ? false : bind.name == mod
