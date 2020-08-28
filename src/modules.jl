@@ -285,34 +285,46 @@ end
 const MAIN_MODULE_LOCATION = Ref{Tuple{String, Int}}(moduledefinition(Main))
 
 handle("module") do data
-  main, sub = modulenames(data, cursor(data))
+  path = get(data, "path", "")
+
+  # NOTE: special case `Core.Compiler`
+  if occursin(basepath("compiler"), path)
+    return (
+      main        = "Core",
+      sub         = "Compiler",
+      inactive    = false,
+      subInactive = false,
+    )
+  end
+
+  main::String, sub::String = modulenames(data, cursor(data))
 
   mod = CodeTools.getmodule(main)
   smod = CodeTools.getmodule(mod, sub)
 
   if main == "Main" && sub == ""
-    MAIN_MODULE_LOCATION[] = get!(data, "path", ""), data["row"]
+    MAIN_MODULE_LOCATION[] = path, data["row"]
   end
 
   loaded_mods = copy(Base.loaded_modules_array())
   if main == "Main"
     filter!(m -> string(m) == sub, loaded_mods)
     if !isempty(loaded_mods)
-      return Dict(
-               :main => string(loaded_mods[1]),
-               :sub  => "",
-               :inactive => false,
-               :subInactive => false
-             )
+      return (
+        main        = string(loaded_mods[1]),
+        sub         = "",
+        inactive    = false,
+        subInactive = false
+      )
     end
   end
 
-  return Dict(
-           :main => main,
-           :sub  => sub,
-           :inactive => (mod==nothing),
-           :subInactive => smod==nothing
-         )
+  return (
+    main        = main,
+    sub         = sub,
+    inactive    = mod === nothing,
+    subInactive = smod === nothing
+  )
 end
 
 

@@ -80,7 +80,7 @@ function finddevpackages()
   sort!(devpkgs)
 end
 
-basepath(file) = normpath(joinpath(Sys.BINDIR, Base.DATAROOTDIR, "julia", "base", file))
+basepath(file) = normpath(Sys.BINDIR::String, Base.DATAROOTDIR, "julia", "base", file)
 
 fullpath(path) =
   realpath′(isuntitled(path) || isabspath(path) ? path : basepath(path))
