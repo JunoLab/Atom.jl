@@ -105,7 +105,7 @@ end
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(!ispkgcomp, cs) # need `Int` for correct dispatch on x86
+  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(ispkgcomp, cs) # need `Int` for correct dispatch on x86
   append!(comps, completion.(Ref(mod), cs, prefix))
 
   return comps
@@ -154,7 +154,7 @@ end
   end
 
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
-  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(!ispkgcomp, cs) # need `Int` for correct dispatch on x86
+  REPLCompletions.afterusing(line, Int(first(replace))) && filter!(ispkgcomp, cs) # need `Int` for correct dispatch on x86
   append!(comps, completion.(Ref(mod), cs, prefix))
 
   return comps
