@@ -110,6 +110,7 @@ const stdlib_names = Set([
   :Unicode,
   :UUIDs,
 ])
+@static VERSION ≥ v"1.6.0-DEV.734" && push!(stdlib_names, :TOML)
 
 function pkg_fileinfo(id::PkgId)
   uuid, name = id.uuid, id.name
