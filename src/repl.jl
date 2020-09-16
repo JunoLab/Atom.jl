@@ -220,7 +220,7 @@ function evalrepl(mod, line)
       end
       errored && return nothing
       try
-        if VERSION >= v"1.5"
+        @static if VERSION ≥ v"1.5"
             line = REPL.softscope(line)
         end
         ans = repleval(mod, line)
