@@ -220,7 +220,3 @@ function docs(word, mod = "Main")
     :contents =>  map(x -> render(Inline(), x), [docstring; mtable])
   )
 end
-
-function Base.include_string(f, mod, s::AbstractString, fname::AbstractString, line::Integer)
-  include_string(f, mod, "\n"^(line-1)*s, fname)
-end
