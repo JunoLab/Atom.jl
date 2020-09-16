@@ -72,7 +72,8 @@ function evalshow(text, line, path, mod)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          res = @errs include_string(mod, text, path, line)
+          args = VERSION >= v"1.5" ? (REPL.softscope, mod, text, path, line) : (mod, text, path, line)
+          res = @errs include_string(args...)
 
           Base.invokelatest() do
             if res isa EvalError
@@ -116,7 +117,8 @@ function eval(text, line, path, mod, errorinrepl = false)
     result = hideprompt() do
       with_logger(JunoProgressLogger()) do
         withpath(path) do
-          res = @errs include_string(mod, text, path, line)
+          args = VERSION >= v"1.5" ? (REPL.softscope, mod, text, path, line) : (mod, text, path, line)
+          res = @errs include_string(args)
           if errorinrepl && res isa EvalError
             Base.invokelatest() do
               try

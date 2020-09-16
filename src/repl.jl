@@ -220,7 +220,7 @@ function evalrepl(mod, line)
       end
       errored && return nothing
       try
-        ans = repleval(mod, line)
+        ans = repleval(mod, REPL.softscope(line))
       catch err
         # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
         # seems to work just fine.
