@@ -118,7 +118,7 @@ function eval(text, line, path, mod, errorinrepl = false)
       with_logger(JunoProgressLogger()) do
         withpath(path) do
           args = VERSION >= v"1.5" ? (REPL.softscope, mod, text, path, line) : (mod, text, path, line)
-          res = @errs include_string(args)
+          res = @errs include_string(args...)
           if errorinrepl && res isa EvalError
             Base.invokelatest() do
               try
@@ -219,4 +219,8 @@ function docs(word, mod = "Main")
     :tag      => :div,
     :contents =>  map(x -> render(Inline(), x), [docstring; mtable])
   )
+end
+
+function Base.include_string(f, mod, s::AbstractString, fname::AbstractString, line::Integer)
+  include_string(f, mod, "\n"^(line-1)*s, fname)
 end

@@ -274,3 +274,8 @@ uriopen(file, line = 0) = "atom://julia-client/?open=true&file=$(file)&line=$(li
 uridocs(mod, word) = "atom://julia-client/?docs=true&mod=$(mod)&word=$(word)"
 urigoto(mod, word) = "atom://julia-client/?goto=true&mod=$(mod)&word=$(word)"
 urimoduleinfo(mod) = "atom://julia-client/?moduleinfo=true&mod=$(mod)"
+
+
+function Base.include_string(f, mod, s::AbstractString, fname::AbstractString, line::Integer)
+  include_string(f, mod, "\n"^(line-1)*s, fname)
+end
