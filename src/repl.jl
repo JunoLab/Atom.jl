@@ -220,7 +220,10 @@ function evalrepl(mod, line)
       end
       errored && return nothing
       try
-        ans = repleval(mod, REPL.softscope(line))
+        if VERSION >= v"1.5"
+            line = REPL.softscope(line)
+        end
+        ans = repleval(mod, line)
       catch err
         # #FIXME: This is a bit weird (there shouldn't be any printing done here), but
         # seems to work just fine.
