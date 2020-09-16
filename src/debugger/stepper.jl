@@ -1,5 +1,5 @@
 using JuliaInterpreter: pc_expr, extract_args, debug_command, root, caller,
-                        whereis, get_return, @lookup, Frame
+                        whereis, get_return, @lookup, Frame, ExprSplitter
 import JuliaInterpreter
 import ..Atom: fullpath, handle, @msg, Inline, display_error, hideprompt, getmodule
 import Juno: Row
@@ -91,7 +91,7 @@ function debug_file(mod, text, path, should_step, line_offset = 0)
           end
           return x
         end
-        exprs, _ = JuliaInterpreter.split_expressions(mod, expr; filename = path)
+        exprs = ExprSplitter(mod, expr) # LineNumberNode is already taken into `expr` by `Base.parse_input_line`
       catch err
         println(stderr)
         Base.showerror(stderr, ErrorException("Error while parsing file or runtime error."), [])
@@ -104,11 +104,17 @@ function debug_file(mod, text, path, should_step, line_offset = 0)
       debugmode(true)
 
       for (i, (mod, ex)) in enumerate(exprs)
+        if Meta.isexpr(ex, :global, 1)
+          # global assignment can be lowered, but global declaration can't
+          Core.eval(mod, ex)
+          continue
+        end
+
         lc == :stop && break
 
         temp_bps = add_breakpoint.(Atom.rpc("getFileBreakpoints"))
 
-        frame = JuliaInterpreter.prepare_thunk(mod, ex)
+        frame = Frame(mod, ex)
 
         _, lc = Base.invokelatest(startdebugging,
           frame,

@@ -118,5 +118,6 @@ end
 # -------------------
 
 @info "Removing temporary dependencies ..."
+Pkg.activate(normpath(@__DIR__, ".."))
 test_deps === nothing || Pkg.rm([PackageSpec(; name = name, uuid = uuid) for (name, uuid) in test_deps])
 Pkg.rm("SnoopCompile")
