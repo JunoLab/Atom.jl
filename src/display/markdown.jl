@@ -47,14 +47,16 @@ function renderMD(f::Markdown.Footnote)
 end
 
 function renderMD(md::Markdown.Admonition)
-  icon = "icon-info"
-  if md.category == "warning"
-    icon = "icon-alert"
+  cat = md.category
+  icon = if cat == "warning" || cat == "danger"
+    "icon-alert"
+  else
+    "icon-info"
   end
   Hiccup.div([
     Hiccup.Node(:p, md.title, class = "admonition-title $icon"),
     renderMD(md.content)
-  ], class = "admonition $(md.category)")
+  ], class = "admonition $(cat)")
 end
 
 function renderMD(md::Markdown.List)
