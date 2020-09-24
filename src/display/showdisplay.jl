@@ -26,7 +26,7 @@ const plain_mimes = [
 
 const plotpane_mime = "application/prs.juno.plotpane+html"
 const jlpane_mime = "application/prs.juno.jlpane"
-using HTTP
+
 function displayinplotpane(x)
   # allow openening a new pane in Atom
   if showable("application/prs.juno.jlpane", x)
