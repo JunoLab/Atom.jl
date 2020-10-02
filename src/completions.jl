@@ -286,6 +286,7 @@ completionurl(c::KeywordCompletion) = uridocs("Main", c.keyword)
 completionmodule(mod, c) = shortstr(mod)
 completionmodule(mod, c::ModuleCompletion) = shortstr(c.parent)
 completionmodule(mod, c::MethodCompletion) = shortstr(c.method.module)
+completionmodule(mod, c::PropertyCompletion) = shortstr(typeof(c.value))
 completionmodule(mod, c::FieldCompletion) = shortstr(c.typ) # predicted type
 completionmodule(mod, ::KeywordCompletion) = ""
 completionmodule(mod, ::PathCompletion) = ""
