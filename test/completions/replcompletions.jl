@@ -134,7 +134,7 @@ let m = Main.eval(:(module $(gensym("tempmod")) end))
         foreach(comps("dict.", mod = ms)) do c
             @test c.text in props
             @test c.type == "property"
-            @test c.rightLabel == ms
+            @test c.rightLabel == string(typeof(m.dict))
         end
     end
 
