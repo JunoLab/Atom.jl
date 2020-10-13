@@ -444,7 +444,7 @@ function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
     end
 
     # sometimes method signature can tell the return type by itself
-    sparams = Core.svec(sparam_syms(m)...)
+    sparams = sparams_from_method_signature(m)
     inf = @static if isdefined(Core.Compiler, :NativeInterpreter)
       Core.Compiler.typeinf_type(Core.Compiler.NativeInterpreter(), m, m.sig, sparams)
     else
@@ -455,4 +455,14 @@ function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
     # @error err
   end
   return ""
+end
+
+function sparams_from_method_signature(m)
+  s = TypeVar[]
+  sig = m.sig
+  while sig isa UnionAll
+    push!(s, sig.var)
+    sig = sig.body
+  end
+  return Core.svec(s...)
 end
