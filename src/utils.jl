@@ -265,7 +265,12 @@ iskeyword(word::Symbol) = word in keys(Docs.keywords)
 iskeyword(word::AbstractString) = iskeyword(Symbol(word))
 
 ismacro(ct::AbstractString) = startswith(ct, '@') || endswith(ct, '"')
-ismacro(f::Function) = startswith(string(methods(f).mt.name), "@")
+# xref: https://github.com/JuliaLang/julia/issues/38059
+function ismacro(@nospecialize(f::FT)) where {FT<:Function}
+  isdefined(FT, :name) || return false # XXX: this check might not be necessary
+  tn = FT.name::Core.TypeName
+  return occursin('@', string(tn.name))
+end
 
 # uri utilties
 # ------------
