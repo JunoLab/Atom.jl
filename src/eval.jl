@@ -205,6 +205,7 @@ handle("docs") do data
 end
 
 function docs(word, mod = "Main")
+  word = replace(word, r"\!+([^=\(]+)" => s"\1") # strip preceding ! operator
   docstring = @errs getdocs(mod, word)
   docstring isa EvalError && return Dict(:error => true)
 

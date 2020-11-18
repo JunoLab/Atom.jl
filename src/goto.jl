@@ -26,6 +26,7 @@ function gotosymbol(
   # module context
   mod = "Main", text = ""
 )
+  word = replace(word, r"\!+([^=\(]+)" => s"\1") # strip preceding ! operator
   try
     # local goto
     if !onlyglobal
