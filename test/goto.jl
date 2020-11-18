@@ -45,6 +45,21 @@
         @test (Atom.localgotoitem("word", nothing, 1, 1, 0, ""); true)
     end
 
+    @testset "strip preceding ! operator" begin
+        using Atom: gotosymbol
+        let
+            ret = gotosymbol("!isnothing")
+            @test isdefined(ret, :items)
+            @test !isempty(ret.items)
+        end
+
+        let
+            ret = gotosymbol("!")
+            @test isdefined(ret, :items)
+            @test !isempty(ret.items)
+        end
+    end
+
     @testset "goto global symbols" begin
         using Atom: globalgotoitems, toplevelgotoitems, SYMBOLSCACHE, updatesymbols,
                     clearsymbols, regeneratesymbols, methodgotoitems

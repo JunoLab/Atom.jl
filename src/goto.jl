@@ -26,6 +26,7 @@ function gotosymbol(
   # module context
   mod = "Main", text = ""
 )
+  word = replace(word, r"\!+([^=\(]+)" => s"\1") # strip preceding ! operator
   try
     # local goto
     if !onlyglobal
@@ -154,7 +155,16 @@ gen_new_cache() = PathItemsMap()
 function toplevelgotoitems(word, mod, path, text)
   key = string(mod)
   pathitemsmap = if haskey(SYMBOLSCACHE, key)
-    SYMBOLSCACHE[key]
+    if haskey(SYMBOLSCACHE[key], path)
+      SYMBOLSCACHE[key]
+    else
+      orig = SYMBOLSCACHE[key]
+      maybe = collecttoplevelitems(mod, path, text)
+      if maybe !== nothing
+        merge!(orig, maybe)
+      end
+      orig
+    end
   else
     maybe = collecttoplevelitems(mod, path, text)
     if maybe === nothing
