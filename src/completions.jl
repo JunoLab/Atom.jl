@@ -130,7 +130,7 @@ end
   prefix = line[replace]
 
   if !force
-    filter!(c -> FuzzyCompletions.score(c) ≥ 0, cs) # filter negative scores
+    filter!(c -> !isa(c, FilterableCompletions) || FuzzyCompletions.score(c) ≥ 0, cs) # filter negative scores
 
     # suppress completions if there are still too many of them i.e. when invoked with `$|`, `(|`, etc.
     # XXX: the heuristics below mayn't be so robust to work for all the cases.
@@ -159,6 +159,11 @@ end
 
   return comps
 end
+
+const FilterableCompletions = Union{
+  FuzzyCompletions.KeywordCompletion,
+  FuzzyCompletions.ModuleCompletion,
+}
 
 # for functions below works both for REPLCompletions and FuzzyCompletions modules
 for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
