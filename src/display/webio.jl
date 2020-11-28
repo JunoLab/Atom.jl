@@ -1,6 +1,6 @@
 # TODO: this should be more robust, ideally.
 using Logging
-import WebIO, HTTP, WebSockets
+import WebIO, HTTP
 
 const pages = Dict{String,Any}()
 const server = Ref{Any}()
