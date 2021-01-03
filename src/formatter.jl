@@ -30,16 +30,20 @@ handle("format") do data
   end
 end
 
-# HACK: extract keyword arguments of `format_text`; `Base.kwarg_decl` isn't available as of v1.0
-const FORMAT_TEXT_KWARGS = try
-  s = filter!(collect(methods(format_text))) do m
-    return m.module == JuliaFormatter &&
-      length(m.sig.types) === 2
-  end |> first |> string
-  m = match(r";(.+)\)", s)
-  m === nothing ? Symbol[] : Symbol.(strip.(split(m.captures[1]), Ref((' ', ','))))
-catch
-  Symbol[]
+const FORMAT_TEXT_KWARGS = @static if isdefined(JuliaFormatter, :Options)
+  fieldnames(JuliaFormatter.Options)
+else
+  # HACK: extract keyword arguments of `format_text`; `Base.kwarg_decl` isn't available as of v1.0
+  try
+    s = filter!(collect(methods(format_text))) do m
+      return m.module == JuliaFormatter &&
+        length(m.sig.types) === 2
+    end |> first |> string
+    m = match(r";(.+)\)", s)
+    m === nothing ? Symbol[] : Symbol.(strip.(split(m.captures[1]), Ref((' ', ','))))
+  catch
+    Symbol[]
+  end
 end
 
 isempty(FORMAT_TEXT_KWARGS) && @warn """
