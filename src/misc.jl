@@ -85,6 +85,6 @@ handle("reportinfo") do
   io = IOBuffer()
   versioninfo(io)
   println(io)
-  println(io, project_status())
+  Pkg.status(; io)
   String(take!(io))
 end

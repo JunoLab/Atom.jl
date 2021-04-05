@@ -4,9 +4,6 @@
     try
         Pkg.activate(atomjldir)
 
-        # test status check
-        @test !isempty(Atom.project_status())
-
         @static VERSION ≥ v"1.4" && begin
 
         # test current project info

@@ -1,3 +1,6 @@
+# this file is very unmaintainable, and not fully update for julia v1.6 and higher ...
+# TODO update me (and test/modules.jl) according to the latest Revise.jl implementation
+
 #=
 finding all the included files for a module
 

@@ -1,20 +1,3 @@
-project_status() = steal_stdout(Pkg.status)
-
-function steal_stdout(f)
-  old = stdout
-  rd, wr = redirect_stdout()
-  local res
-  try
-    f()
-  finally
-    redirect_stdout(old)
-    close(wr)
-    res = read(rd, String)
-    close(rd)
-  end
-  return res
-end
-
 @static if VERSION < v"1.4"
 
 update_project() = @msg updateProject(false)

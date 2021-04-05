@@ -9,15 +9,18 @@ add_details!(c) = Atom.completiondetail!(JSON.parse(json(c)))
 
 @testset "module completion" begin
     ## basic
-    let line = "@", cs = comps(line, mod = "Atom")
-        # test detecting all the macros in Atom module
-        @test filter(cs) do c
+    let
+        m = Core.eval(@__MODULE__, :(module Foo end))
+        Core.eval(m, quote
+            macro foo end
+        end)
+        cs = comps("@", mod = "Main.Foo")
+        @test any(cs) do c
+            occursin(c.text, "@foo") &&
             c.type == "snippet" &&
             c.icon == "icon-mention" &&
-            c.rightLabel == "Atom"
-        end |> length == filter(names(Atom, all=true, imported=true)) do n
-            startswith(string(n), '@')
-        end |> length
+            c.rightLabel == string(m)
+        end
     end
 
     ## advanced

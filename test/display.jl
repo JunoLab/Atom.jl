@@ -8,11 +8,13 @@
     @test Atom.render(Atom.Inline(), :abc)[:contents] == [":abc"]
     @test Atom.render(Atom.Inline(), Symbol("A B"))[:contents] == ["Symbol(\"A B\")"]
 
+    is_content_in(contents, s) = any(c->occursin(s, c), contents)
+
     # function display
     # basic
     let d = Atom.render(Atom.Inline(), sin)
         @test d[:type] === :lazy
-        @test d[:head][:contents] == ["sin"]
+        @test is_content_in(d[:head][:contents], "sin")
     end
 
     # in a specific module
@@ -20,13 +22,14 @@
 
     let d = Atom.render(Atom.Inline(), Core.eval(m, :(mock_func() = nothing)))
         @test d[:type] === :lazy
-        @test d[:head][:contents] == ["$(m).mock_func"]
+        @test is_content_in(d[:head][:contents], "$(m).mock_func")
     end
 
     # macro
     let d = Atom.render(Atom.Inline(), Core.eval(m, :(macro mock_macro() end)))
         @test d[:type] === :lazy
-        @test d[:head][:contents] == ["$(m).@mock_macro"]
+        @test (is_content_in(d[:head][:contents], "$(m).@mock_macro") ||
+               is_content_in(d[:head][:contents], "$(m).var\"@mock_macro\"")) # version 1.6
     end
 
     @test length(Atom.trim(rand(50), 20)) == 20
