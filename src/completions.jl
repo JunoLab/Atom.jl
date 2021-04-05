@@ -7,15 +7,19 @@ struct CompletionSuggestion
   type::String
   icon::String
   rightLabel::String
+  rightLabelHTML::String
   leftLabel::String
+  leftLabelHTML::String
   description::String
   descriptionMoreURL::String
   # for `getSuggestionDetailsOnSelect` API
   detailtype::String
 end
 
-CompletionSuggestion(prefix, text, type, icon; rl = "", ll = "", desc = "", url = "", detail = "") =
-  CompletionSuggestion(prefix, text, type, icon, rl, ll, desc, url, detail)
+function CompletionSuggestion(prefix, text, type, icon; rl = "", ll = "", desc = "", url = "", detail = "")
+  CompletionSuggestion(prefix, text, type, icon, rl, codehtml(rl), ll, codehtml(ll), desc, url, detail)
+end
+codehtml(s) = isempty(s) ? "" : string("<span><code>", s, "</code></span>") # don't create empty HTML
 
 # as an heuristic, suppress completions if there are over 500 completions,
 # ref: currently `completions("", 0, Main)` returns 1098 completions as of v1.5
@@ -406,6 +410,7 @@ function completiondetail_method!(comp, k)
     # especially just after we booted Julia, and there are not so much inference caches in the Julia internal.
     # But since details are computed, we can just use here as well
     comp["leftLabel"] = v.rt
+    comp["leftLabelHTML"] = codehtml(v.rt)
     comp["description"] = v.desc
     return
   end
@@ -414,6 +419,7 @@ function completiondetail_method!(comp, k)
   # return type inference
   rt = rt_inf(f, m, Base.tuple_type_tail(tt))
   comp["leftLabel"] = rt
+  comp["leftLabelHTML"] = codehtml(rt)
 
   # description for this method
   mod = m.module
