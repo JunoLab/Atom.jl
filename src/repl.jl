@@ -137,13 +137,14 @@ function hideprompt(f)
 
     # restore prompt
     get_main_mode().prompt = current_prompt[]
-
-    if applicable(LineEdit.write_prompt, stdout, mode)
-      LineEdit.write_prompt(stdout, mode)
-    elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
-      LineEdit.write_prompt(stdout, mode.parent_prompt)
-    else
-      printstyled(stdout, current_prompt[], color=:green)
+    if VERSION <= v"1.5"
+      if applicable(LineEdit.write_prompt, stdout, mode)
+        LineEdit.write_prompt(stdout, mode)
+      elseif mode isa LineEdit.PrefixHistoryPrompt || :parent_prompt in fieldnames(typeof(mode))
+        LineEdit.write_prompt(stdout, mode.parent_prompt)
+      else
+        printstyled(stdout, current_prompt[], color=:green)
+      end
     end
 
     truncate(LineEdit.buffer(mistate), 0)
@@ -169,6 +170,7 @@ function changeREPLprompt(prompt; color = :green, write = true)
     color
   if Base.active_repl.mistate isa REPL.LineEdit.MIState &&
      Base.active_repl.mistate.current_mode == main_mode &&
+     VERSION <= v"1.5" &&
      write
     print(stdout, "\e[1K\r")
     REPL.LineEdit.write_prompt(stdout, main_mode)
@@ -220,7 +222,7 @@ function evalrepl(mod, line)
       end
       errored && return nothing
       try
-        @static if VERSION ≥ v"1.5"
+        if VERSION >= v"1.5"
             line = REPL.softscope(line)
         end
         ans = repleval(mod, line)
