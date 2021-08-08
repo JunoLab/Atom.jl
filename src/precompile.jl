@@ -105,6 +105,7 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(handlemsg),Dict{String, Any},String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(handlemsg),Dict{String, Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isactive),IOBuffer})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(iskeyword),String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(ismacro),Any})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(ismacro),String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Base.RefValue{Bool}})); catch err; @debug err; end
@@ -118,7 +119,7 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(isundefined),HTML{String}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Int64})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Module})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(isundefined),NTuple{18, Symbol}})); catch err; @debug err; end
+    try; @assert(Base.precompile(Tuple{typeof(isundefined),NTuple{19, Symbol}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),OrderedDict{String, Union{NamedTuple{(:rt, :desc), Tuple{String, String}}, NamedTuple{(:f, :m, :tt), Tuple{Any, Method, Type}}}}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),Regex})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(isundefined),String})); catch err; @debug err; end
@@ -183,8 +184,6 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(view),Node{:pre}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(view),Node{:p}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(view),Node{:strong}})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(view),Node{:td}})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(view),Node{:tr}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(view),Node{:ul}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(view),String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(view),SubString{String}})); catch err; @debug err; end
@@ -212,7 +211,6 @@ function _precompile_()
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,Regex})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,String})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,Type})); catch err; @debug err; end
-    try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,UInt32})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,Undefined})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,Vector{Any}})); catch err; @debug err; end
     try; @assert(Base.precompile(Tuple{typeof(wsicon),Module,Symbol,Vector{String}})); catch err; @debug err; end
@@ -242,7 +240,6 @@ function _precompile_()
     try; isdefined(Atom, Symbol("#121#122")) && Base.precompile(Tuple{getfield(Atom, Symbol("#121#122")),Markdown.Link}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#121#122")) && Base.precompile(Tuple{getfield(Atom, Symbol("#121#122")),String}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#123#124")) && Base.precompile(Tuple{getfield(Atom, Symbol("#123#124")),Model}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#123#124")) && Base.precompile(Tuple{getfield(Atom, Symbol("#123#124")),Node{:table}}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#131#132")) && Base.precompile(Tuple{getfield(Atom, Symbol("#131#132")),Text{String}}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#200#201")) && Base.precompile(Tuple{getfield(Atom, Symbol("#200#201"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#207#212")) && Base.precompile(Tuple{getfield(Atom, Symbol("#207#212"))}); catch err; @debug err; end
@@ -250,7 +247,7 @@ function _precompile_()
     try; isdefined(Atom, Symbol("#220#225")) && Base.precompile(Tuple{getfield(Atom, Symbol("#220#225"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#234#239")) && Base.precompile(Tuple{getfield(Atom, Symbol("#234#239"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#242#243")) && Base.precompile(Tuple{getfield(Atom, Symbol("#242#243")),MD}); catch err; @debug err; end
-    try; isdefined(Atom, Symbol("#242#243")) && Base.precompile(Tuple{getfield(Atom, Symbol("#242#243")),MethodList}); catch err; @debug err; end
+    try; isdefined(Atom, Symbol("#242#243")) && Base.precompile(Tuple{getfield(Atom, Symbol("#242#243")),Method}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#39#40")) && Base.precompile(Tuple{getfield(Atom, Symbol("#39#40"))}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#43#44")) && Base.precompile(Tuple{getfield(Atom, Symbol("#43#44")),String}); catch err; @debug err; end
     try; isdefined(Atom, Symbol("#45#47")) && Base.precompile(Tuple{getfield(Atom, Symbol("#45#47")),String}); catch err; @debug err; end
