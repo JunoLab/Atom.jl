@@ -108,8 +108,9 @@ end
     end
   end
 
+  # mimic the filter https://github.com/JuliaLang/julia/blob/c3c9540ff87f49347009bb14430606102b308460/stdlib/REPL/src/REPL.jl#L489-L496
   @static if isdefined(LineEdit, :Modifiers)
-    if !force
+    if is38791(line[1:lastindex(line)]) && !force
       # Filter out methods where all arguments are `Any`
       filter!(cs) do c
         isa(c, MethodCompletion) || return true
@@ -167,8 +168,9 @@ end
     end
   end
 
+  # mimic the filter https://github.com/JuliaLang/julia/blob/c3c9540ff87f49347009bb14430606102b308460/stdlib/REPL/src/REPL.jl#L489-L496
   @static if isdefined(LineEdit, :Modifiers)
-    if !force
+    if is38791(line[1:lastindex(line)]) && !force
       # Filter out methods where all arguments are `Any`
       filter!(cs) do c
         isa(c, MethodCompletion) || return true
@@ -182,6 +184,26 @@ end
   append!(comps, completion.(Ref(mod), cs, prefix))
 
   return comps
+end
+
+# adapted from https://github.com/JuliaLang/julia/blob/c3c9540ff87f49347009bb14430606102b308460/stdlib/REPL/src/REPLCompletions.jl#L701-L729
+function is38791(partial)
+    # ?(x, y)TAB lists methods you can call with these objects
+    # ?(x, y TAB lists methods that take these objects as the first two arguments
+    # MyModule.?(x, y)TAB restricts the search to names in MyModule
+    rexm = match(r"(\w+\.|)\?\((.*)$", partial)
+    if rexm !== nothing
+        moreargs = !endswith(rexm.captures[2], ')')
+        callstr = "_(" * rexm.captures[2]
+        if moreargs
+            callstr *= ')'
+        end
+        ex_org = Meta.parse(callstr, raise=false, depwarn=false)
+        if isa(ex_org, Expr)
+            return true
+        end
+    end
+    return false
 end
 
 const FilterableCompletions = Union{
