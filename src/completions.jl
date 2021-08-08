@@ -108,6 +108,16 @@ end
     end
   end
 
+  @static if isdefined(LineEdit, :Modifiers)
+    if !force
+      # Filter out methods where all arguments are `Any`
+      filter!(cs) do c
+        isa(c, MethodCompletion) || return true
+        sig = Base.unwrap_unionall(c.method.sig)::DataType
+        return !all(T -> T === Any || T === Vararg{Any}, sig.parameters[2:end])
+      end
+    end
+  end
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   REPLCompletions.afterusing(line, Int(first(replace))) && filter!(ispkgcomp, cs) # need `Int` for correct dispatch on x86
   append!(comps, completion.(Ref(mod), cs, prefix))
@@ -157,6 +167,16 @@ end
     end
   end
 
+  @static if isdefined(LineEdit, :Modifiers)
+    if !force
+      # Filter out methods where all arguments are `Any`
+      filter!(cs) do c
+        isa(c, MethodCompletion) || return true
+        sig = Base.unwrap_unionall(c.method.sig)::DataType
+        return !all(T -> T === Any || T === Vararg{Any}, sig.parameters[2:end])
+      end
+    end
+  end
   cs = cs[1:min(end, MAX_COMPLETIONS - length(comps))]
   REPLCompletions.afterusing(line, Int(first(replace))) && filter!(ispkgcomp, cs) # need `Int` for correct dispatch on x86
   append!(comps, completion.(Ref(mod), cs, prefix))

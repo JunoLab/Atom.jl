@@ -310,17 +310,41 @@ end
 # NOTE: shouldn't conflict with identifiers exported by FuzzyCompletions
 using REPL: REPLCompletions
 
+@static if isdefined(LineEdit, :Modifiers)
+
+mutable struct JunoREPLCompletionProvider <: REPL.CompletionProvider
+  mod::Module
+  modifiers::LineEdit.Modifiers
+end
+JunoREPLCompletionProvider(mod::Module) = JunoREPLCompletionProvider(mod, LineEdit.Modifiers())
+LineEdit.setmodifiers!(c::JunoREPLCompletionProvider, m::LineEdit.Modifiers) = c.modifiers = m
+
+else # @static if isdefined(LineEdit, :Modifiers)
+
 struct JunoREPLCompletionProvider <: REPL.CompletionProvider
   mod::Module
 end
+
+end # @static if isdefined(LineEdit, :Modifiers)
 
 function LineEdit.complete_line(c::JunoREPLCompletionProvider, s)
   partial = REPL.beforecursor(s.input_buffer)
   full = LineEdit.input_string(s)
 
   # module-aware repl backend completions
-  comps, range, should_complete = REPLCompletions.completions(full, lastindex(partial), c.mod)
-  ret = map(REPLCompletions.completion_text, comps) |> unique!
+  ret, range, should_complete = REPLCompletions.completions(full, lastindex(partial), c.mod)
+  @static if isdefined(LineEdit, :Modifiers)
+    if !c.modifiers.shift
+      # Filter out methods where all arguments are `Any`
+      filter!(ret) do c
+        isa(c, REPLCompletions.MethodCompletion) || return true
+        sig = Base.unwrap_unionall(c.method.sig)::DataType
+        return !all(T -> T === Any || T === Vararg{Any}, sig.parameters[2:end])
+      end
+    end
+    c.modifiers = LineEdit.Modifiers()
+  end
+  ret = unique!(map(REPLCompletions.completion_text, ret))
 
   return ret, partial[range], should_complete
 end
