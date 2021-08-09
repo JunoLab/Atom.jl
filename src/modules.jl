@@ -293,9 +293,10 @@ handle("module") do data
 
   # NOTE: special case `Core.Compiler`
   if occursin(basepath("compiler"), path)
+    irshow = path == basepath("compiler/ssair/show.jl")
     return (
-      main        = "Core",
-      sub         = "Compiler",
+      main        = irshow ? "Base" : "Core",
+      sub         = irshow ? "IRShow" : "Compiler",
       inactive    = false,
       subInactive = false,
     )
