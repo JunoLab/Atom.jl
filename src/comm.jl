@@ -101,7 +101,7 @@ function serve(port; kws...)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
-      @async @ierrs handlemsg(msg...)
+      @async @ierrs Base.invokelatest(handlemsg, msg...)
     end
   end
   initialise(; kws...)
@@ -112,7 +112,7 @@ function connect(host, port; kws...)
   @async while isopen(sock)
     @ierrs let
       msg = JSON.parse(sock)
-      @async @ierrs handlemsg(msg...)
+      @async @ierrs Base.invokelatest(handlemsg, msg...)
     end
   end
   initialise(; kws...)
