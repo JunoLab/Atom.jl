@@ -152,7 +152,7 @@ pluralize(xs, one, more=one) = pluralize(length(xs), one, more)
     LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(pluralize(xs, "element", "elements"))"))), () -> trim(xs))
 end
 
-@render i::Inline xs::Set begin
+@render i::Inline xs::AbstractSet begin
     LazyTree(span(c(render(i, typeof(xs)), Atom.fade(" with $(pluralize(xs, "element", "elements"))"))), () -> trim(collect(xs)))
 end
 
