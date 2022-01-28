@@ -228,8 +228,17 @@ completion(mod, c, prefix) =
     rl = completionmodule(mod, c), ll = completionreturntype(c), url = completionurl(c), detail = completiondetailtype(c)
   )
 
-const MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
-const MethodCompletionDetail = NamedTuple{(:rt,:desc),Tuple{String,String}}
+struct MethodCompletionInfo
+  tt
+  m::Method
+  MethodCompletionInfo(@nospecialize(tt), m::Method) = new(tt, m)
+end
+
+struct MethodCompletionDetail
+  rt::String
+  desc::String
+end
+
 """
     METHOD_COMPLETION_CACHE::OrderedDict{String,Union{MethodCompletionInfo,MethodCompletionDetail}}
     MethodCompletionInfo = NamedTuple{(:f,:m,:tt),Tuple{Any,Method,Type}}
@@ -269,12 +278,11 @@ const METHOD_COMPLETION_CACHE = OrderedDict{String,Union{MethodCompletionInfo,Me
 function completion(mod, c::MethodCompletion, prefix)
   k = repr(hash(c))
 
-  m = c.method
   v = get(METHOD_COMPLETION_CACHE, k, nothing)
   if v !== nothing
     if v isa MethodCompletionDetail
       # cache found
-      rt, desc = v
+      rt, desc = v.rt, v.desc
       dt = ""
     else
       # MethodCompletion information has already been stored, but lazy return type inference and
@@ -284,11 +292,9 @@ function completion(mod, c::MethodCompletion, prefix)
     end
   else
     # store MethodCompletion information for lazy return type inference and description completement
-    info = MethodCompletionInfo((
-      f = c.func,
-      m = m,
-      tt = c.input_types
-    ))
+    m = c.method
+    tt = @static VERSION ≥ v"1.8.0-DEV.1419" ? c.tt : c.input_types
+    info = MethodCompletionInfo(tt, m)
     METHOD_COMPLETION_CACHE[k] = info
     rt, desc = "", ""
     dt = k
@@ -456,10 +462,10 @@ function completiondetail_method!(comp, k)
     comp["description"] = v.desc
     return
   end
-  f, m, tt = v.f, v.m, v.tt
+  m, tt = v.m, v.tt
 
   # return type inference
-  rt = rt_inf(f, m, Base.tuple_type_tail(tt))
+  rt = rt_inf(m, tt)
   comp["leftLabel"] = rt
   comp["leftLabelHTML"] = codehtml(rt)
 
@@ -480,10 +486,10 @@ function completiondetail_method!(comp, k)
 
   # update method completion cache with the results
 
-  METHOD_COMPLETION_CACHE[k] = MethodCompletionDetail((rt = rt, desc = desc))
+  METHOD_COMPLETION_CACHE[k] = MethodCompletionDetail(rt, desc)
 end
 
-function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
+function rt_inf(m, @nospecialize(tt))
   try
     world = typemax(UInt) # world age
 
@@ -491,10 +497,8 @@ function rt_inf(@nospecialize(f), m, @nospecialize(tt::Type))
     # NOTE:
     # since input types are all concrete, the inference result from them is the best what we can get
     # so here we eagerly respect that if inference succeeded
-    if !isempty(tt.parameters)
-      inf = Core.Compiler.return_type(f, tt, world)
-      inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
-    end
+    inf = Core.Compiler.return_type(tt, world)
+    inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
 
     # sometimes method signature can tell the return type by itself
     sparams = sparams_from_method_signature(m)
