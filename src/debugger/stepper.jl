@@ -328,7 +328,7 @@ function get_code_around(file, line, frame; around = 3)
   if isfile(file)
     lines = readlines(file)
   else
-    src = JuliaInterpreter.copy_codeinfo(frame.framecode.src)
+    src = copy(frame.framecode.src)
     JuliaInterpreter.replace_coretypes!(src; rev = true)
     lines = JuliaInterpreter.framecode_lines(src)
 

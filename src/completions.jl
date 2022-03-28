@@ -293,7 +293,15 @@ function completion(mod, c::MethodCompletion, prefix)
   else
     # store MethodCompletion information for lazy return type inference and description completement
     m = c.method
-    tt = @static VERSION ≥ v"1.8.0-DEV.1419" ? c.tt : c.input_types
+    @static if VERSION ≥ v"1.8.0-DEV.1419"
+      tt = c.tt
+    else
+      if isa(c, FuzzyCompletions.MethodCompletion)
+        tt = c.tt
+      else
+        c.input_types
+      end
+    end
     info = MethodCompletionInfo(tt, m)
     METHOD_COMPLETION_CACHE[k] = info
     rt, desc = "", ""
@@ -491,22 +499,20 @@ end
 
 function rt_inf(m, @nospecialize(tt))
   try
-    world = typemax(UInt) # world age
+    world = Base.get_world_counter() # world age
+
+    interp = Core.Compiler.NativeInterpreter(world)
 
     # first infer return type using input types
     # NOTE:
     # since input types are all concrete, the inference result from them is the best what we can get
     # so here we eagerly respect that if inference succeeded
-    inf = Core.Compiler.return_type(tt, world)
+    inf = return_type(interp, tt)
     inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
 
     # sometimes method signature can tell the return type by itself
     sparams = sparams_from_method_signature(m)
-    inf = @static if isdefined(Core.Compiler, :NativeInterpreter)
-      Core.Compiler.typeinf_type(Core.Compiler.NativeInterpreter(), m, m.sig, sparams)
-    else
-      Core.Compiler.typeinf_type(m, m.sig, sparams, Core.Compiler.Params(world))
-    end
+    inf = Core.Compiler.typeinf_type(interp, m, m.sig, sparams)
     inf ∉ (nothing, Any, Union{}) && return shortstr(inf)
   catch err
     # @error err
@@ -522,4 +528,25 @@ function sparams_from_method_signature(m)
     sig = sig.body
   end
   return Core.svec(s...)
+end
+
+function return_type(interp::Core.Compiler.AbstractInterpreter, @nospecialize(t))
+  isa(t, DataType) || return Any
+  rt = Union{}
+  f = Core.Compiler.singleton_type(t.parameters[1])
+  if isa(f, Core.Builtin)
+    args = Any[t.parameters...]
+    popfirst!(args)
+    rt = Core.Compiler.builtin_tfunction(interp, f, args, nothing)
+    rt = Core.Compiler.widenconst(rt)
+  else
+    for match in Core.Compiler._methods_by_ftype(t, -1, Core.Compiler.get_world_counter(interp))::Vector
+      match = match::Core.MethodMatch
+      ty = Core.Compiler.typeinf_type(interp, match.method, match.spec_types, match.sparams)
+      ty === nothing && return Any
+      rt = Core.Compiler.tmerge(rt, ty)
+      rt === Any && break
+    end
+  end
+  return rt
 end
