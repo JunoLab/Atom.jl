@@ -81,8 +81,12 @@ end
   mod = getmodule(m)
 
   cs, replace, shouldcomplete = try
-    REPLCompletions.completions(line, lastindex(line), mod)
-  catch err
+    @static if hasmethod(REPLCompletions.completions, (String,Int,Module,Bool))
+      REPLCompletions.completions(line, lastindex(line), mod, force)
+    else
+      REPLCompletions.completions(line, lastindex(line), mod)
+    end
+  catch
     # might error when e.g. type inference fails
     REPLCompletions.Completion[], 1:0, false
   end
@@ -137,8 +141,12 @@ end
   mod = getmodule(m)
 
   cs, replace, shouldcomplete = try
-    FuzzyCompletions.completions(line, lastindex(line), mod)
-  catch err
+    @static if hasmethod(FuzzyCompletions.completions, (String,Int,Module,Bool))
+      FuzzyCompletions.completions(line, lastindex(line), mod, force)
+    else
+      FuzzyCompletions.completions(line, lastindex(line), mod)
+    end
+  catch
     # might error when e.g. type inference fails
     FuzzyCompletions.Completion[], 1:0, false
   end
