@@ -78,7 +78,7 @@ function renderbt(trace::StackTrace)
              fade(" at "),
              render(Inline(), Copyable(baselink(string(frame.file), frame.line))),
              fade(frame.inlined ? " <inlined>" : "")])
-        for frame in reverse(trace)])
+        for frame in trace])
 end
 
 rendererr(err) = strong(".error-description", err)
