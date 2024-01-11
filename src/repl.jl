@@ -78,6 +78,7 @@ end
 const is_blocking_repl_input = Ref{Bool}(false)
 
 function blockinput()
+  is_blocking_repl_input[] && return
   is_blocking_repl_input[] = true
   try
     Base.disable_sigint() do
@@ -98,6 +99,8 @@ function blockinput()
   end
   nothing
 end
+
+const timer = Ref(Timer(0))
 
 function hideprompt(f)
   isREPL() || return f()
@@ -120,6 +123,18 @@ function hideprompt(f)
   if INIT_COMPLETE[]
     # Escape REPL modes, then write sentinel and trigger chars.
     can_write_to_terminal = something(Atom.@rpc(writeToTerminal("\b\a$(REPL_SENTINEL_CHAR)$(REPL_TRIGGER_CHAR)")), true)
+
+    # If, for some reason (e.g. weird repl modes), the above statement returns
+    # true but the Julia REPL never receives the keypresses, we'll just pretend
+    # everything is fine after 0.75 seconds and carry on.
+    isopen(timer[]) && close(timer[])
+    @async begin
+      timer[] = Timer(0.75)
+      wait(timer[])
+      blockinput()
+    end
+    yield()
+
     can_write_to_terminal && take!(waiter_out)
   end
   r = nothing
@@ -132,7 +147,11 @@ function hideprompt(f)
     sleep(0.05)
 
     pos = @rpc cursorpos()
+
+    # cleanup
     INIT_COMPLETE[] && can_write_to_terminal && is_blocking_repl_input[] && put!(waiter_in, nothing)
+    isopen(timer[]) && close(timer[])
+
     pos[1] != 0 && println()
 
     # restore prompt
