@@ -36,7 +36,7 @@ WebIO = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
 WebSockets = "104b5d7c-a370-577a-8038-80a2059c5097"
 
 [compat]
-CSTParser = "=1.1.0, ^2"
+CSTParser = "=1.1.0, ^2, 3.0"
 CodeTools = "^0.6.4, ^0.7"
 CodeTracking = "^0.5.7, 1.0"
 DocSeeker = "^0.4"
